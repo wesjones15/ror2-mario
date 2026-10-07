@@ -106,6 +106,8 @@ namespace MarioTest
             body.AddComponent<MarioDriver>();
 
             var display = Prefabs.Clone(commandoDisplay, "MarioTestDisplay", Guid);
+            if (DrawModel.Value)
+                DisplayModel.Attach(display, Guid, MarioDisplay.Get);
 
             var survivor = ScriptableObject.CreateInstance<SurvivorDef>();
             survivor.cachedName = "MarioTest";

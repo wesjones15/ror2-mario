@@ -1,4 +1,5 @@
 using System;
+using Ror2Common;
 using RoR2;
 using UnityEngine;
 
@@ -7,7 +8,9 @@ namespace MarioTest
     // Puts the body's movement in libsms's hands. On the client with authority over the body it
     // turns off RoR2's character controller (the KinematicCharacterMotor), feeds the player's
     // input to the 120 Hz sim each FixedUpdate and moves the body to wherever Mario ends up.
-    // Everyone else sees the result through RoR2's own CharacterNetworkTransform.
+    // Everyone else sees the result through RoR2's own CharacterNetworkTransform. On that
+    // client Mario is drawn with the disc's models (MarioView) in place of Commando's, and
+    // the game's sounds play; other players still see Commando for now.
     //
     // Controls (RoR2 binds): jump = A, primary = spray (half trigger), secondary = B (dive,
     // punch), utility = L (ground pound, crouch), sprint = R fully in (plant and spray),
@@ -31,6 +34,7 @@ namespace MarioTest
         // rescue) moves the body.
         Vector3 prev, cur, written;
         string lastStatus;
+        bool bodyHidden;
 
         void Awake()
         {
@@ -52,6 +56,7 @@ namespace MarioTest
         {
             if (!CanDrive)
             {
+                if (driving) ShowMario(false);
                 driving = false;
                 return;
             }
@@ -66,7 +71,7 @@ namespace MarioTest
             var pad = ReadPad();
             // Facing from Mario toward the camera: the reverse of where the player aims.
             short cameraYaw = UnityHost.Yaw(-input.aimDirection);
-            Native.sms_sim_step(sim, ref host, ref pad, cameraYaw, Time.fixedDeltaTime);
+            Native.sms_sim_step(sim, ref host, ref pad, cameraYaw, Time.fixedDeltaTime, MarioView.Handle);
             Native.sms_sim_state(sim, out var st);
 
             prev = cur;
@@ -87,10 +92,10 @@ namespace MarioTest
 
             if (Plugin.LogStatus.Value)
             {
-                string status = Native.Utf8(Native.sms_sim_status_name(sim));
+                string status = NativeLib.Utf8(Native.sms_sim_status_name(sim));
                 if (status != lastStatus)
                 {
-                    Plugin.Log.LogInfo($"{status} ({Native.Utf8(Native.sms_sim_clip_name(sim))})");
+                    Plugin.Log.LogInfo($"{status} ({NativeLib.Utf8(Native.sms_sim_clip_name(sim))})");
                     lastStatus = status;
                 }
             }
@@ -105,12 +110,31 @@ namespace MarioTest
             written = p;
         }
 
+        // Mario's models at the body's (smoothed) feet, facing as the sim says.
+        void LateUpdate()
+        {
+            if (!driving || sim == IntPtr.Zero) return;
+            MarioView.Update(sim);
+            var models = MarioView.Models;
+            if (models == null) return;
+            var feet = transform.position - feetToOrigin;
+            models.Update(UnityHost.Scale, d => (feet, new Quaternion(d.rot_x, d.rot_y, d.rot_z, d.rot_w)));
+            ShowMario(true);
+        }
+
+        // Mario's models in place of Commando's, or back.
+        void ShowMario(bool show)
+        {
+            if (!show) MarioView.Models?.HideAll();
+            GameSettings.HideModel(body, ref bodyHidden, show && MarioView.Models != null);
+        }
+
         bool Create()
         {
             feetToOrigin = transform.position - body.footPosition;
             var feet = UnityHost.ToSim(body.footPosition);
             short yaw = UnityHost.Yaw(direction ? direction.forward : transform.forward);
-            sim = Native.sms_sim_new(Native.CString(Plugin.AssetsDir), ref feet, yaw);
+            sim = Native.sms_sim_new(NativeLib.CString(Plugin.AssetsDir), ref feet, yaw);
             if (sim == IntPtr.Zero)
             {
                 failed = true;
@@ -118,6 +142,7 @@ namespace MarioTest
                 return false;
             }
             Plugin.Log.LogInfo($"Mario's sim started at {body.footPosition}");
+            MarioView.Ensure();
             return true;
         }
 
@@ -152,6 +177,7 @@ namespace MarioTest
 
         void OnDestroy()
         {
+            if (driving) MarioView.Models?.HideAll();
             if (sim != IntPtr.Zero)
             {
                 Native.sms_sim_free(sim);

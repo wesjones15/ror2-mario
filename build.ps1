@@ -1,12 +1,18 @@
 # Builds libsms's DLL and the MarioTest plugin, and installs both into the game's
 # BepInEx/plugins/MarioTest/ folder along with a pointer to libsms's extracted assets.
 #
-#   powershell -ExecutionPolicy Bypass -File build.ps1 [-RoR2Dir <game folder>] [-NoInstall]
+#   powershell -ExecutionPolicy Bypass -File build.ps1 [-RoR2Dir <game to compile against>]
+#       [-InstallDir <game to install into>] [-NoInstall]
+#
+# Compiles against the 1.2.4.4 copy next to this repo and installs into the Steam install the
+# user plays (falling back to the copy).
 param(
     [string]$RoR2Dir = (Join-Path $PSScriptRoot "..\Risk Of Rain 2 2023"),
+    [string]$InstallDir = "D:\SteamLibrary\steamapps\common\Risk of Rain 2",
     [string]$LibSms = (Join-Path $PSScriptRoot "..\libsms"),
     [switch]$NoInstall
 )
+if (-not (Test-Path (Join-Path $InstallDir "BepInEx"))) { $InstallDir = $RoR2Dir }
 $ErrorActionPreference = "Stop"
 
 $cargo = Join-Path $env:USERPROFILE ".cargo\bin\cargo.exe"
@@ -30,7 +36,7 @@ $assets = (Resolve-Path (Join-Path $LibSms "assets")).Path
 Write-Host "built $dist (assets: $assets)"
 
 if (-not $NoInstall) {
-    $plugins = Join-Path $RoR2Dir "BepInEx\plugins\MarioTest"
+    $plugins = Join-Path $InstallDir "BepInEx\plugins\MarioTest"
     New-Item -ItemType Directory -Force $plugins | Out-Null
     Copy-Item (Join-Path $dist "*") $plugins -Force
     Write-Host "installed into $plugins"

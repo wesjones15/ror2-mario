@@ -4,7 +4,7 @@ using Ror2Common;
 
 namespace MarioTest
 {
-    // The libsms C ABI (libsms/crates/libsms-ffi, SMS_ABI_VERSION 2). Layouts mirror the
+    // The libsms C ABI (libsms/crates/libsms-ffi, SMS_ABI_VERSION 3). Layouts mirror the
     // #[repr(C)] structs there field for field; Load checks them with sms_struct_sizes. Sim
     // units: about 1 cm, Y up, a facing angle a (i16, 0x10000 per turn) points along
     // (sin a, 0, cos a). The view's structs are ror2-common's (ViewModelInfo...), which
@@ -12,7 +12,7 @@ namespace MarioTest
     internal static class Native
     {
         public const string Dll = "sms";
-        public const uint AbiVersion = 2;
+        public const uint AbiVersion = 3;
 
         [StructLayout(LayoutKind.Sequential)]
         public struct Vec3
@@ -83,6 +83,29 @@ namespace MarioTest
             public float dt;
             public Vec3 eye, forward, up;
             public float volume;
+            /// 120 Hz ticks behind the sim that Mario is drawn (our smoothing); the water too.
+            public float lag;
+        }
+
+        /// Host tuning; ones and zeroes are the game.
+        [StructLayout(LayoutKind.Sequential)]
+        public struct Tuning
+        {
+            public float jump_height, jump_buffer, chain_grace;
+        }
+
+        [StructLayout(LayoutKind.Sequential)]
+        public struct WaterVertex
+        {
+            public Vec3 pos;
+            public float u, v, alpha;
+        }
+
+        [StructLayout(LayoutKind.Sequential)]
+        public struct WaterInfo
+        {
+            public uint drop_quads, splash_quads;
+            public float r, g, b, a;
         }
 
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
@@ -106,6 +129,7 @@ namespace MarioTest
         }
 
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern uint sms_abi_version();
+        [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern uint sms_tick_hz();
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern uint sms_struct_sizes([Out] uint[] sizes, uint max);
 
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern IntPtr sms_sim_new(byte[] assetsDirUtf8, ref Vec3 pos, short yaw);
@@ -115,6 +139,7 @@ namespace MarioTest
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern IntPtr sms_sim_status_name(IntPtr sim);
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern IntPtr sms_sim_clip_name(IntPtr sim);
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern void sms_sim_teleport(IntPtr sim, ref Vec3 pos);
+        [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern void sms_sim_set_tuning(IntPtr sim, ref Tuning tuning);
 
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern IntPtr sms_view_new(byte[] assetsDirUtf8, byte sound);
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern void sms_view_free(IntPtr view);
@@ -132,6 +157,9 @@ namespace MarioTest
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern IntPtr sms_view_colors(IntPtr view, out uint count);
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern IntPtr sms_view_texture_ids(IntPtr view, out uint count);
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern IntPtr sms_view_frame_uvs(IntPtr view, out uint count);
+        [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern IntPtr sms_view_water_vertices(IntPtr view, out uint count);
+        [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern byte sms_view_water_info(IntPtr view, out WaterInfo info);
+        [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern byte sms_view_water_texture(IntPtr view, uint which, out ViewTexture info, [Out] byte[] rgba, uint len);
 
         /// Loads sms.dll from the plugin folder and checks it speaks this plugin's ABI with the
         /// same struct layouts.
@@ -154,7 +182,8 @@ namespace MarioTest
                 ("Pad", NativeLib.Size<Pad>()), ("State", NativeLib.Size<State>()),
                 ("ModelInfo", NativeLib.Size<ViewModelInfo>()), ("Batch", NativeLib.Size<ViewBatch>()),
                 ("Texture", NativeLib.Size<ViewTexture>()), ("Draw", NativeLib.Size<ViewDraw>()),
-                ("ViewFrame", NativeLib.Size<ViewFrame>()),
+                ("ViewFrame", NativeLib.Size<ViewFrame>()), ("Tuning", NativeLib.Size<Tuning>()),
+                ("WaterVertex", NativeLib.Size<WaterVertex>()), ("WaterInfo", NativeLib.Size<WaterInfo>()),
             });
             if (diff != null)
             {

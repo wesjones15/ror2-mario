@@ -26,6 +26,9 @@ namespace MarioTest
         internal static ConfigEntry<bool> DrawModel;
         internal static ConfigEntry<bool> Sound;
         internal static ConfigEntry<float> SoundVolume;
+        internal static ConfigEntry<float> JumpHeight;
+        internal static ConfigEntry<float> JumpBuffer;
+        internal static ConfigEntry<float> ChainGrace;
 
         void Awake()
         {
@@ -38,6 +41,15 @@ namespace MarioTest
                 "Empty: read assets_dir.txt next to the plugin, then $SMS_ASSETS.");
             UnityHost.Scale = Config.Bind("Sim", "MetresPerUnit", 0.01f,
                 "Metres per Sunshine unit. 0.01 makes Mario 1.6 m tall.").Value;
+            JumpHeight = Config.Bind("Sim", "JumpHeight", 1.6f,
+                "Jump heights times this. 1 is Sunshine's (a standing jump is 2.3 m, a triple 8 m, " +
+                "at 0.01 m per unit); RoR2's levels are built for higher jumps.");
+            JumpBuffer = Config.Bind("Sim", "JumpBuffer", 0.1f,
+                "Seconds a jump press just before landing is remembered, so it still jumps (and " +
+                "chains into the double and triple jump). 0 is Sunshine's: the press is lost.");
+            ChainGrace = Config.Bind("Sim", "ChainGrace", 0.1f,
+                "Extra seconds after Sunshine's landing window (0.13 s) in which a jump still " +
+                "chains into the double or triple jump. 0 is Sunshine's.");
             LogStatus = Config.Bind("Debug", "LogStatus", true,
                 "Log each change of Mario's status (Wait, Running, Jump...) to the BepInEx log.");
             DrawModel = Config.Bind("Look", "DrawModel", true,

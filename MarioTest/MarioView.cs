@@ -7,12 +7,14 @@ namespace MarioTest
     // Mario's look and sound, loaded once from the disc's files the first time a Mario needs
     // them and kept across stages: libsms's view (sms_view_*: the models posed and skinned,
     // each material's TEV baked into one texture, and the game's sounds on our own output,
-    // since RoR2 plays through Wwise) and ror2-common's ModelView putting it in the scene.
+    // since RoR2 plays through Wwise), ror2-common's ModelView putting it in the scene, and
+    // FLUDD's water (MarioWater).
     internal static class MarioView
     {
         static bool tried;
         static IntPtr view;
         static ModelView models;
+        static MarioWater water;
 
         /// The native view (for sms_sim_step's sounds and sms_view_update), or zero.
         public static IntPtr Handle => view;
@@ -43,18 +45,21 @@ namespace MarioTest
                 models = ModelView.Create(new SmsViewSource(view), "Mario");
                 // Sunshine's hit flash is pink (`addDamageFog`).
                 if (models != null) models.FlashColor = new Color(1f, 0f, 0.5f, 0.6f);
+                water = MarioWater.Create(view);
             }
             return models != null;
         }
 
-        /// Poses `sim` for this frame and plays its sounds from the player's camera.
-        public static void Update(IntPtr sim)
+        /// Poses `sim` for this frame, draws its water, and plays its sounds from the player's
+        /// camera. `lag` is how many 120 Hz ticks behind the sim Mario is drawn.
+        public static void Update(IntPtr sim, float lag)
         {
             if (view == IntPtr.Zero || sim == IntPtr.Zero) return;
             var frame = new Native.ViewFrame
             {
                 dt = Time.deltaTime,
                 volume = GameSettings.SfxVolume() * Mathf.Clamp(Plugin.SoundVolume.Value, 0f, 2f),
+                lag = lag,
                 forward = new Native.Vec3(0f, 0f, 1f),
                 up = new Native.Vec3(0f, 1f, 0f),
             };
@@ -66,6 +71,14 @@ namespace MarioTest
                 frame.up = new Native.Vec3(cam.up.x, cam.up.y, cam.up.z);
             }
             Native.sms_view_update(view, sim, ref frame);
+            water?.Update(view, UnityHost.Scale);
+        }
+
+        /// Hides the models and the water (until the next Update).
+        public static void Hide()
+        {
+            models?.HideAll();
+            water?.Hide();
         }
     }
 }

@@ -35,6 +35,8 @@ namespace MarioTest
         Vector3 prev, cur, written;
         string lastStatus;
         bool bodyHidden;
+        // How far behind the sim the body is drawn (Update's smoothing), in 120 Hz ticks.
+        float lagTicks;
 
         void Awake()
         {
@@ -106,6 +108,7 @@ namespace MarioTest
             if (!driving) return;
             float a = Mathf.Clamp01((Time.time - Time.fixedTime) / Time.fixedDeltaTime);
             var p = Vector3.Lerp(prev, cur, a);
+            lagTicks = (1f - a) * Time.fixedDeltaTime * Native.sms_tick_hz();
             transform.position = p;
             written = p;
         }
@@ -114,7 +117,7 @@ namespace MarioTest
         void LateUpdate()
         {
             if (!driving || sim == IntPtr.Zero) return;
-            MarioView.Update(sim);
+            MarioView.Update(sim, lagTicks);
             var models = MarioView.Models;
             if (models == null) return;
             var feet = transform.position - feetToOrigin;
@@ -125,7 +128,7 @@ namespace MarioTest
         // Mario's models in place of Commando's, or back.
         void ShowMario(bool show)
         {
-            if (!show) MarioView.Models?.HideAll();
+            if (!show) MarioView.Hide();
             GameSettings.HideModel(body, ref bodyHidden, show && MarioView.Models != null);
         }
 
@@ -141,6 +144,13 @@ namespace MarioTest
                 Plugin.Log.LogError($"libsms could not start from {Plugin.AssetsDir}; Mario stays put");
                 return false;
             }
+            var tuning = new Native.Tuning
+            {
+                jump_height = Plugin.JumpHeight.Value,
+                jump_buffer = Plugin.JumpBuffer.Value,
+                chain_grace = Plugin.ChainGrace.Value,
+            };
+            Native.sms_sim_set_tuning(sim, ref tuning);
             Plugin.Log.LogInfo($"Mario's sim started at {body.footPosition}");
             MarioView.Ensure();
             return true;
@@ -177,7 +187,7 @@ namespace MarioTest
 
         void OnDestroy()
         {
-            if (driving) MarioView.Models?.HideAll();
+            if (driving) MarioView.Hide();
             if (sim != IntPtr.Zero)
             {
                 Native.sms_sim_free(sim);

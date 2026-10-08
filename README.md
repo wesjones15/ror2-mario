@@ -47,6 +47,7 @@ Controls, on a gamepad, by button position (Sunshine's layout, whatever your RoR
 | right trigger    | R        | spray; all the way in plants Mario and sprays   |
 | left trigger     | L        | ground pound (in the air), crouch               |
 | right bumper     | X        | switch nozzle: Spray, Hover, Rocket, Turbo      |
+| D-pad down       |          | fill FLUDD's tank (`Fludd.DpadRefill`)          |
 | X, Y             |          | RoR2's interact and equipment, as ever          |
 
 On keyboard and mouse your RoR2 binds stand in: jump (A), primary (half spray), sprint (plant
@@ -66,7 +67,7 @@ pointing at `libsms/assets`, into `<game>/BepInEx/plugins/MarioTest/`. It compil
 game's own DLLs, so no NuGet game libraries are involved. Use `-RoR2Dir` for another install
 and `-NoInstall` to only build into `dist/`.
 
-The log, `BepInEx/LogOutput.log`, should show `libsms ABI 7`, `Mario is 1.xx m tall`, then
+The log, `BepInEx/LogOutput.log`, should show `libsms ABI 8`, `Mario is 1.xx m tall`, then
 `Mario (test) registered`.
 In a run it should show `Mario's sim started`, `Mario's view: 12 models, 26 textures; sound
 ...`, and one line per status change (turn that off with `Debug.LogStatus`).
@@ -74,9 +75,16 @@ In a run it should show `Mario's sim started`, `Mario's view: 12 models, 26 text
 Config is in `BepInEx/config/com.libsms.mariotest.cfg`: `Look.DrawModel`, `Look.Height`,
 `Look.PoundFlames`, `Sound.Enabled`, `Sound.Volume`, `Sim.*` (jump height, buffer and chain
 grace, speed items, solid enemies, stomp bounce, pound jump, timed stomp jump, shortest hop),
-`Fludd.*` (nozzle cycling, spray reach, rocket height), `Damage.*` (stomp, ground pound and its shock wave, damage
+`Fludd.*` (nozzle cycling, spray reach, rocket height, unlimited water, D-pad refill), `Hud.*`
+(Sunshine's water tank gauge: on or off, where, how big), `Damage.*` (stomp, ground pound and its shock wave, damage
 per metre a pound falls, super pounds igniting, dive, water per drop and its proc coefficient)
 and `Paths.AssetsDir`.
+
+FLUDD's tank empties as in Sunshine and fills back up while you hold spray standing in water
+(anything RoR2 builds as water: Unity's Water layer, or colliders, materials or footstep
+surfaces named for water; the log says what each stage has, and when Mario steps in and out),
+with D-pad down, and on each new stage, since Mario starts every stage afresh. The gauge is
+Sunshine's own, drawn from the disc (re-extract older assets for its `game_6/` folder).
 
 ### Not there yet
 

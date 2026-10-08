@@ -8,7 +8,8 @@ namespace MarioTest
     // them and kept across stages: libsms's view (sms_view_*: the models posed and skinned,
     // each material's TEV baked into one texture, and the game's sounds on our own output,
     // since RoR2 plays through Wwise), ror2-common's ModelView putting it in the scene,
-    // FLUDD's water (MarioWater) and the game's particle effects (MarioFx).
+    // FLUDD's water (MarioWater), the game's particle effects (MarioFx) and the HUD's water
+    // gauge (MarioHud).
     internal static class MarioView
     {
         static bool tried;
@@ -77,6 +78,7 @@ namespace MarioTest
             }
             Native.sms_view_update(view, sim, ref frame);
             water?.Update(view, UnityHost.Scale);
+            MarioHud.Update(view);
         }
 
         /// Draws this frame's particle effects (after Update) with Mario drawn at `feet`: they

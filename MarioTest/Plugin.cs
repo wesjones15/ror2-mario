@@ -50,6 +50,12 @@ namespace MarioTest
         internal static ConfigEntry<float> DiveDamage;
         internal static ConfigEntry<float> WaterDamage;
         internal static ConfigEntry<float> WaterProc;
+        internal static ConfigEntry<bool> UnlimitedWater;
+        internal static ConfigEntry<bool> DpadRefill;
+        internal static ConfigEntry<bool> ShowTank;
+        internal static ConfigEntry<float> TankX;
+        internal static ConfigEntry<float> TankY;
+        internal static ConfigEntry<float> TankScale;
 
         void Awake()
         {
@@ -97,6 +103,20 @@ namespace MarioTest
             RocketHeight = Config.Bind("Fludd", "RocketHeight", 2f,
                 "The Rocket nozzle launches Mario about this many times as high as in Sunshine " +
                 "(1: about 17 Marios).");
+            UnlimitedWater = Config.Bind("Fludd", "UnlimitedWater", false,
+                "FLUDD's tank never runs dry. Off is Sunshine's: it empties as it sprays and fills " +
+                "back up when you hold spray standing in water, and on each new stage.");
+            DpadRefill = Config.Bind("Fludd", "DpadRefill", true,
+                "D-pad down fills FLUDD's tank, for stages without water to stand in.");
+            ShowTank = Config.Bind("Hud", "WaterTank", true,
+                "Show Sunshine's water tank gauge (from the disc) while Mario has FLUDD.");
+            TankX = Config.Bind("Hud", "TankX", 0.95f,
+                "Where the tank's middle is across the screen, 0 left to 1 right.");
+            TankY = Config.Bind("Hud", "TankY", 0.6f,
+                "Where the tank's middle is down the screen, 0 top to 1 bottom (Sunshine has it in " +
+                "the bottom right, where RoR2 puts its skills).");
+            TankScale = Config.Bind("Hud", "TankScale", 0.8f,
+                "The tank's size; 1 is Sunshine's against the screen's height.");
             SprayReach = Config.Bind("Fludd", "SprayReach", 2f,
                 "The Spray nozzle's water flies about this many times as far as in Sunshine " +
                 "(1: about 6 Marios).");

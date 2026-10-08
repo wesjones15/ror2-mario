@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
 using Ror2Common;
+using RoR2;
 using UnityEngine;
 
 namespace MarioTest
@@ -25,6 +26,7 @@ namespace MarioTest
         static readonly Native.GroundFn groundFn = Ground;
         static readonly Native.RoofFn roofFn = Roof;
         static readonly unsafe Native.WallsFn wallsFn = Walls;
+        static readonly Native.WaterFn waterFn = Water;
         static readonly List<Vector3> wallScratch = new List<Vector3>();
 
         /// The callback table; the delegates live in statics so the GC never collects them.
@@ -36,6 +38,7 @@ namespace MarioTest
             walls = Marshal.GetFunctionPointerForDelegate(wallsFn),
             evt = MarioCombat.EventPtr,
             enemies = MarioCombat.EnemiesPtr,
+            water = Marshal.GetFunctionPointerForDelegate(waterFn),
         };
 
         public static Vector3 ToUnity(Native.Vec3 v) => new Vector3(v.x, v.y, v.z) * Scale;
@@ -85,6 +88,102 @@ namespace MarioTest
             var back = ToSim(c);
             outCenter = new Native.Vec3(back.x, center.y, back.z);
             return (uint)wallScratch.Count;
+        }
+
+        // ---- water ----------------------------------------------------------------------
+        // RoR2 has no water for the sim to read, so anything that looks like water counts:
+        // colliders (triggers too) on Unity's "Water" layer, or whose object, material or
+        // footstep surface (SurfaceDefProvider) is named for water. Answers libsms's
+        // TPoolManager::getWaterLevel stand-in: the surface over Mario's feet, if any.
+
+        const int UnityWaterLayer = 4;
+        static readonly RaycastHit[] waterHits = new RaycastHit[16];
+        static readonly Collider[] waterOverlaps = new Collider[16];
+        static readonly Dictionary<int, bool> waterCache = new Dictionary<int, bool>();
+        /// The water Mario was last found in (for the log).
+        public static string LastWater;
+
+        static byte Water(IntPtr user, ref Native.Vec3 pos, out float level)
+        {
+            level = 0f;
+            var feet = ToUnity(pos);
+            float height = MarioHeight * Scale;
+            float best = float.NegativeInfinity;
+            Collider found = null;
+            // Down from over his head to a little under his feet: water surfaces, and water
+            // he stands on (a solid surface counts as a puddle over it).
+            int n = Physics.RaycastNonAlloc(feet + Vector3.up * height, Vector3.down, waterHits,
+                height + 0.05f, ~0, QueryTriggerInteraction.Collide);
+            for (int i = 0; i < n; i++)
+            {
+                var h = waterHits[i];
+                if (h.point.y > best && IsWater(h.collider))
+                {
+                    best = h.point.y;
+                    found = h.collider;
+                }
+            }
+            // Or inside a water volume altogether (rays starting inside one miss it).
+            if (found == null)
+            {
+                n = Physics.OverlapSphereNonAlloc(feet + Vector3.up * (0.1f * height), 0.05f * height,
+                    waterOverlaps, ~0, QueryTriggerInteraction.Collide);
+                for (int i = 0; i < n; i++)
+                {
+                    var c = waterOverlaps[i];
+                    if (c && c.bounds.max.y > best && IsWater(c))
+                    {
+                        best = c.bounds.max.y;
+                        found = c;
+                    }
+                }
+            }
+            if (found == null) return 0;
+            LastWater = found.name;
+            level = Mathf.Max(best, feet.y + 0.02f * height) / Scale;
+            return 1;
+        }
+
+        static bool IsWater(Collider c)
+        {
+            if (!c) return false;
+            int id = c.GetInstanceID();
+            if (waterCache.TryGetValue(id, out bool w)) return w;
+            w = c.gameObject.layer == UnityWaterLayer
+                || Watery(c.name) || Watery(c.transform.parent ? c.transform.parent.name : null)
+                || (c.sharedMaterial && Watery(c.sharedMaterial.name));
+            if (!w)
+            {
+                var r = c.GetComponent<Renderer>();
+                w = r && r.sharedMaterial && Watery(r.sharedMaterial.name);
+            }
+            if (!w)
+            {
+                var s = c.GetComponent<SurfaceDefProvider>();
+                w = s && s.surfaceDef && Watery(s.surfaceDef.name);
+            }
+            if (waterCache.Count > 4096) waterCache.Clear();
+            waterCache[id] = w;
+            return w;
+        }
+
+        static bool Watery(string name) =>
+            name != null && name.IndexOf("water", StringComparison.OrdinalIgnoreCase) >= 0;
+
+        /// Logs what in this stage counts as water (once a stage, for tuning IsWater).
+        public static void LogStageWater()
+        {
+            var names = new List<string>();
+            int count = 0;
+            foreach (var c in UnityEngine.Object.FindObjectsOfType<Collider>())
+            {
+                if (!IsWater(c)) continue;
+                count++;
+                if (names.Count < 8 && !names.Contains(c.name)) names.Add(c.name);
+            }
+            Plugin.Log.LogInfo(count == 0
+                ? "No water in this stage for FLUDD to fill up from"
+                : $"Water in this stage: {count} colliders ({string.Join(", ", names)})");
         }
     }
 }

@@ -56,6 +56,8 @@ namespace MarioTest
         LocalUser localUser;
         // The tuning last sent to the sim.
         Native.Tuning tuning;
+        // Standing in water as of the last step (Native.State.in_water).
+        byte inWater;
 
         void Awake()
         {
@@ -99,6 +101,8 @@ namespace MarioTest
             driving = true;
 
             Tune();
+            if (pad.TakeRefill() && Plugin.DpadRefill.Value)
+                Native.sms_sim_refill(sim);
             var step = pad.Take(input.moveVector);
             // Facing from Mario toward the camera: the reverse of where the player aims.
             short cameraYaw = UnityHost.Yaw(-input.aimDirection);
@@ -108,6 +112,11 @@ namespace MarioTest
             Native.sms_sim_state(sim, out var st);
             MarioCombat.Watch(st);
             pounding = st.pounding;
+            if (st.in_water != inWater)
+            {
+                inWater = st.in_water;
+                Plugin.Log.LogInfo(inWater != 0 ? $"Mario is in water ({UnityHost.LastWater})" : "Mario is out of the water");
+            }
 
             fixedSteps++;
             prev = cur;
@@ -196,6 +205,7 @@ namespace MarioTest
             tuning = default;
             Tune();
             Plugin.Log.LogInfo($"Mario's sim started at {body.footPosition}");
+            UnityHost.LogStageWater();
             MarioView.Ensure();
             return true;
         }
@@ -224,10 +234,17 @@ namespace MarioTest
                 short_hop = Plugin.ShortHop.Value,
                 enemy_push = (byte)(Plugin.SolidEnemies.Value ? 1 : 0),
                 cycle_nozzles = (byte)(Plugin.CycleNozzles.Value ? 1 : 0),
+                unlimited_water = (byte)(Plugin.UnlimitedWater.Value ? 1 : 0),
             };
             if (t.Equals(tuning)) return;
             tuning = t;
             Native.sms_sim_set_tuning(sim, ref t);
+        }
+
+        // The water gauge, for the player playing this Mario.
+        void OnGUI()
+        {
+            if (driving && localUser != null) MarioHud.Draw();
         }
 
         /// The local player playing this body, if any (their pad and UI focus).

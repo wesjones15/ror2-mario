@@ -21,13 +21,15 @@ namespace MarioTest
         bool a, b, l, x, aTap, bTap, lTap, xTap;
         // 0..1.
         float r, rMax;
+        // D-pad down (refill the tank): held, and pressed since the last step.
+        bool down, downTap;
 
         public void Read(LocalUser user, InputBankTest input)
         {
             var player = user?.inputPlayer;
             if (player == null || user.isUIFocused)
             {
-                a = b = l = x = false;
+                a = b = l = x = down = false;
                 r = 0f;
                 return;
             }
@@ -39,6 +41,9 @@ namespace MarioTest
                 l = gp.leftTrigger.value > 0.5f;
                 x = gp.rightBumper.value;
                 r = Mathf.Clamp01(gp.rightTrigger.value);
+                bool d = gp.dPad.down.value;
+                downTap |= d && !down;
+                down = d;
             }
             else if (input)
             {
@@ -76,6 +81,14 @@ namespace MarioTest
             aTap = bTap = lTap = xTap = false;
             rMax = 0f;
             return pad;
+        }
+
+        /// D-pad down was pressed since the last call.
+        public bool TakeRefill()
+        {
+            bool t = downTap;
+            downTap = false;
+            return t;
         }
 
         static byte B(bool v) => v ? (byte)1 : (byte)0;

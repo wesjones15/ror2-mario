@@ -4,7 +4,7 @@ using Ror2Common;
 
 namespace MarioTest
 {
-    // The libsms C ABI (libsms/crates/libsms-ffi, SMS_ABI_VERSION 7). Layouts mirror the
+    // The libsms C ABI (libsms/crates/libsms-ffi, SMS_ABI_VERSION 8). Layouts mirror the
     // #[repr(C)] structs there field for field; Load checks them with sms_struct_sizes. Sim
     // units: about 1 cm, Y up, a facing angle a (i16, 0x10000 per turn) points along
     // (sin a, 0, cos a). The view's structs are ror2-common's (ViewModelInfo...), which
@@ -12,7 +12,7 @@ namespace MarioTest
     internal static class Native
     {
         public const string Dll = "sms";
-        public const uint AbiVersion = 7;
+        public const uint AbiVersion = 8;
 
         [StructLayout(LayoutKind.Sequential)]
         public struct Vec3
@@ -89,7 +89,9 @@ namespace MarioTest
             public short face_yaw, model_yaw, health;
             public byte on_ground, has_fludd;
             /// 1 falling in a ground pound, 2 in a super pound (Sunshine's flames), else 0.
-            public byte pounding, pad0, pad1, pad2;
+            public byte pounding;
+            /// 1 standing in shallow water (UnityHost's water callback).
+            public byte in_water, pad1, pad2;
         }
 
         [StructLayout(LayoutKind.Sequential)]
@@ -109,7 +111,7 @@ namespace MarioTest
             public float jump_height, jump_buffer, chain_grace;
             public float move_speed, spray_reach, stomp_bounce, rocket_height;
             public float pound_jump, stomp_jump, short_hop;
-            public byte enemy_push, cycle_nozzles, pad0, pad1;
+            public byte enemy_push, cycle_nozzles, unlimited_water, pad0;
         }
 
         [StructLayout(LayoutKind.Sequential)]
@@ -146,6 +148,15 @@ namespace MarioTest
             public uint batches, vertices, textures;
         }
 
+        /// FLUDD's water gauge: where it sits on the game's screen_w x screen_h screen.
+        [StructLayout(LayoutKind.Sequential)]
+        public struct HudInfo
+        {
+            public int x, y;
+            public uint width, height, screen_w, screen_h, version;
+            public byte shown, pad0, pad1, pad2;
+        }
+
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
         public delegate byte GroundFn(IntPtr user, ref Vec3 pos, out GroundHit hit);
 
@@ -160,12 +171,14 @@ namespace MarioTest
         public delegate void EventFn(IntPtr user, ref Event e);
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
         public unsafe delegate uint EnemiesFn(IntPtr user, ref Vec3 pos, float radius, Enemy* output, uint max);
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+        public delegate byte WaterFn(IntPtr user, ref Vec3 pos, out float level);
 
         [StructLayout(LayoutKind.Sequential)]
         public struct Host
         {
             public IntPtr user;
-            public IntPtr ground, roof, walls, evt, enemies;
+            public IntPtr ground, roof, walls, evt, enemies, water;
         }
 
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern uint sms_abi_version();
@@ -180,6 +193,7 @@ namespace MarioTest
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern IntPtr sms_sim_clip_name(IntPtr sim);
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern void sms_sim_teleport(IntPtr sim, ref Vec3 pos);
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern void sms_sim_set_tuning(IntPtr sim, ref Tuning tuning);
+        [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern void sms_sim_refill(IntPtr sim);
 
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern IntPtr sms_view_new(byte[] assetsDirUtf8, byte sound);
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern void sms_view_free(IntPtr view);
@@ -205,6 +219,8 @@ namespace MarioTest
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern IntPtr sms_view_fx_batches(IntPtr view, out uint count);
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern uint sms_view_fx_texture_version(IntPtr view, uint which);
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern byte sms_view_fx_texture(IntPtr view, uint which, out ViewTexture info, [Out] byte[] rgba, uint len);
+        [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern byte sms_view_hud_info(IntPtr view, out HudInfo info);
+        [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern byte sms_view_hud_pixels(IntPtr view, [Out] byte[] rgba, uint len);
 
         /// Loads sms.dll from the plugin folder and checks it speaks this plugin's ABI with the
         /// same struct layouts.
@@ -231,7 +247,7 @@ namespace MarioTest
                 ("WaterVertex", NativeLib.Size<WaterVertex>()), ("WaterInfo", NativeLib.Size<WaterInfo>()),
                 ("Enemy", NativeLib.Size<Enemy>()),
                 ("FxVertex", NativeLib.Size<FxVertex>()), ("FxBatch", NativeLib.Size<FxBatch>()),
-                ("FxInfo", NativeLib.Size<FxInfo>()),
+                ("FxInfo", NativeLib.Size<FxInfo>()), ("HudInfo", NativeLib.Size<HudInfo>()),
             });
             if (diff != null)
             {

@@ -15,6 +15,11 @@ namespace MarioTest
     // Controls (RoR2 binds): jump = A, primary = spray (half trigger), secondary = B (dive,
     // punch), utility = L (ground pound, crouch), sprint = R fully in (plant and spray),
     // special = X (switch nozzle).
+    //
+    // The camera follows a pivot of our own on the body, not Commando's (that one hangs off his
+    // hidden, still animated and turning model, and swayed the camera against Mario), and this
+    // runs before RoR2's camera (which moves in Update) so it sees this frame's smoothed body.
+    [DefaultExecutionOrder(-200)]
     public class MarioDriver : MonoBehaviour
     {
         CharacterBody body;
@@ -37,6 +42,13 @@ namespace MarioTest
         bool bodyHidden;
         // How far behind the sim the body is drawn (Update's smoothing), in 120 Hz ticks.
         float lagTicks;
+        // Debug.TraceJumps: rendered frames left to log, physics steps since the last one, and
+        // where Mario's feet were drawn.
+        int traceFrames, fixedSteps;
+        Vector3 drawnFeet;
+        CameraTargetParams cameraTarget;
+        static MarioDriver traced;
+        Transform pivot, commandoPivot;
 
         void Awake()
         {
@@ -45,6 +57,7 @@ namespace MarioTest
             input = GetComponent<InputBankTest>();
             direction = GetComponent<CharacterDirection>();
             health = GetComponent<HealthComponent>();
+            cameraTarget = GetComponent<CameraTargetParams>();
             host = UnityHost.Table();
         }
 
@@ -58,7 +71,11 @@ namespace MarioTest
         {
             if (!CanDrive)
             {
-                if (driving) ShowMario(false);
+                if (driving)
+                {
+                    ShowMario(false);
+                    UsePivot(false);
+                }
                 driving = false;
                 return;
             }
@@ -68,6 +85,7 @@ namespace MarioTest
                 motor.Motor.enabled = false;
             if (!driving || (transform.position - written).sqrMagnitude > 0.25f)
                 Resync();
+            if (!driving) UsePivot(true);
             driving = true;
 
             var pad = ReadPad();
@@ -76,10 +94,12 @@ namespace MarioTest
             Native.sms_sim_step(sim, ref host, ref pad, cameraYaw, Time.fixedDeltaTime, MarioView.Handle);
             Native.sms_sim_state(sim, out var st);
 
+            fixedSteps++;
             prev = cur;
             cur = UnityHost.ToUnity(st.pos) + feetToOrigin;
-            transform.position = cur;
-            written = cur;
+            // Where Update's smoothing starts this step: never ahead of what's drawn.
+            transform.position = prev;
+            written = prev;
 
             // mVel is per 30 Hz frame. RoR2 reads these for animation, camera and AI.
             motor.velocity = UnityHost.ToUnity(st.vel) * 30f;
@@ -99,6 +119,12 @@ namespace MarioTest
                 {
                     Plugin.Log.LogInfo($"{status} ({NativeLib.Utf8(Native.sms_sim_clip_name(sim))})");
                     lastStatus = status;
+                    if (Plugin.TraceJumps.Value && status.Contains("Jump") && !status.Contains("Slip") && !status.Contains("End"))
+                    {
+                        traceFrames = 200;
+                        traced = this;
+                        Plugin.Log.LogInfo("trace: frame dt_ms fixed a lag feet(x,y,z) pivot(x,y,z) cam(x,y,z) screen(x,y) yaw");
+                    }
                 }
             }
         }
@@ -121,6 +147,7 @@ namespace MarioTest
             var models = MarioView.Models;
             if (models == null) return;
             var feet = transform.position - feetToOrigin;
+            drawnFeet = feet;
             models.Update(UnityHost.Scale, d => (feet, new Quaternion(d.rot_x, d.rot_y, d.rot_z, d.rot_w)));
             ShowMario(true);
         }
@@ -163,6 +190,28 @@ namespace MarioTest
             prev = cur = written = transform.position;
         }
 
+        // The camera on our pivot (at the height of Commando's, over the body's origin), or back
+        // on Commando's.
+        void UsePivot(bool ours)
+        {
+            if (!cameraTarget) return;
+            if (ours)
+            {
+                if (cameraTarget.cameraPivotTransform == pivot && pivot) return;
+                commandoPivot = cameraTarget.cameraPivotTransform;
+                if (!pivot)
+                {
+                    pivot = new GameObject("MarioCameraPivot").transform;
+                    pivot.SetParent(transform, false);
+                    float h = commandoPivot ? commandoPivot.position.y - transform.position.y : 1.5f;
+                    pivot.localPosition = new Vector3(0f, Mathf.Clamp(h, 0.3f, 3f), 0f);
+                }
+                cameraTarget.cameraPivotTransform = pivot;
+            }
+            else if (commandoPivot && cameraTarget.cameraPivotTransform == pivot)
+                cameraTarget.cameraPivotTransform = commandoPivot;
+        }
+
         Native.Pad ReadPad()
         {
             var move = input.moveVector;
@@ -185,8 +234,42 @@ namespace MarioTest
 
         static byte B(bool v) => v ? (byte)1 : (byte)0;
 
+        // Debug.TraceJumps: one line per rendered frame of the player's camera, taken as it
+        // renders, so it shows exactly where Mario and the camera were for that frame.
+        static void OnPreCull(Camera cam)
+        {
+            var d = traced;
+            if (!d || d.traceFrames <= 0) return;
+            var player = GameSettings.PlayerCamera();
+            if (!player || cam.transform != player) return;
+            d.traceFrames--;
+            float a = Mathf.Clamp01((Time.time - Time.fixedTime) / Time.fixedDeltaTime);
+            var pivot = d.cameraTarget && d.cameraTarget.cameraPivotTransform ? d.cameraTarget.cameraPivotTransform.position : Vector3.zero;
+            var scr = cam.WorldToScreenPoint(d.drawnFeet);
+            var c = cam.transform.position;
+            var f = d.drawnFeet;
+            var models = MarioView.Models;
+            float yaw = models != null && models.DrawCount > 0
+                ? new Quaternion(models.DrawAt(0).rot_x, models.DrawAt(0).rot_y, models.DrawAt(0).rot_z, models.DrawAt(0).rot_w).eulerAngles.y
+                : float.NaN;
+            Plugin.Log.LogInfo($"trace: {Time.frameCount} {Time.deltaTime * 1000f:F2} {d.fixedSteps} {a:F2} {d.lagTicks:F2} " +
+                $"({f.x:F3},{f.y:F3},{f.z:F3}) ({pivot.x:F3},{pivot.y:F3},{pivot.z:F3}) ({c.x:F3},{c.y:F3},{c.z:F3}) ({scr.x:F1},{scr.y:F1}) {yaw:F1}");
+            d.fixedSteps = 0;
+        }
+
+        static bool hooked;
+
+        void Start()
+        {
+            if (hooked) return;
+            hooked = true;
+            Camera.onPreCull += OnPreCull;
+        }
+
         void OnDestroy()
         {
+            if (traced == this) traced = null;
+            UsePivot(false);
             if (driving) MarioView.Hide();
             if (sim != IntPtr.Zero)
             {

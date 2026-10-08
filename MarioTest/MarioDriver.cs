@@ -16,9 +16,10 @@ namespace MarioTest
     // punch), utility = L (ground pound, crouch), sprint = R fully in (plant and spray),
     // special = X (switch nozzle).
     //
-    // The camera follows a pivot of our own on the body, not Commando's (that one hangs off his
-    // hidden, still animated and turning model, and swayed the camera against Mario), and this
-    // runs before RoR2's camera (which moves in Update) so it sees this frame's smoothed body.
+    // The camera follows a pivot of our own on the body (ror2-common's CameraPivot: Commando's
+    // hangs off his hidden, still animated and turning model, and swayed the camera against
+    // Mario), and this runs before RoR2's camera (which moves in Update) so it sees this
+    // frame's smoothed body.
     [DefaultExecutionOrder(-200)]
     public class MarioDriver : MonoBehaviour
     {
@@ -48,7 +49,7 @@ namespace MarioTest
         Vector3 drawnFeet;
         CameraTargetParams cameraTarget;
         static MarioDriver traced;
-        Transform pivot, commandoPivot;
+        CameraPivot pivot;
 
         void Awake()
         {
@@ -58,6 +59,7 @@ namespace MarioTest
             direction = GetComponent<CharacterDirection>();
             health = GetComponent<HealthComponent>();
             cameraTarget = GetComponent<CameraTargetParams>();
+            pivot = new CameraPivot(body);
             host = UnityHost.Table();
         }
 
@@ -74,7 +76,7 @@ namespace MarioTest
                 if (driving)
                 {
                     ShowMario(false);
-                    UsePivot(false);
+                    pivot?.Use(false);
                 }
                 driving = false;
                 return;
@@ -85,7 +87,7 @@ namespace MarioTest
                 motor.Motor.enabled = false;
             if (!driving || (transform.position - written).sqrMagnitude > 0.25f)
                 Resync();
-            if (!driving) UsePivot(true);
+            if (!driving) pivot.Use(true);
             driving = true;
 
             var pad = ReadPad();
@@ -190,28 +192,6 @@ namespace MarioTest
             prev = cur = written = transform.position;
         }
 
-        // The camera on our pivot (at the height of Commando's, over the body's origin), or back
-        // on Commando's.
-        void UsePivot(bool ours)
-        {
-            if (!cameraTarget) return;
-            if (ours)
-            {
-                if (cameraTarget.cameraPivotTransform == pivot && pivot) return;
-                commandoPivot = cameraTarget.cameraPivotTransform;
-                if (!pivot)
-                {
-                    pivot = new GameObject("MarioCameraPivot").transform;
-                    pivot.SetParent(transform, false);
-                    float h = commandoPivot ? commandoPivot.position.y - transform.position.y : 1.5f;
-                    pivot.localPosition = new Vector3(0f, Mathf.Clamp(h, 0.3f, 3f), 0f);
-                }
-                cameraTarget.cameraPivotTransform = pivot;
-            }
-            else if (commandoPivot && cameraTarget.cameraPivotTransform == pivot)
-                cameraTarget.cameraPivotTransform = commandoPivot;
-        }
-
         Native.Pad ReadPad()
         {
             var move = input.moveVector;
@@ -269,7 +249,7 @@ namespace MarioTest
         void OnDestroy()
         {
             if (traced == this) traced = null;
-            UsePivot(false);
+            pivot?.Use(false);
             if (driving) MarioView.Hide();
             if (sim != IntPtr.Zero)
             {

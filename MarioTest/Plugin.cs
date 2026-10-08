@@ -51,7 +51,7 @@ namespace MarioTest
             ChainGrace = Config.Bind("Sim", "ChainGrace", 0.1f,
                 "Extra seconds after Sunshine's landing window (0.13 s) in which a jump still " +
                 "chains into the double or triple jump. 0 is Sunshine's.");
-            TraceJumps = Config.Bind("Debug", "TraceJumps", true,
+            TraceJumps = Config.Bind("Debug", "TraceJumps", false,
                 "For a moment after each jump, log every rendered frame: frame time, physics steps, " +
                 "where Mario and the camera are, and Mario's height on screen.");
             LogStatus = Config.Bind("Debug", "LogStatus", true,

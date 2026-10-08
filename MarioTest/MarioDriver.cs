@@ -205,6 +205,8 @@ namespace MarioTest
                 chain_grace = Plugin.ChainGrace.Value,
                 move_speed = Plugin.SpeedFromItems.Value ? Mathf.Clamp(MinionStats.Of(body).moveSpeed, 0.1f, 10f) : 1f,
                 spray_reach = Plugin.SprayReach.Value,
+                stomp_bounce = Plugin.StompBounce.Value,
+                rocket_height = Plugin.RocketHeight.Value,
                 enemy_push = (byte)(Plugin.SolidEnemies.Value ? 1 : 0),
                 cycle_nozzles = (byte)(Plugin.CycleNozzles.Value ? 1 : 0),
             };

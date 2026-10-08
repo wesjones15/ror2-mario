@@ -35,6 +35,8 @@ namespace MarioTest
         internal static ConfigEntry<bool> SolidEnemies;
         internal static ConfigEntry<bool> CycleNozzles;
         internal static ConfigEntry<float> SprayReach;
+        internal static ConfigEntry<float> StompBounce;
+        internal static ConfigEntry<float> RocketHeight;
         internal static ConfigEntry<float> StompDamage;
         internal static ConfigEntry<float> PoundDamage;
         internal static ConfigEntry<float> ShockDamage;
@@ -73,6 +75,12 @@ namespace MarioTest
             CycleNozzles = Config.Bind("Fludd", "CycleNozzles", true,
                 "Switch nozzle steps through Spray, Hover, Rocket and Turbo. Off is Sunshine's: " +
                 "Spray and Hover.");
+            StompBounce = Config.Bind("Sim", "StompBounce", 2f,
+                "Bouncing off an enemy's head goes this many times as high as in Sunshine (on top " +
+                "of JumpHeight). Three stomps in a row climb higher each time.");
+            RocketHeight = Config.Bind("Fludd", "RocketHeight", 2f,
+                "The Rocket nozzle launches Mario about this many times as high as in Sunshine " +
+                "(1: about 17 Marios).");
             SprayReach = Config.Bind("Fludd", "SprayReach", 2f,
                 "The Spray nozzle's water flies about this many times as far as in Sunshine " +
                 "(1: about 6 Marios).");

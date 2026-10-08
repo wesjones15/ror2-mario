@@ -66,15 +66,15 @@ pointing at `libsms/assets`, into `<game>/BepInEx/plugins/MarioTest/`. It compil
 game's own DLLs, so no NuGet game libraries are involved. Use `-RoR2Dir` for another install
 and `-NoInstall` to only build into `dist/`.
 
-The log, `BepInEx/LogOutput.log`, should show `libsms ABI 6`, `Mario is 1.xx m tall`, then
+The log, `BepInEx/LogOutput.log`, should show `libsms ABI 7`, `Mario is 1.xx m tall`, then
 `Mario (test) registered`.
 In a run it should show `Mario's sim started`, `Mario's view: 12 models, 26 textures; sound
 ...`, and one line per status change (turn that off with `Debug.LogStatus`).
 
 Config is in `BepInEx/config/com.libsms.mariotest.cfg`: `Look.DrawModel`, `Look.Height`,
 `Look.PoundFlames`, `Sound.Enabled`, `Sound.Volume`, `Sim.*` (jump height, buffer and chain
-grace, speed items, solid enemies, stomp bounce, pound jump, timed stomp jump), `Fludd.*` (nozzle
-cycling, spray reach, rocket height), `Damage.*` (stomp, ground pound and its shock wave, damage
+grace, speed items, solid enemies, stomp bounce, pound jump, timed stomp jump, shortest hop),
+`Fludd.*` (nozzle cycling, spray reach, rocket height), `Damage.*` (stomp, ground pound and its shock wave, damage
 per metre a pound falls, super pounds igniting, dive, water per drop and its proc coefficient)
 and `Paths.AssetsDir`.
 

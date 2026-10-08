@@ -39,6 +39,7 @@ namespace MarioTest
         internal static ConfigEntry<float> RocketHeight;
         internal static ConfigEntry<float> PoundJump;
         internal static ConfigEntry<float> StompJump;
+        internal static ConfigEntry<float> ShortHop;
         internal static ConfigEntry<float> PoundPerMetre;
         internal static ConfigEntry<bool> SuperPoundIgnites;
         internal static ConfigEntry<bool> PoundFlames;
@@ -89,6 +90,10 @@ namespace MarioTest
             StompJump = Config.Bind("Sim", "StompJump", 2f,
                 "Press jump just before landing on an enemy, or just after (an eighth of a second " +
                 "either way), and the bounce goes this many times as high. 1 is Sunshine's.");
+            ShortHop = Config.Bind("Sim", "ShortHop", 0.4f,
+                "Letting go of jump early only cuts the jump once it has risen this share of a " +
+                "full one (0 to 1): 0.4 makes a tap about two thirds of a full jump. 0 is " +
+                "Sunshine's, where a tap is about two fifths.");
             RocketHeight = Config.Bind("Fludd", "RocketHeight", 2f,
                 "The Rocket nozzle launches Mario about this many times as high as in Sunshine " +
                 "(1: about 17 Marios).");
@@ -123,7 +128,7 @@ namespace MarioTest
                 "Log each change of Mario's status (Wait, Running, Jump...) to the BepInEx log.");
             PoundFlames = Config.Bind("Look", "PoundFlames", true,
                 "A ground pound that falls long enough to turn super (about 7 m) bursts into " +
-                "flames as in Sunshine, and lands with a fiery blast.");
+                "Sunshine's own flames (from the disc), and lands with a fiery blast.");
             DrawModel = Config.Bind("Look", "DrawModel", true,
                 "Draw Mario with the disc's models (off: Commando's model).");
             Sound = Config.Bind("Sound", "Enabled", true,

@@ -7,18 +7,22 @@ namespace MarioTest
     // Mario's look and sound, loaded once from the disc's files the first time a Mario needs
     // them and kept across stages: libsms's view (sms_view_*: the models posed and skinned,
     // each material's TEV baked into one texture, and the game's sounds on our own output,
-    // since RoR2 plays through Wwise), ror2-common's ModelView putting it in the scene, and
-    // FLUDD's water (MarioWater).
+    // since RoR2 plays through Wwise), ror2-common's ModelView putting it in the scene,
+    // FLUDD's water (MarioWater) and the game's particle effects (MarioFx).
     internal static class MarioView
     {
         static bool tried;
         static IntPtr view;
         static ModelView models;
         static MarioWater water;
+        static MarioFx fx;
+        static readonly ViewDraw[] firstDraw = new ViewDraw[1];
 
         /// The native view (for sms_sim_step's sounds and sms_view_update), or zero.
         public static IntPtr Handle => view;
         public static ModelView Models => models;
+        /// The game's own particles are drawn (else MarioFlames stands in).
+        public static bool HasEffects => fx != null;
 
         public static bool Ensure()
         {
@@ -46,6 +50,7 @@ namespace MarioTest
                 // Sunshine's hit flash is pink (`addDamageFog`).
                 if (models != null) models.FlashColor = new Color(1f, 0f, 0.5f, 0.6f);
                 water = MarioWater.Create(view);
+                fx = MarioFx.Create(view);
             }
             return models != null;
         }
@@ -74,11 +79,27 @@ namespace MarioTest
             water?.Update(view, UnityHost.Scale);
         }
 
-        /// Hides the models and the water (until the next Update).
+        /// Draws this frame's particle effects (after Update) with Mario drawn at `feet`: they
+        /// move with him from where the sim has him to where he's drawn.
+        public static void Effects(Vector3 feet)
+        {
+            if (fx == null || view == IntPtr.Zero) return;
+            if (!Plugin.PoundFlames.Value) { fx.Hide(); return; }
+            var offset = Vector3.zero;
+            if (Native.sms_view_draws(view, firstDraw, 1) > 0)
+            {
+                var p = firstDraw[0].pos;
+                offset = feet - new Vector3(p.x, p.y, p.z) * UnityHost.Scale;
+            }
+            fx.Update(view, UnityHost.Scale, offset);
+        }
+
+        /// Hides the models, the water and the effects (until the next Update).
         public static void Hide()
         {
             models?.HideAll();
             water?.Hide();
+            fx?.Hide();
         }
     }
 }

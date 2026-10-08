@@ -3,11 +3,10 @@ using UnityEngine;
 
 namespace MarioTest
 {
-    // The super ground pound's flames. Sunshine wraps Mario in fire once a ground pound has fallen
-    // long enough to turn super (TMario::emitBlurHipDropSuper, MS_M_SPHIPD_A..D, every tick of
-    // hipAttacking's state 3); its particles aren't ported, so RoR2's own burning effect (the
-    // fire BurnEffectController puts on a burning body) stands in, emitted from a ball around
-    // Mario's middle. The particles live in world space, so they stream up behind him as he
+    // The super ground pound's flames when the disc's particle effects aren't in the assets
+    // folder (MarioFx draws the game's own, MS_M_SPHIPD_A..D, otherwise): RoR2's burning effect
+    // (the fire BurnEffectController puts on a burning body) stands in, emitted from a ball
+    // around Mario's middle. The particles live in world space, so they stream up behind him as he
     // falls, and fade out on the landing.
     internal sealed class MarioFlames
     {

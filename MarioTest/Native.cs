@@ -4,7 +4,7 @@ using Ror2Common;
 
 namespace MarioTest
 {
-    // The libsms C ABI (libsms/crates/libsms-ffi, SMS_ABI_VERSION 6). Layouts mirror the
+    // The libsms C ABI (libsms/crates/libsms-ffi, SMS_ABI_VERSION 7). Layouts mirror the
     // #[repr(C)] structs there field for field; Load checks them with sms_struct_sizes. Sim
     // units: about 1 cm, Y up, a facing angle a (i16, 0x10000 per turn) points along
     // (sin a, 0, cos a). The view's structs are ror2-common's (ViewModelInfo...), which
@@ -12,7 +12,7 @@ namespace MarioTest
     internal static class Native
     {
         public const string Dll = "sms";
-        public const uint AbiVersion = 6;
+        public const uint AbiVersion = 7;
 
         [StructLayout(LayoutKind.Sequential)]
         public struct Vec3
@@ -108,7 +108,7 @@ namespace MarioTest
         {
             public float jump_height, jump_buffer, chain_grace;
             public float move_speed, spray_reach, stomp_bounce, rocket_height;
-            public float pound_jump, stomp_jump;
+            public float pound_jump, stomp_jump, short_hop;
             public byte enemy_push, cycle_nozzles, pad0, pad1;
         }
 
@@ -124,6 +124,26 @@ namespace MarioTest
         {
             public uint drop_quads, splash_quads;
             public float r, g, b, a;
+        }
+
+        [StructLayout(LayoutKind.Sequential)]
+        public struct FxVertex
+        {
+            public Vec3 pos;
+            public float u, v, r, g, b, a;
+        }
+
+        /// `blend` 0 added, 1 see-through.
+        [StructLayout(LayoutKind.Sequential)]
+        public struct FxBatch
+        {
+            public uint texture, first_vertex, vertex_count, blend;
+        }
+
+        [StructLayout(LayoutKind.Sequential)]
+        public struct FxInfo
+        {
+            public uint batches, vertices, textures;
         }
 
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
@@ -180,6 +200,11 @@ namespace MarioTest
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern IntPtr sms_view_water_vertices(IntPtr view, out uint count);
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern byte sms_view_water_info(IntPtr view, out WaterInfo info);
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern byte sms_view_water_texture(IntPtr view, uint which, out ViewTexture info, [Out] byte[] rgba, uint len);
+        [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern byte sms_view_fx_info(IntPtr view, out FxInfo info);
+        [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern IntPtr sms_view_fx_vertices(IntPtr view, out uint count);
+        [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern IntPtr sms_view_fx_batches(IntPtr view, out uint count);
+        [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern uint sms_view_fx_texture_version(IntPtr view, uint which);
+        [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern byte sms_view_fx_texture(IntPtr view, uint which, out ViewTexture info, [Out] byte[] rgba, uint len);
 
         /// Loads sms.dll from the plugin folder and checks it speaks this plugin's ABI with the
         /// same struct layouts.
@@ -205,6 +230,8 @@ namespace MarioTest
                 ("ViewFrame", NativeLib.Size<ViewFrame>()), ("Tuning", NativeLib.Size<Tuning>()),
                 ("WaterVertex", NativeLib.Size<WaterVertex>()), ("WaterInfo", NativeLib.Size<WaterInfo>()),
                 ("Enemy", NativeLib.Size<Enemy>()),
+                ("FxVertex", NativeLib.Size<FxVertex>()), ("FxBatch", NativeLib.Size<FxBatch>()),
+                ("FxInfo", NativeLib.Size<FxInfo>()),
             });
             if (diff != null)
             {

@@ -166,7 +166,10 @@ namespace MarioTest
             var feet = transform.position - feetToOrigin;
             drawnFeet = feet;
             float height = UnityHost.MarioHeight * UnityHost.Scale;
-            flames.Set(Plugin.PoundFlames.Value && pounding == 2, feet + Vector3.up * (height * 0.5f), height);
+            // The game's flames when the disc's particles are there; RoR2's fire otherwise.
+            MarioView.Effects(feet);
+            flames.Set(Plugin.PoundFlames.Value && pounding == 2 && !MarioView.HasEffects,
+                feet + Vector3.up * (height * 0.5f), height);
             models.Update(UnityHost.Scale, d => (feet, new Quaternion(d.rot_x, d.rot_y, d.rot_z, d.rot_w)));
             ShowMario(true);
         }
@@ -218,6 +221,7 @@ namespace MarioTest
                 rocket_height = Plugin.RocketHeight.Value,
                 pound_jump = Plugin.PoundJump.Value,
                 stomp_jump = Plugin.StompJump.Value,
+                short_hop = Plugin.ShortHop.Value,
                 enemy_push = (byte)(Plugin.SolidEnemies.Value ? 1 : 0),
                 cycle_nozzles = (byte)(Plugin.CycleNozzles.Value ? 1 : 0),
             };

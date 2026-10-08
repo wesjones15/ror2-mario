@@ -111,7 +111,10 @@ namespace MarioTest
 
             var display = Prefabs.Clone(commandoDisplay, "MarioTestDisplay", Guid);
             if (DrawModel.Value)
+            {
                 DisplayModel.Attach(display, Guid, MarioDisplay.Get);
+                Portrait.Request(body, MarioDisplay.Get);
+            }
 
             var survivor = ScriptableObject.CreateInstance<SurvivorDef>();
             survivor.cachedName = "MarioTest";

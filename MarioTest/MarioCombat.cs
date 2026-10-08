@@ -15,8 +15,14 @@ namespace MarioTest
     // flinch or slip); each enemy's drops for a step land as one hit, so on-hit items see about
     // 30 hits a second at a low proc coefficient rather than one per drop.
     //
-    // MarioDriver calls Begin before each sms_sim_step and End after it. Hits are the server's:
-    // a client playing Mario (multiplayer is untested) deals none.
+    // A ground pound hits harder the further it fell (Damage.PoundPerMetre; not Sunshine's):
+    // the landing reports its drop, and a pound onto an enemy mid-fall counts from where the
+    // fall began (Watch). A super pound (Sunshine's flaming one) can set its victims alight and
+    // lands with a fiery blast.
+    //
+    // MarioDriver calls Begin before each sms_sim_step, End after it, and Watch with the state
+    // after that. Hits are the server's: a client playing Mario (multiplayer is untested) deals
+    // none.
     internal static class MarioCombat
     {
         static CharacterBody attacker;
@@ -31,6 +37,11 @@ namespace MarioTest
             new Dictionary<HealthComponent, (int, Vector3)>();
         static bool pounded, superPound;
         static Vector3 poundAt;
+        // The landing's drop (metres); where the pound's fall began (world Y), and whether it
+        // has turned super.
+        static float poundDrop, poundTop;
+        static bool fallingSuper;
+        static GameObject blast;
 
         static readonly Native.EventFn eventFn = OnEvent;
         static readonly unsafe Native.EnemiesFn enemiesFn = Enemies;
@@ -47,6 +58,17 @@ namespace MarioTest
             pounded = false;
         }
 
+        /// Follows Mario's ground pound between steps.
+        public static void Watch(in Native.State st)
+        {
+            if (st.pounding == 0) poundTop = UnityHost.ToUnity(st.pos).y;
+            fallingSuper = st.pounding == 2;
+        }
+
+        /// Ground pound damage times this for a fall of `drop` metres.
+        static float PoundScale(float drop) =>
+            1f + Mathf.Clamp(drop, 0f, 500f) * Mathf.Max(0f, Plugin.PoundPerMetre.Value);
+
         /// Lands the step's hits.
         public static void End()
         {
@@ -54,27 +76,32 @@ namespace MarioTest
             attacker = null;
             if (!body) return;
             Vector3 mario = body.footPosition;
+            bool ignite = Plugin.SuperPoundIgnites.Value;
             foreach (var (victim, kind) in blows)
             {
                 // 0 stomp, 1 ground pound, 2 dive or slide.
                 float coefficient = kind == 0 ? Plugin.StompDamage.Value
-                    : kind == 1 ? Plugin.PoundDamage.Value
+                    : kind == 1 ? Plugin.PoundDamage.Value * PoundScale(poundTop - mario.y)
                     : Plugin.DiveDamage.Value;
                 var at = victim.body ? victim.body.corePosition : victim.transform.position;
                 var push = kind == 2 ? Flat(at - mario).normalized * 1200f : Vector3.down * 1500f;
-                Hit(body, victim, coefficient, at, push, 1f);
+                var type = kind == 1 && fallingSuper && ignite ? DamageType.IgniteOnHit : DamageType.Generic;
+                Hit(body, victim, coefficient, at, push, 1f, type);
             }
             if (pounded && Plugin.PoundRadius.Value > 0f)
             {
                 // The landing's shock wave (Sunshine's mHipdropRadius reach), on every enemy
                 // around, the pounded one too.
                 float radius = Plugin.PoundRadius.Value * (superPound ? 1.5f : 1f);
+                float coefficient = Plugin.ShockDamage.Value * PoundScale(poundDrop);
+                var type = superPound && ignite ? DamageType.IgniteOnHit : DamageType.Generic;
                 foreach (var victim in Near(poundAt, radius))
                 {
                     var at = victim.body ? victim.body.corePosition : victim.transform.position;
                     var push = Flat(at - poundAt).normalized * 1000f + Vector3.up * 1000f;
-                    Hit(body, victim, Plugin.ShockDamage.Value, at, push, 1f);
+                    Hit(body, victim, coefficient, at, push, 1f, type);
                 }
+                if (superPound && Plugin.PoundFlames.Value) Blast(poundAt, radius);
             }
             foreach (var kv in water)
             {
@@ -87,7 +114,17 @@ namespace MarioTest
             water.Clear();
         }
 
-        static void Hit(CharacterBody body, HealthComponent victim, float coefficient, Vector3 at, Vector3 force, float proc)
+        /// The super pound's landing (Sunshine's MS_M_SPHIPD_HIT_*): RoR2's ignite burst.
+        static void Blast(Vector3 at, float radius)
+        {
+            if (!blast) blast = LegacyResourcesAPI.Load<GameObject>("Prefabs/Effects/ImpactEffects/IgniteExplosionVFX");
+            if (!blast) return;
+            EffectManager.SpawnEffect(blast, new EffectData { origin = at, scale = radius },
+                UnityEngine.Networking.NetworkServer.active);
+        }
+
+        static void Hit(CharacterBody body, HealthComponent victim, float coefficient, Vector3 at, Vector3 force,
+            float proc, DamageType type = DamageType.Generic)
         {
             if (!victim || !victim.alive || coefficient <= 0f) return;
             var spec = new NativeHitSpec
@@ -96,7 +133,7 @@ namespace MarioTest
                 position = at,
                 force = force,
                 procCoefficient = proc,
-                damageType = DamageType.Generic,
+                damageType = type,
                 color = DamageColorIndex.Default,
             };
             NativeHit.Deal(body, victim, spec);
@@ -121,6 +158,7 @@ namespace MarioTest
                 case Native.EventKind.GroundPound:
                     pounded = true;
                     superPound = e.arg != 0;
+                    poundDrop = e.value * UnityHost.Scale;
                     poundAt = attacker ? attacker.footPosition : Vector3.zero;
                     break;
             }

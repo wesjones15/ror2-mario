@@ -37,6 +37,11 @@ namespace MarioTest
         internal static ConfigEntry<float> SprayReach;
         internal static ConfigEntry<float> StompBounce;
         internal static ConfigEntry<float> RocketHeight;
+        internal static ConfigEntry<float> PoundJump;
+        internal static ConfigEntry<float> StompJump;
+        internal static ConfigEntry<float> PoundPerMetre;
+        internal static ConfigEntry<bool> SuperPoundIgnites;
+        internal static ConfigEntry<bool> PoundFlames;
         internal static ConfigEntry<float> StompDamage;
         internal static ConfigEntry<float> PoundDamage;
         internal static ConfigEntry<float> ShockDamage;
@@ -78,6 +83,12 @@ namespace MarioTest
             StompBounce = Config.Bind("Sim", "StompBounce", 2f,
                 "Bouncing off an enemy's head goes this many times as high as in Sunshine (on top " +
                 "of JumpHeight). Three stomps in a row climb higher each time.");
+            PoundJump = Config.Bind("Sim", "PoundJump", 0.75f,
+                "Jump as a ground pound lands to leap back up this share of the height it fell " +
+                "from (never lower than a triple jump). 0 is Sunshine's: no pound jump.");
+            StompJump = Config.Bind("Sim", "StompJump", 2f,
+                "Press jump just before landing on an enemy, or just after (an eighth of a second " +
+                "either way), and the bounce goes this many times as high. 1 is Sunshine's.");
             RocketHeight = Config.Bind("Fludd", "RocketHeight", 2f,
                 "The Rocket nozzle launches Mario about this many times as high as in Sunshine " +
                 "(1: about 17 Marios).");
@@ -92,6 +103,12 @@ namespace MarioTest
                 "A ground pound's landing, on every enemy within PoundRadius.");
             PoundRadius = Config.Bind("Damage", "PoundRadius", 4f,
                 "Metres a ground pound's landing reaches (half again for a super pound). 0: none.");
+            PoundPerMetre = Config.Bind("Damage", "PoundPerMetre", 0.1f,
+                "Ground pound damage (on the enemy pounded and the shock wave) grows by this " +
+                "share for each metre fallen: 0.1 makes a 10 m pound do double. 0: flat.");
+            SuperPoundIgnites = Config.Bind("Damage", "SuperPoundIgnites", true,
+                "A super ground pound (one that fell long enough to burst into flames, about 7 m) " +
+                "sets what it hits on fire.");
             DiveDamage = Config.Bind("Damage", "Dive", 2.5f,
                 "Diving or belly sliding into an enemy.");
             WaterDamage = Config.Bind("Damage", "WaterPerDrop", 0.035f,
@@ -104,6 +121,9 @@ namespace MarioTest
                 "where Mario and the camera are, and Mario's height on screen.");
             LogStatus = Config.Bind("Debug", "LogStatus", true,
                 "Log each change of Mario's status (Wait, Running, Jump...) to the BepInEx log.");
+            PoundFlames = Config.Bind("Look", "PoundFlames", true,
+                "A ground pound that falls long enough to turn super (about 7 m) bursts into " +
+                "flames as in Sunshine, and lands with a fiery blast.");
             DrawModel = Config.Bind("Look", "DrawModel", true,
                 "Draw Mario with the disc's models (off: Commando's model).");
             Sound = Config.Bind("Sound", "Enabled", true,

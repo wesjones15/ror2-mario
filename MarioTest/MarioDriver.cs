@@ -50,6 +50,9 @@ namespace MarioTest
         static MarioDriver traced;
         CameraPivot pivot;
         readonly MarioPad pad = new MarioPad();
+        readonly MarioFlames flames = new MarioFlames();
+        // The sim's ground pound stage (Native.State.pounding).
+        byte pounding;
         LocalUser localUser;
         // The tuning last sent to the sim.
         Native.Tuning tuning;
@@ -80,6 +83,8 @@ namespace MarioTest
                 {
                     ShowMario(false);
                     pivot?.Use(false);
+                    flames.Set(false, default, 0f);
+                    pounding = 0;
                 }
                 driving = false;
                 return;
@@ -101,6 +106,8 @@ namespace MarioTest
             Native.sms_sim_step(sim, ref host, ref step, cameraYaw, Time.fixedDeltaTime, MarioView.Handle);
             MarioCombat.End();
             Native.sms_sim_state(sim, out var st);
+            MarioCombat.Watch(st);
+            pounding = st.pounding;
 
             fixedSteps++;
             prev = cur;
@@ -158,6 +165,8 @@ namespace MarioTest
             if (models == null) return;
             var feet = transform.position - feetToOrigin;
             drawnFeet = feet;
+            float height = UnityHost.MarioHeight * UnityHost.Scale;
+            flames.Set(Plugin.PoundFlames.Value && pounding == 2, feet + Vector3.up * (height * 0.5f), height);
             models.Update(UnityHost.Scale, d => (feet, new Quaternion(d.rot_x, d.rot_y, d.rot_z, d.rot_w)));
             ShowMario(true);
         }
@@ -207,6 +216,8 @@ namespace MarioTest
                 spray_reach = Plugin.SprayReach.Value,
                 stomp_bounce = Plugin.StompBounce.Value,
                 rocket_height = Plugin.RocketHeight.Value,
+                pound_jump = Plugin.PoundJump.Value,
+                stomp_jump = Plugin.StompJump.Value,
                 enemy_push = (byte)(Plugin.SolidEnemies.Value ? 1 : 0),
                 cycle_nozzles = (byte)(Plugin.CycleNozzles.Value ? 1 : 0),
             };
@@ -264,6 +275,7 @@ namespace MarioTest
         {
             if (traced == this) traced = null;
             pivot?.Use(false);
+            flames.Set(false, default, 0f);
             if (driving) MarioView.Hide();
             if (sim != IntPtr.Zero)
             {

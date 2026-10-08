@@ -73,7 +73,7 @@ namespace MarioTest
         }
 
         bool CanDrive =>
-            !failed && body && motor && input
+            !RunAudio.Ended && !failed && body && motor && input
             && body.hasEffectiveAuthority
             && !body.currentVehicle
             && (!health || health.alive);
@@ -89,6 +89,7 @@ namespace MarioTest
                     pivot?.Use(false);
                     flames.Set(false, default, 0f);
                     pounding = 0;
+                    if (!health || !health.alive || RunAudio.Ended) MarioView.Reset();
                 }
                 driving = false;
                 return;
@@ -301,7 +302,7 @@ namespace MarioTest
             if (traced == this) traced = null;
             pivot?.Use(false);
             flames.Set(false, default, 0f);
-            if (driving) MarioView.Hide();
+            if (sim != IntPtr.Zero) MarioView.Reset();
             if (sim != IntPtr.Zero)
             {
                 Native.sms_sim_free(sim);

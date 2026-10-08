@@ -27,6 +27,7 @@ namespace MarioTest
 
         public static bool Ensure()
         {
+            if (RunAudio.Ended) return false;
             if (tried) return models != null;
             tried = true;
             if (!Plugin.DrawModel.Value && !Plugin.Sound.Value) return false;
@@ -102,6 +103,20 @@ namespace MarioTest
             models?.HideAll();
             water?.Hide();
             fx?.Hide();
+        }
+
+        public static void Reset()
+        {
+            // Free the stream first: its audio thread otherwise keeps rendering held
+            // voices after sms_sim_step stops advancing their release timers.
+            var old = view;
+            view = IntPtr.Zero;
+            if (old != IntPtr.Zero) Native.sms_view_free(old);
+            models?.Dispose(); models = null;
+            water?.Dispose(); water = null;
+            fx?.Dispose(); fx = null;
+            MarioHud.Reset();
+            tried = false;
         }
     }
 }

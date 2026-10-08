@@ -17,6 +17,16 @@ namespace MarioTest
         static Native.HudInfo info;
         static bool shown, warned;
 
+        public static void Reset()
+        {
+            if (tex) UnityEngine.Object.Destroy(tex);
+            tex = null;
+            shown = warned = false;
+            version = 0;
+            pixels = flipped = new byte[0];
+            info = default;
+        }
+
         /// After sms_view_update: takes this frame's gauge.
         public static void Update(IntPtr view)
         {

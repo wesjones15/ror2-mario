@@ -17,7 +17,15 @@ How it works:
   KinematicCharacterMotor, steps the sim, and puts the body at Mario's feet. RoR2's own
   network transform shows that to everyone else.
 - `UnityHost` answers the sim's ground, roof and wall probes with raycasts against RoR2's world
-  layer. 1 Sunshine unit = 1 cm (`MetresPerUnit` in the config).
+  layer. Mario is as tall as Commando (his collision capsule; `Look.Height` overrides), which
+  sets the metres per Sunshine unit, and so his speed, jumps and FLUDD's reach.
+- `MarioCombat` answers the sim's enemy queries with the hurt boxes of characters on other
+  teams. Mario stomps them (bouncing higher on each stomp in a row, as in Sunshine), ground
+  pounds them (a shock wave on landing too), dives into them, and is kept out of them; FLUDD's
+  drops hit them. Each hit lands as RoR2 damage from Mario's body (ror2-common's `NativeHit`),
+  so his damage stat, crits and on-hit items apply. Water damage is this plugin's, not
+  Sunshine's.
+- Movement speed items scale how far Mario gets each step (`Sim.SpeedFromItems`).
 - `MarioMain` replaces Commando's main state, so RoR2's own movement, jumping and skills stay
   off.
 - `MarioView` loads libsms's view (`sms_view_*`) the first time a Mario starts.
@@ -29,17 +37,20 @@ How it works:
     audio is Wwise, at RoR2's master × SFX volume. There's no Sunshine music.
 - No R2API: the survivor is registered through RoR2's content-pack hook.
 
-Controls (your RoR2 binds):
+Controls, on a gamepad, by button position (Sunshine's layout, whatever your RoR2 binds):
 
-| RoR2           | Sunshine pad | Does                       |
-|----------------|--------------|----------------------------|
-| move           | stick        | walk, run                  |
-| jump           | A            | jumps, wall kicks          |
-| primary        | R, half      | spray while moving         |
-| secondary      | B            | dive, punch                |
-| utility        | L            | ground pound, crouch       |
-| sprint (held)  | R, fully in  | plant and spray            |
-| special        | X            | switch nozzle              |
+| Pad              | Sunshine | Does                                            |
+|------------------|----------|-------------------------------------------------|
+| left stick       | stick    | walk, run                                       |
+| A                | A        | jumps, wall kicks                               |
+| B                | B        | dive, punch                                     |
+| right trigger    | R        | spray; all the way in plants Mario and sprays   |
+| left trigger     | L        | ground pound (in the air), crouch               |
+| right bumper     | X        | switch nozzle: Spray, Hover, Rocket, Turbo      |
+| X, Y             |          | RoR2's interact and equipment, as ever          |
+
+On keyboard and mouse your RoR2 binds stand in: jump (A), primary (half spray), sprint (plant
+and spray), secondary (B), utility (L), special (switch nozzle).
 
 ### Build and install
 
@@ -55,22 +66,23 @@ pointing at `libsms/assets`, into `<game>/BepInEx/plugins/MarioTest/`. It compil
 game's own DLLs, so no NuGet game libraries are involved. Use `-RoR2Dir` for another install
 and `-NoInstall` to only build into `dist/`.
 
-The log, `BepInEx/LogOutput.log`, should show `libsms ABI 2`, then `Mario (test) registered`.
+The log, `BepInEx/LogOutput.log`, should show `libsms ABI 4`, `Mario is 1.xx m tall`, then
+`Mario (test) registered`.
 In a run it should show `Mario's sim started`, `Mario's view: 12 models, 26 textures; sound
 ...`, and one line per status change (turn that off with `Debug.LogStatus`).
 
-Config is in `BepInEx/config/com.libsms.mariotest.cfg`: `Look.DrawModel`, `Sound.Enabled`,
-`Sound.Volume`, `Sim.MetresPerUnit` and `Paths.AssetsDir`.
+Config is in `BepInEx/config/com.libsms.mariotest.cfg`: `Look.DrawModel`, `Look.Height`,
+`Sound.Enabled`, `Sound.Volume`, `Sim.*` (jump height, buffer and chain grace, speed items,
+solid enemies), `Fludd.*` (nozzle cycling, spray reach), `Damage.*` (stomp, ground pound and
+its shock wave, dive, water per drop and its proc coefficient) and `Paths.AssetsDir`.
 
 ### Not there yet
 
 - Other players see Commando. Only the player who's Mario sees and hears him; the pose and
-  animation aren't networked yet.
-- Yoshi, and the FLUDD water's particles and splashes. The water is simulated but not drawn.
-- Damage either way: Commando's skills never fire, so Mario can't hurt anything yet. RoR2
-  still hurts Mario, but its knockback and fall damage are ignored.
-- Collision with characters: Mario only collides with the world layer.
-- Water from FLUDD is simulated but not drawn.
+  animation aren't networked yet. Mario's hits are the server's: a client playing him deals no
+  damage yet.
+- Yoshi.
+- RoR2's knockback and fall damage don't move Mario.
 - Multiplayer is untested. Every player needs the plugin, and anyone playing Mario needs their
   own extracted `assets/`.
 

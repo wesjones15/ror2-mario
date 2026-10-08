@@ -13,6 +13,8 @@ namespace MarioTest
     internal static class UnityHost
     {
         public static float Scale = 0.01f;
+        /// Mario's standing height in Sunshine units (the sim's head clearance).
+        public const float MarioHeight = 160f;
 
         // Sunshine's split (TBGCheckData): normals with |y| under 0.2 are walls; the rest are
         // floors (y > 0) or ceilings.
@@ -32,7 +34,8 @@ namespace MarioTest
             ground = Marshal.GetFunctionPointerForDelegate(groundFn),
             roof = Marshal.GetFunctionPointerForDelegate(roofFn),
             walls = Marshal.GetFunctionPointerForDelegate(wallsFn),
-            evt = IntPtr.Zero,
+            evt = MarioCombat.EventPtr,
+            enemies = MarioCombat.EnemiesPtr,
         };
 
         public static Vector3 ToUnity(Native.Vec3 v) => new Vector3(v.x, v.y, v.z) * Scale;

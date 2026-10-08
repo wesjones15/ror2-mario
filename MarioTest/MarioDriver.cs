@@ -12,9 +12,8 @@ namespace MarioTest
     // client Mario is drawn with the disc's models (MarioView) in place of Commando's, and
     // the game's sounds play; other players still see Commando for now.
     //
-    // Controls (RoR2 binds): jump = A, primary = spray (half trigger), secondary = B (dive,
-    // punch), utility = L (ground pound, crouch), sprint = R fully in (plant and spray),
-    // special = X (switch nozzle).
+    // Controls: MarioPad (Sunshine's layout on a gamepad, RoR2's binds on keyboard). Enemies:
+    // MarioCombat (stomps, pounds and FLUDD's water as RoR2 damage).
     //
     // The camera follows a pivot of our own on the body (ror2-common's CameraPivot: Commando's
     // hangs off his hidden, still animated and turning model, and swayed the camera against
@@ -50,6 +49,10 @@ namespace MarioTest
         CameraTargetParams cameraTarget;
         static MarioDriver traced;
         CameraPivot pivot;
+        readonly MarioPad pad = new MarioPad();
+        LocalUser localUser;
+        // The tuning last sent to the sim.
+        Native.Tuning tuning;
 
         void Awake()
         {
@@ -90,10 +93,13 @@ namespace MarioTest
             if (!driving) pivot.Use(true);
             driving = true;
 
-            var pad = ReadPad();
+            Tune();
+            var step = pad.Take(input.moveVector);
             // Facing from Mario toward the camera: the reverse of where the player aims.
             short cameraYaw = UnityHost.Yaw(-input.aimDirection);
-            Native.sms_sim_step(sim, ref host, ref pad, cameraYaw, Time.fixedDeltaTime, MarioView.Handle);
+            MarioCombat.Begin(body);
+            Native.sms_sim_step(sim, ref host, ref step, cameraYaw, Time.fixedDeltaTime, MarioView.Handle);
+            MarioCombat.End();
             Native.sms_sim_state(sim, out var st);
 
             fixedSteps++;
@@ -133,6 +139,8 @@ namespace MarioTest
 
         void Update()
         {
+            FindLocalUser();
+            pad.Read(localUser, input);
             if (!driving) return;
             float a = Mathf.Clamp01((Time.time - Time.fixedTime) / Time.fixedDeltaTime);
             var p = Vector3.Lerp(prev, cur, a);
@@ -173,13 +181,8 @@ namespace MarioTest
                 Plugin.Log.LogError($"libsms could not start from {Plugin.AssetsDir}; Mario stays put");
                 return false;
             }
-            var tuning = new Native.Tuning
-            {
-                jump_height = Plugin.JumpHeight.Value,
-                jump_buffer = Plugin.JumpBuffer.Value,
-                chain_grace = Plugin.ChainGrace.Value,
-            };
-            Native.sms_sim_set_tuning(sim, ref tuning);
+            tuning = default;
+            Tune();
             Plugin.Log.LogInfo($"Mario's sim started at {body.footPosition}");
             MarioView.Ensure();
             return true;
@@ -192,27 +195,36 @@ namespace MarioTest
             prev = cur = written = transform.position;
         }
 
-        Native.Pad ReadPad()
+        /// Sends the config's tuning, and the body's current move speed, when they change.
+        void Tune()
         {
-            var move = input.moveVector;
-            bool plant = input.sprint.down;
-            bool spray = input.skill1.down;
-            return new Native.Pad
+            var t = new Native.Tuning
             {
-                use_move = 1,
-                move_x = move.x,
-                move_z = move.z,
-                a = B(input.jump.down),
-                b = B(input.skill2.down),
-                l = B(input.skill3.down),
-                l_analog = (byte)(input.skill3.down ? 255 : 0),
-                r = B(plant),
-                r_analog = (byte)(plant ? 255 : spray ? 150 : 0),
-                x = B(input.skill4.down),
+                jump_height = Plugin.JumpHeight.Value,
+                jump_buffer = Plugin.JumpBuffer.Value,
+                chain_grace = Plugin.ChainGrace.Value,
+                move_speed = Plugin.SpeedFromItems.Value ? Mathf.Clamp(MinionStats.Of(body).moveSpeed, 0.1f, 10f) : 1f,
+                spray_reach = Plugin.SprayReach.Value,
+                enemy_push = (byte)(Plugin.SolidEnemies.Value ? 1 : 0),
+                cycle_nozzles = (byte)(Plugin.CycleNozzles.Value ? 1 : 0),
             };
+            if (t.Equals(tuning)) return;
+            tuning = t;
+            Native.sms_sim_set_tuning(sim, ref t);
         }
 
-        static byte B(bool v) => v ? (byte)1 : (byte)0;
+        /// The local player playing this body, if any (their pad and UI focus).
+        void FindLocalUser()
+        {
+            if (localUser != null && localUser.cachedBody == body) return;
+            localUser = null;
+            foreach (var u in LocalUserManager.readOnlyLocalUsersList)
+                if (u != null && u.cachedBody == body)
+                {
+                    localUser = u;
+                    break;
+                }
+        }
 
         // Debug.TraceJumps: one line per rendered frame of the player's camera, taken as it
         // renders, so it shows exactly where Mario and the camera were for that frame.

@@ -4,7 +4,7 @@ using Ror2Common;
 
 namespace MarioTest
 {
-    // The libsms C ABI (libsms/crates/libsms-ffi, SMS_ABI_VERSION 3). Layouts mirror the
+    // The libsms C ABI (libsms/crates/libsms-ffi, SMS_ABI_VERSION 4). Layouts mirror the
     // #[repr(C)] structs there field for field; Load checks them with sms_struct_sizes. Sim
     // units: about 1 cm, Y up, a facing angle a (i16, 0x10000 per turn) points along
     // (sin a, 0, cos a). The view's structs are ror2-common's (ViewModelInfo...), which
@@ -12,7 +12,7 @@ namespace MarioTest
     internal static class Native
     {
         public const string Dll = "sms";
-        public const uint AbiVersion = 3;
+        public const uint AbiVersion = 4;
 
         [StructLayout(LayoutKind.Sequential)]
         public struct Vec3
@@ -57,6 +57,19 @@ namespace MarioTest
         {
             Other = 0, Jump = 1, Land = 2, GroundPound = 3, WallBump = 4, WaterEmit = 5,
             NozzleChanged = 6, TriggerFired = 7, Fell = 8, Damaged = 9, Down = 10, Sound = 11,
+            /// arg: the enemy's id; value: 0 stomp, 1 ground pound, 2 dive or slide.
+            EnemyHit = 12,
+            /// arg: the enemy's id; value: the drop's attack; pos: where it hit.
+            WaterHit = 13,
+        }
+
+        /// An enemy for the sim: a standing cylinder at its feet.
+        [StructLayout(LayoutKind.Sequential)]
+        public struct Enemy
+        {
+            public uint id;
+            public Vec3 pos;
+            public float radius, height;
         }
 
         [StructLayout(LayoutKind.Sequential)]
@@ -92,6 +105,8 @@ namespace MarioTest
         public struct Tuning
         {
             public float jump_height, jump_buffer, chain_grace;
+            public float move_speed, spray_reach;
+            public byte enemy_push, cycle_nozzles, pad0, pad1;
         }
 
         [StructLayout(LayoutKind.Sequential)]
@@ -120,12 +135,14 @@ namespace MarioTest
 
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
         public delegate void EventFn(IntPtr user, ref Event e);
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+        public unsafe delegate uint EnemiesFn(IntPtr user, ref Vec3 pos, float radius, Enemy* output, uint max);
 
         [StructLayout(LayoutKind.Sequential)]
         public struct Host
         {
             public IntPtr user;
-            public IntPtr ground, roof, walls, evt;
+            public IntPtr ground, roof, walls, evt, enemies;
         }
 
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern uint sms_abi_version();
@@ -184,6 +201,7 @@ namespace MarioTest
                 ("Texture", NativeLib.Size<ViewTexture>()), ("Draw", NativeLib.Size<ViewDraw>()),
                 ("ViewFrame", NativeLib.Size<ViewFrame>()), ("Tuning", NativeLib.Size<Tuning>()),
                 ("WaterVertex", NativeLib.Size<WaterVertex>()), ("WaterInfo", NativeLib.Size<WaterInfo>()),
+                ("Enemy", NativeLib.Size<Enemy>()),
             });
             if (diff != null)
             {

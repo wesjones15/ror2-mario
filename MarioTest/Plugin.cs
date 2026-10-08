@@ -30,6 +30,18 @@ namespace MarioTest
         internal static ConfigEntry<float> JumpHeight;
         internal static ConfigEntry<float> JumpBuffer;
         internal static ConfigEntry<float> ChainGrace;
+        internal static ConfigEntry<float> Height;
+        internal static ConfigEntry<bool> SpeedFromItems;
+        internal static ConfigEntry<bool> SolidEnemies;
+        internal static ConfigEntry<bool> CycleNozzles;
+        internal static ConfigEntry<float> SprayReach;
+        internal static ConfigEntry<float> StompDamage;
+        internal static ConfigEntry<float> PoundDamage;
+        internal static ConfigEntry<float> ShockDamage;
+        internal static ConfigEntry<float> PoundRadius;
+        internal static ConfigEntry<float> DiveDamage;
+        internal static ConfigEntry<float> WaterDamage;
+        internal static ConfigEntry<float> WaterProc;
 
         void Awake()
         {
@@ -40,8 +52,9 @@ namespace MarioTest
             var assets = Config.Bind("Paths", "AssetsDir", "",
                 "libsms's assets/ folder (extracted from your own Super Mario Sunshine disc). " +
                 "Empty: read assets_dir.txt next to the plugin, then $SMS_ASSETS.");
-            UnityHost.Scale = Config.Bind("Sim", "MetresPerUnit", 0.01f,
-                "Metres per Sunshine unit. 0.01 makes Mario 1.6 m tall.").Value;
+            Height = Config.Bind("Look", "Height", 0f,
+                "Mario's height in metres; everything he does scales with it (his speed, jumps " +
+                "and FLUDD's reach). 0: as tall as Commando.");
             JumpHeight = Config.Bind("Sim", "JumpHeight", 1.6f,
                 "Jump heights times this. 1 is Sunshine's (a standing jump is 2.3 m, a triple 8 m, " +
                 "at 0.01 m per unit); RoR2's levels are built for higher jumps.");
@@ -51,6 +64,33 @@ namespace MarioTest
             ChainGrace = Config.Bind("Sim", "ChainGrace", 0.1f,
                 "Extra seconds after Sunshine's landing window (0.13 s) in which a jump still " +
                 "chains into the double or triple jump. 0 is Sunshine's.");
+            SpeedFromItems = Config.Bind("Sim", "SpeedFromItems", true,
+                "Movement speed items and buffs (Paul's Goat Hoof, Energy Drink...) make Mario cover " +
+                "more ground, as they speed up other survivors.");
+            SolidEnemies = Config.Bind("Sim", "SolidEnemies", true,
+                "Enemies are solid to Mario: he can't walk into them, and running into one at a " +
+                "dash knocks him down. Off is Sunshine's, where most enemies just hurt him.");
+            CycleNozzles = Config.Bind("Fludd", "CycleNozzles", true,
+                "Switch nozzle steps through Spray, Hover, Rocket and Turbo. Off is Sunshine's: " +
+                "Spray and Hover.");
+            SprayReach = Config.Bind("Fludd", "SprayReach", 2f,
+                "The Spray nozzle's water flies about this many times as far as in Sunshine " +
+                "(1: about 6 Marios).");
+            StompDamage = Config.Bind("Damage", "Stomp", 4f,
+                "Landing on an enemy, as a multiple of Mario's damage (4 = 400%).");
+            PoundDamage = Config.Bind("Damage", "GroundPound", 6f,
+                "Ground pounding onto an enemy.");
+            ShockDamage = Config.Bind("Damage", "PoundShockWave", 3f,
+                "A ground pound's landing, on every enemy within PoundRadius.");
+            PoundRadius = Config.Bind("Damage", "PoundRadius", 4f,
+                "Metres a ground pound's landing reaches (half again for a super pound). 0: none.");
+            DiveDamage = Config.Bind("Damage", "Dive", 2.5f,
+                "Diving or belly sliding into an enemy.");
+            WaterDamage = Config.Bind("Damage", "WaterPerDrop", 0.035f,
+                "Each FLUDD drop that hits (not Sunshine's: its water mostly only stuns). The Spray " +
+                "fires about 93 a second, so 0.035 is about 330% a second on one enemy.");
+            WaterProc = Config.Bind("Damage", "WaterProcCoefficient", 0.1f,
+                "On-hit item chance for each enemy's drops in a 30 Hz water step (about 30 a second).");
             TraceJumps = Config.Bind("Debug", "TraceJumps", false,
                 "For a moment after each jump, log every rendered frame: frame time, physics steps, " +
                 "where Mario and the camera are, and Mario's height on screen.");
@@ -99,6 +139,7 @@ namespace MarioTest
                 return;
             }
 
+            SetScale(commando);
             var body = Prefabs.Clone(commando, "MarioTestBody", Guid);
             var cb = body.GetComponent<CharacterBody>();
             cb.baseNameToken = "MARIOTEST_BODY_NAME";
@@ -133,6 +174,21 @@ namespace MarioTest
             Log.LogInfo("Mario (test) registered");
         }
 
+        /// Metres per Sunshine unit, from Look.Height or Commando's collision capsule.
+        static void SetScale(GameObject commando)
+        {
+            float height = Height.Value;
+            string from = "Look.Height";
+            if (height <= 0f)
+            {
+                var capsule = commando.GetComponent<CapsuleCollider>();
+                height = capsule ? capsule.height * Mathf.Abs(commando.transform.localScale.y) : 1.8f;
+                from = capsule ? "Commando's capsule" : "a default";
+            }
+            UnityHost.Scale = Mathf.Clamp(height, 0.2f, 20f) / UnityHost.MarioHeight;
+            Log.LogInfo($"Mario is {height:F2} m tall ({from}): {UnityHost.Scale:F5} m per unit");
+        }
+
         static void AddTokens()
         {
             var lang = Language.currentLanguage;
@@ -141,8 +197,10 @@ namespace MarioTest
             lang.SetStringByToken("MARIOTEST_BODY_SUBTITLE", "Super Mario Sunshine movement");
             lang.SetStringByToken("MARIOTEST_BODY_DESCRIPTION",
                 "Super Mario Sunshine's Mario, moved by libsms.\n\n" +
-                "< ! > Jump: A. Primary: spray. Secondary: B (dive, punch).\n" +
-                "< ! > Utility: L (ground pound, crouch). Sprint: plant and spray. Special: switch nozzle.");
+                "< ! > Pad: A jump, B dive, right trigger spray (all the way in to plant), left trigger " +
+                "ground pound and crouch, right bumper switch nozzle.\n" +
+                "< ! > Keys: jump, primary spray, sprint plant and spray, secondary dive, utility " +
+                "ground pound, special switch nozzle.");
             lang.SetStringByToken("MARIOTEST_BODY_OUTRO", "..and so he left, still wet.");
             lang.SetStringByToken("MARIOTEST_BODY_FAIL", "..and so he vanished, mid-triple-jump.");
         }

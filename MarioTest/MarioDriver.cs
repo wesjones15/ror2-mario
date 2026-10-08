@@ -54,6 +54,7 @@ namespace MarioTest
         // The sim's ground pound stage (Native.State.pounding).
         byte pounding;
         LocalUser localUser;
+        float spawnAge;
         // The tuning last sent to the sim.
         Native.Tuning tuning;
         // Standing in water as of the last step (Native.State.in_water).
@@ -79,6 +80,7 @@ namespace MarioTest
 
         void FixedUpdate()
         {
+            spawnAge += Time.fixedDeltaTime;
             if (!CanDrive)
             {
                 if (driving)
@@ -93,6 +95,8 @@ namespace MarioTest
             }
             if (sim == IntPtr.Zero && !Create())
                 return;
+            // Wait through pod setup; CanDrive stays false while Mario occupies it.
+            if (spawnAge > 1f) SpawnMusic.PlayOnce(body);
             if (motor.Motor.enabled)
                 motor.Motor.enabled = false;
             if (!driving || (transform.position - written).sqrMagnitude > 0.25f)

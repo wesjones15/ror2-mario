@@ -62,6 +62,7 @@ namespace MarioTest
             Log = Logger;
             CommonLog.Log = Logger;
             string here = Path.GetDirectoryName(Info.Location);
+            SpawnMusic.Initialize(Config, here);
 
             var assets = Config.Bind("Paths", "AssetsDir", "",
                 "libsms's assets/ folder (extracted from your own Super Mario Sunshine disc). " +

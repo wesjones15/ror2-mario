@@ -29,6 +29,12 @@ if ($LASTEXITCODE) { throw "dotnet build failed" }
 
 $dist = Join-Path $PSScriptRoot "dist\MarioTest"
 New-Item -ItemType Directory -Force $dist | Out-Null
+# Approximately five opening beats of Delfino Plaza, synthesized from the user's disc.
+Push-Location $LibSms
+try {
+    & $cargo run --offline --release -p libsms-audio --example play -- (Join-Path $dist "spawn.wav") 2.5 MSD_BGM_DOLPIC
+    if ($LASTEXITCODE) { throw "spawn music render failed" }
+} finally { Pop-Location }
 Copy-Item (Join-Path $PSScriptRoot "MarioTest\bin\Release\netstandard2.0\MarioTest.dll") $dist -Force
 Copy-Item (Join-Path $LibSms "target\release\sms.dll") $dist -Force
 $assets = (Resolve-Path (Join-Path $LibSms "assets")).Path

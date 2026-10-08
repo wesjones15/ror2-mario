@@ -34,7 +34,7 @@ How it works:
   - Each material's TEV is baked into one texture, which ror2-common's `ModelView` draws with
     RoR2's own shader and lighting. Commando's model is hidden meanwhile.
   - The game's sounds (voice, footsteps, FLUDD) play on our own audio output, since RoR2's
-    audio is Wwise, at RoR2's master × SFX volume. There's no Sunshine music.
+    audio is Wwise, at RoR2's master × SFX volume. A short Delfino Plaza sting plays when Mario emerges; RoR2 keeps its soundtrack.
 - No R2API: the survivor is registered through RoR2's content-pack hook.
 
 Controls, on a gamepad, by button position (Sunshine's layout, whatever your RoR2 binds):
@@ -97,3 +97,7 @@ Sunshine's own, drawn from the disc (re-extract older assets for its `game_6/` f
   own extracted `assets/`.
 
 Offline / friends-only co-op only.
+
+## Arrival music
+
+Phase 6: Mario plays approximately five opening beats (2.5 seconds) of Delfino Plaza once per local body after leaving the pod. Stage arrivals and respawns can play it again. SpawnMusic.Enabled and SpawnMusic.Volume control it; master and music volume also apply. The build synthesizes spawn.wav from your extracted disc audio into the ignored dist folder. Rebuild after extracting assets if the clip is missing. No music data is committed.

@@ -16,9 +16,10 @@ namespace MarioTest
     // - His moves sit in RoR2's skill slots (MarioSkills), so RoR2 keeps their charges: the
     //   primary is FLUDD; the secondary holds his extra mid-air FLUDD uses (none until Backup
     //   Magazine adds them, 4 s each, recharging only after he's touched the ground); the
-    //   utility his full-strength ground pounds (15 s; Hardlight adds two and shortens it; a
-    //   pound without one does a quarter of the damage); the special his wet belly slides
-    //   (10 s from the slide's start; Lysate Cell adds one; without one the slide is plain).
+    //   utility his full-strength ground pounds (6 s; Hardlight adds two and shortens it; a
+    //   pound without one does half the damage); the special his wet belly slides on dry
+    //   ground (10 s from the slide's start; Lysate Cell adds one; without one the slide is
+    //   plain; over water FLUDD sprayed a slide glides for free, as in Sunshine).
     //   Bandolier's ammo restocks them all and fills the tank; Brainstalks makes charges free
     //   and the tank bottomless while it lasts. Heresy items override a slot as for any
     //   survivor: the overriding skill runs when Mario makes that slot's move (Visions as
@@ -60,7 +61,7 @@ namespace MarioTest
         float lifestealSince, lifestealGiven;
         float stomperReadyAt;
 
-        /// The current ground pound's damage, times this (a quarter without a charge).
+        /// The current ground pound's damage, times this (Items.WeakPound without a charge).
         public float PoundStrength { get; private set; } = 1f;
         /// The current pound spent a charge (full strength).
         public bool PoundCharged { get; private set; } = true;
@@ -138,6 +139,7 @@ namespace MarioTest
             {
                 spray_rate = Plugin.SprayRateFromItems.Value ? Mathf.Clamp(MinionStats.Of(body).attackSpeed, 0.1f, 10f) : 1f,
                 spray_seconds = Plugin.SpraySeconds.Value > 0f ? Plugin.SpraySeconds.Value * NozzleBoost : 0f,
+                spray_fade = NozzleBoost,
                 hover_time = NozzleBoost,
                 turbo_speed = NozzleBoost,
                 air_uses = (byte)(Plugin.AirUses.Value ? 1 : 0),
@@ -150,6 +152,7 @@ namespace MarioTest
                 bool ready = free || (NativeSkills.Holds(slot, MarioSkills.Slide) ? slot.stock > 0 : slot && slot.IsReady());
                 l.wet_slide = (byte)(Plugin.WetSlideAnywhere.Value ? 2 : 1);
                 l.wet_slide_ready = (byte)(ready ? 1 : 0);
+                l.wet_slide_flags = (byte)((Plugin.WetSlideGlide.Value ? 1 : 0) | (Plugin.WetSlideOnWater.Value ? 2 : 0));
                 l.wet_slide_seconds = Plugin.WetSlideSeconds.Value > 0f ? Plugin.WetSlideSeconds.Value * slideBoost : 0f;
             }
             return l;
@@ -403,10 +406,11 @@ namespace MarioTest
                 "One FLUDD use per jump. Each charge is one more in mid-air, recharging once you've landed.");
             lang.SetStringByToken("MARIOTEST_POUND_NAME", "Ground Pound");
             lang.SetStringByToken("MARIOTEST_POUND_DESC",
-                "Hits harder the further you fall. Each charge is a full-strength pound; without one it does 25%.");
+                $"Hits harder the further you fall. Each charge is a full-strength pound; without one it does {Plugin.WeakPound.Value * 100f:0}%.");
             lang.SetStringByToken("MARIOTEST_SLIDE_NAME", "Wet Slide");
             lang.SetStringByToken("MARIOTEST_SLIDE_DESC",
-                "Each charge turns a belly slide wet, gliding far. Without one it's a plain slide.");
+                "Each charge turns a belly slide on dry ground wet, gliding far. Over water FLUDD sprayed " +
+                "(a light press drops some ahead) a slide glides for free.");
         }
     }
 }

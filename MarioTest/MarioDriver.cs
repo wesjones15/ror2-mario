@@ -16,7 +16,9 @@ namespace MarioTest
     // MarioCombat (stomps, pounds and FLUDD's water as RoR2 damage). Items: MarioItems, and
     // ror2-common's NativeBody for what RoR2's motor and main state would do (throws, crowd
     // control, sprinting). A Mario no local player controls (Goobo Jr.'s clone) runs its own sim
-    // on the AI's buttons and keeps Commando's look: the view and sounds are the player's.
+    // on the AI's buttons and is drawn silent in Shadow Mario's colours (MarioView.Shadow).
+    // When the player's Mario dies he falls down for good as in Sunshine, the miss jingle
+    // plays, and MarioCorpse plays the fall out after RoR2 removes the body.
     //
     // The camera follows a pivot of our own on the body (ror2-common's CameraPivot: Commando's
     // hangs off his hidden, still animated and turning model, and swayed the camera against
@@ -70,9 +72,15 @@ namespace MarioTest
 
         /// A local player plays this Mario (the view, sounds and HUD are theirs).
         bool Local => localUser != null;
-        // This Mario has drawn with the shared view (MarioView), so it's this one's to hide and
-        // free.
+        // This Mario has drawn with the player's view (MarioView.Player), so it's this one's to
+        // hide and free.
         bool ownsView;
+        // A Mario no local player controls: his own silent view (tried once).
+        MarioView shadowView;
+        bool shadowTried;
+
+        /// The view this Mario draws with: the player's, or his own.
+        MarioView View => Local ? MarioView.Player : shadowView;
 
         void Awake()
         {
@@ -87,6 +95,7 @@ namespace MarioTest
             host = UnityHost.Table();
             native = GetComponent<NativeBody>();
             Items = new MarioItems(body);
+            all.Add(this);
         }
 
         bool CanDrive =>
@@ -100,15 +109,7 @@ namespace MarioTest
             spawnAge += Time.fixedDeltaTime;
             if (!CanDrive)
             {
-                if (driving)
-                {
-                    ShowMario(false);
-                    pivot?.Use(false);
-                    flames.Set(false, default, 0f);
-                    pounding = 0;
-                    if (ownsView && (!health || !health.alive || RunAudio.Ended)) MarioView.Reset();
-                }
-                driving = false;
+                StopDriving();
                 return;
             }
             if (sim == IntPtr.Zero && !Create())
@@ -119,7 +120,12 @@ namespace MarioTest
                 motor.Motor.enabled = false;
             if (!driving || smoother.MovedElsewhere)
                 Resync();
-            if (!driving) pivot.Use(true);
+            if (!driving)
+            {
+                pivot.Use(true);
+                // Back from the dead (Dio's Best Friend): the old Mario stops lying there.
+                if (Local) MarioCorpse.End();
+            }
             driving = true;
 
             // Jump pads, knockback, Milky Chrysalis: whatever RoR2 put on the motor since the
@@ -141,10 +147,12 @@ namespace MarioTest
             var step = pad.Take(move, hold == NativeBody.Hold.All);
             // Facing from Mario toward the camera: the reverse of where the player aims.
             short cameraYaw = UnityHost.Yaw(-input.aimDirection);
+            Aim(step.l != 0 && Local);
             Items.Begin(sim, sprinting, grounded);
             MarioCombat.Begin(body, Items);
+            var view = View;
             Native.sms_sim_step(sim, ref host, ref step, cameraYaw, Time.fixedDeltaTime,
-                Local ? MarioView.Handle : IntPtr.Zero);
+                view != null ? view.Handle : IntPtr.Zero);
             MarioCombat.End();
             Native.sms_sim_state(sim, out var st);
             Items.End(sim, st);
@@ -203,31 +211,120 @@ namespace MarioTest
         void LateUpdate()
         {
             if (!driving || sim == IntPtr.Zero) return;
-            if (!Local)
+            if (Local)
+            {
+                MarioView.Ensure();
+                ownsView = true;
+            }
+            else if (!shadowTried)
+            {
+                shadowTried = true;
+                shadowView = MarioView.Shadow();
+            }
+            var view = View;
+            if (view == null)
             {
                 ShowMario(false);
                 return;
             }
-            ownsView = true;
-            MarioView.Update(sim, lagTicks);
-            var models = MarioView.Models;
-            if (models == null) return;
+            view.Update(sim, lagTicks);
+            if (view.Models == null) return;
             var feet = transform.position - feetToOrigin;
             drawnFeet = feet;
             float height = UnityHost.MarioHeight * UnityHost.Scale;
             // The game's flames when the disc's particles are there; RoR2's fire otherwise.
-            MarioView.Effects(feet);
-            flames.Set(Plugin.PoundFlames.Value && pounding == 2 && !MarioView.HasEffects,
+            view.Effects(feet);
+            flames.Set(Plugin.PoundFlames.Value && pounding == 2 && !view.HasEffects,
                 feet + Vector3.up * (height * 0.5f), height);
-            models.Update(UnityHost.Scale, d => (feet, new Quaternion(d.rot_x, d.rot_y, d.rot_z, d.rot_w)));
+            view.Draw(feet);
             ShowMario(true);
         }
 
         // Mario's models in place of Commando's, or back.
         void ShowMario(bool show)
         {
-            if (!show && ownsView) MarioView.Hide();
-            GameSettings.HideModel(body, ref bodyHidden, show && MarioView.Models != null);
+            var view = View;
+            if (!show && view != null && (ownsView || view == shadowView)) view.Hide();
+            GameSettings.HideModel(body, ref bodyHidden, show && view != null && view.Models != null);
+        }
+
+        // Sunshine's L-button camera (Controls.CameraAim): while L is held, FLUDD points where
+        // the camera looks (at what's under the crosshair) and a crouching Mario turns with it.
+        void Aim(bool held)
+        {
+            if (!held || !Plugin.CameraAim.Value || !input)
+            {
+                Native.sms_sim_set_aim(sim, 0, 0, 0f);
+                return;
+            }
+            var origin = input.aimOrigin;
+            var dir = input.aimDirection;
+            var target = Physics.Raycast(origin, dir, out var hit, 300f,
+                LayerIndex.world.mask | LayerIndex.entityPrecise.mask, QueryTriggerInteraction.Ignore)
+                ? hit.point : origin + dir * 100f;
+            var nozzle = transform.position - feetToOrigin
+                + Vector3.up * (UnityHost.MarioHeight * UnityHost.Scale * 0.55f);
+            var d = target - nozzle;
+            var flat = new Vector3(d.x, 0f, d.z);
+            if (flat.sqrMagnitude < 0.01f) flat = new Vector3(dir.x, 0f, dir.z);
+            float pitch = Mathf.Atan2(d.y, flat.magnitude);
+            Native.sms_sim_set_aim(sim, 1, UnityHost.Yaw(flat), pitch);
+        }
+
+        void StopDriving()
+        {
+            if (driving)
+            {
+                pivot?.Use(false);
+                flames.Set(false, default, 0f);
+                pounding = 0;
+                if (health && !health.alive)
+                    Died();
+                else
+                {
+                    ShowMario(false);
+                    if (ownsView && (!health || RunAudio.Ended)) MarioView.Reset();
+                }
+            }
+            driving = false;
+        }
+
+        static readonly System.Collections.Generic.List<MarioDriver> all = new System.Collections.Generic.List<MarioDriver>();
+
+        /// Before the run's audio is reset: a Mario who has just died (a game over comes the
+        /// moment the last player does) falls down first, keeping his view for the fall.
+        internal static void SettleTheDead()
+        {
+            foreach (var d in all.ToArray())
+                if (d && d.driving && d.health && !d.health.alive)
+                    d.StopDriving();
+        }
+
+        // RoR2 killed the body: Sunshine's fall for good (DOWN_LOSER: the "die" clip and the
+        // "down" voices) and the miss jingle. RoR2 removes the body a second after it comes to
+        // rest, so the sim and the view go to MarioCorpse to play it out.
+        void Died()
+        {
+            if (Local) SpawnMusic.PlayDeath(body);
+            if (Local && sim != IntPtr.Zero && Plugin.DeathFall.Value && ownsView && MarioView.Player != null)
+            {
+                Native.sms_sim_down(sim);
+                // Commando's ragdoll stays hidden: Mario is the one lying there.
+                MarioCorpse.Begin(sim, MarioView.TakePlayer(), Plugin.DeathFallSeconds.Value);
+                sim = IntPtr.Zero;
+                ownsView = false;
+                Plugin.Log.LogInfo("Mario is down");
+                return;
+            }
+            if (shadowView != null)
+            {
+                // A clone just goes, like Goobo Jr.'s.
+                shadowView.Dispose();
+                shadowView = null;
+                return;
+            }
+            ShowMario(false);
+            if (ownsView) MarioView.Reset();
         }
 
         bool Create()
@@ -246,7 +343,7 @@ namespace MarioTest
             Tune();
             Plugin.Log.LogInfo($"Mario's sim started at {body.footPosition}");
             UnityHost.LogStageWater();
-            MarioView.Ensure();
+            if (Local) MarioView.Ensure();
             return true;
         }
 
@@ -276,6 +373,8 @@ namespace MarioTest
                 enemy_push = (byte)(Plugin.SolidEnemies.Value ? 1 : 0),
                 cycle_nozzles = (byte)(Plugin.CycleNozzles.Value ? 1 : 0),
                 unlimited_water = (byte)(Plugin.UnlimitedWater.Value || Items.UnlimitedWater ? 1 : 0),
+                // The AI holds its primary down: a steady stream for clones.
+                spray_steady = (byte)(Plugin.SprayBursts.Value && Local ? 0 : 1),
             };
             if (t.Equals(tuning)) return;
             tuning = t;
@@ -315,7 +414,7 @@ namespace MarioTest
             var scr = cam.WorldToScreenPoint(d.drawnFeet);
             var c = cam.transform.position;
             var f = d.drawnFeet;
-            var models = MarioView.Models;
+            var models = d.View?.Models;
             float yaw = models != null && models.DrawCount > 0
                 ? new Quaternion(models.DrawAt(0).rot_x, models.DrawAt(0).rot_y, models.DrawAt(0).rot_z, models.DrawAt(0).rot_w).eulerAngles.y
                 : float.NaN;
@@ -336,10 +435,13 @@ namespace MarioTest
         void OnDestroy()
         {
             if (traced == this) traced = null;
+            all.Remove(this);
             Items?.Dispose();
             pivot?.Use(false);
             flames.Set(false, default, 0f);
             if (sim != IntPtr.Zero && ownsView) MarioView.Reset();
+            shadowView?.Dispose();
+            shadowView = null;
             if (sim != IntPtr.Zero)
             {
                 Native.sms_sim_free(sim);

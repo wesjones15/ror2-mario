@@ -12,6 +12,11 @@ namespace MarioTest
     // pressing them never does a Mario move too. On keyboard and mouse the RoR2 binds stand in:
     // jump A, primary half spray, sprint plant, secondary B, utility L, special nozzle.
     //
+    // Spray pressure (Fludd.SprayBursts): a light press is a short splash just ahead. On a
+    // gamepad the trigger's travel is curved (Controls.TriggerCurve) so that's easier to hold;
+    // on keyboard a primary press starts light and turns full if held past
+    // Controls.LightTapSeconds, and a tap is kept light long enough to splash.
+    //
     // RoR2's sprint button (its own bind) is read as is: it sprints for RoR2's sprint items and
     // adds no speed of its own (MarioDriver).
     //
@@ -31,6 +36,15 @@ namespace MarioTest
         bool down, downTap;
         // RoR2's sprint: held, and pressed since the last step.
         bool sprint, sprintTap;
+        // Keyboard primary: down last frame, when it went down, and a tap's light splash
+        // lasting until this time.
+        bool primary;
+        float primaryAt, lightUntil = -1f;
+        // A light press: raw R 15 of Sunshine's 0-255 (its light zone is 10 to about 27).
+        const float Light = 15f / 255f;
+        // Water takes the handles' 10 ticks and a light burst about 28 more: a tap holds the
+        // light press this long.
+        const float LightBurst = 0.35f;
 
         public void Read(LocalUser user, InputBankTest input)
         {
@@ -61,7 +75,8 @@ namespace MarioTest
                 b = gp.b.value;
                 l = gp.leftTrigger.value > 0.5f;
                 x = gp.rightBumper.value;
-                r = Mathf.Clamp01(gp.rightTrigger.value);
+                float t = Mathf.Clamp01(gp.rightTrigger.value);
+                r = t >= 0.98f ? 1f : Mathf.Pow(t, Mathf.Clamp(Plugin.TriggerCurve.Value, 0.2f, 5f));
                 bool d = gp.dPad.down.value;
                 downTap |= d && !down;
                 down = d;
@@ -72,7 +87,7 @@ namespace MarioTest
                 b = input.skill2.down;
                 l = input.skill3.down;
                 x = input.skill4.down;
-                r = input.sprint.down ? 1f : input.skill1.down ? 0.6f : 0f;
+                r = input.sprint.down ? 1f : Primary(input.skill1.down);
             }
             Latch();
         }
@@ -85,6 +100,18 @@ namespace MarioTest
             xTap |= x;
             sprintTap |= sprint;
             rMax = Mathf.Max(rMax, r);
+        }
+
+        // The keyboard primary as a trigger: light at first, full once held past the tap time.
+        float Primary(bool down)
+        {
+            float tap = Plugin.LightTapSeconds.Value;
+            float now = Time.unscaledTime;
+            if (down && !primary) primaryAt = now;
+            if (!down && primary && tap > 0f && now - primaryAt < tap) lightUntil = primaryAt + LightBurst;
+            primary = down;
+            if (down) return tap > 0f && now - primaryAt < tap ? Light : 0.6f;
+            return now < lightUntil ? Light : 0f;
         }
 
         /// RoR2's sprint was pressed since the last call.

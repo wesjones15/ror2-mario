@@ -37,13 +37,20 @@ How it works:
   and Milky Chrysalis throw Mario, stuns and roots hold him, RoR2's sprint button sprints.
 - `MarioMain` replaces Commando's main state, so RoR2's own movement, jumping and skills stay
   off.
-- `MarioView` loads libsms's view (`sms_view_*`) the first time a Mario starts.
+- `MarioView` loads libsms's view (`sms_view_*`) the first time the player's Mario starts.
   - It has the body, hands, cap, FLUDD and nozzle, posed from the sim each frame and skinned
     in Rust.
   - Each material's TEV is baked into one texture, which ror2-common's `ModelView` draws with
     RoR2's own shader and lighting. Commando's model is hidden meanwhile.
   - The game's sounds (voice, footsteps, FLUDD) play on our own audio output, since RoR2's
-    audio is Wwise, at RoR2's master × SFX volume. A short Delfino Plaza sting plays when Mario emerges; RoR2 keeps its soundtrack.
+    audio is Wwise, at RoR2's master × SFX volume. A short Delfino Plaza sting plays when Mario emerges on the run's first stage; RoR2 keeps its soundtrack.
+  - A Mario no player controls (Goobo Jr.'s clone) gets a view of his own, silent and in
+    Shadow Mario's colours: Mario's textures put through the dark-to-light ramp of Shadow
+    Mario's material, read from his model on the disc (`Look.ShadowClones`).
+- When Mario dies he falls down for good as in Sunshine (the "die" clip and his "down" voices)
+  and Sunshine's miss jingle (the "Too Bad!" one) plays. RoR2 removes a dead body a second
+  after it comes to rest, so `MarioCorpse` plays the fall out (`Look.DeathFall`,
+  `Look.DeathFallSeconds`, `SpawnMusic.DeathSting`).
 - No R2API: the survivor is registered through RoR2's content-pack hook.
 
 Controls, on a gamepad, by button position (Sunshine's layout, whatever your RoR2 binds):
@@ -54,14 +61,25 @@ Controls, on a gamepad, by button position (Sunshine's layout, whatever your RoR
 | A                | A        | jumps, wall kicks                               |
 | B                | B        | dive, punch                                     |
 | right trigger    | R        | spray; all the way in plants Mario and sprays   |
-| left trigger     | L        | ground pound (in the air), crouch               |
+| left trigger     | L        | ground pound (in the air), crouch; aims FLUDD   |
 | right bumper     | X        | switch nozzle: Spray, Hover, Rocket, Turbo      |
 | D-pad down       |          | fill FLUDD's tank (`Fludd.DpadRefill`)          |
 | X, Y             |          | RoR2's interact and equipment, as ever          |
 | RoR2's sprint    |          | sprint, for sprint items (no speed of its own)  |
 
-On keyboard and mouse your RoR2 binds stand in: jump (A), primary (half spray), sprint (plant
+On keyboard and mouse your RoR2 binds stand in: jump (A), primary (spray), sprint (plant
 and spray), secondary (B), utility (L), special (switch nozzle).
+
+The spray trigger works as in Sunshine (`Fludd.SprayBursts`): each press is a burst. A light
+press drops a short splash just ahead, which a belly slide then glides over; a full press
+sprays at full reach for about 5 s and then fades until you let go or press deeper. The
+trigger's travel is curved so the light zone is easier to hold (`Controls.TriggerCurve`). On
+keyboard a tap of the primary is a light press and holding it sprays at full
+(`Controls.LightTapSeconds`).
+
+Holding L is Sunshine's L-button camera (`Controls.CameraAim`): FLUDD points where the camera
+looks (at whatever is under the crosshair), and Mario, crouching, turns with the camera while
+the stick side-steps.
 
 ### Build and install
 
@@ -77,15 +95,17 @@ pointing at `libsms/assets`, into `<game>/BepInEx/plugins/MarioTest/`. It compil
 game's own DLLs, so no NuGet game libraries are involved. Use `-RoR2Dir` for another install
 and `-NoInstall` to only build into `dist/`.
 
-The log, `BepInEx/LogOutput.log`, should show `libsms ABI 8`, `Mario is 1.xx m tall`, then
+The log, `BepInEx/LogOutput.log`, should show `libsms ABI 10`, `Mario is 1.xx m tall`, then
 `Mario (test) registered`.
 In a run it should show `Mario's sim started`, `Mario's view: 12 models, 26 textures; sound
 ...`, and one line per status change (turn that off with `Debug.LogStatus`).
 
 Config is in `BepInEx/config/com.libsms.mariotest.cfg`: `Look.DrawModel`, `Look.Height`,
-`Look.PoundFlames`, `Sound.Enabled`, `Sound.Volume`, `Sim.*` (jump height, buffer and chain
-grace, speed items, solid enemies, stomp bounce, pound jump, timed stomp jump, shortest hop),
-`Fludd.*` (nozzle cycling, spray reach, rocket height, unlimited water, D-pad refill), `Hud.*`
+`Look.PoundFlames`, `Look.DeathFall`, `Look.ShadowClones`, `Sound.Enabled`, `Sound.Volume`,
+`Sim.*` (jump height, buffer and chain grace, speed items, solid enemies, stomp bounce, pound
+jump, timed stomp jump, shortest hop), `Fludd.*` (nozzle cycling, spray reach, spray bursts,
+rocket height, unlimited water, D-pad refill), `Controls.*` (camera aim, trigger curve,
+keyboard light tap), `Hud.*`
 (Sunshine's water tank gauge: on or off, where, how big), `Damage.*` (stomp, ground pound and its shock wave, damage
 per metre a pound falls, super pounds igniting, dive, water per drop), `Items.*` (see
 ITEMS.md: the skills' charges and recharges, cooldown stretches, water from healing, the
@@ -105,7 +125,7 @@ Sunshine's own, drawn from the disc (re-extract older assets for its `game_6/` f
   damage yet.
 - Yoshi.
 - RoR2's fall damage doesn't hurt Mario.
-- Goobo Jr.'s Mario clone looks like Commando, and the skill icons are Commando's.
+- The skill icons are Commando's.
 - Multiplayer is untested. Every player needs the plugin, and anyone playing Mario needs their
   own extracted `assets/`.
 
@@ -113,4 +133,4 @@ Offline / friends-only co-op only.
 
 ## Arrival music
 
-Phase 6: Mario plays approximately five opening beats (2.5 seconds) of Delfino Plaza once per local body after leaving the pod. Stage arrivals and respawns can play it again. SpawnMusic.Enabled and SpawnMusic.Volume control it; master and music volume also apply. The build synthesizes spawn.wav from your extracted disc audio into the ignored dist folder. Rebuild after extracting assets if the clip is missing. No music data is committed.
+Mario plays approximately five opening beats (2.5 seconds) of Delfino Plaza once a run, as he leaves the pod on the first stage; later stages and respawns stay quiet. When he dies, Sunshine's miss jingle plays (about 4.5 seconds). SpawnMusic.Enabled, SpawnMusic.DeathSting and SpawnMusic.Volume control them; master and music volume also apply. The build synthesizes spawn.wav and death.wav from your extracted disc audio into the ignored dist folder. Rebuild after extracting assets if a clip is missing. No music data is committed.

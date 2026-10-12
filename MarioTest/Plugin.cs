@@ -76,6 +76,15 @@ namespace MarioTest
         internal static ConfigEntry<float> QuailScale;
         internal static ConfigEntry<bool> ExternalForces;
         internal static ConfigEntry<bool> CrowdControl;
+        internal static ConfigEntry<bool> CameraAim;
+        internal static ConfigEntry<bool> SprayBursts;
+        internal static ConfigEntry<float> TriggerCurve;
+        internal static ConfigEntry<float> LightTapSeconds;
+        internal static ConfigEntry<bool> WetSlideGlide;
+        internal static ConfigEntry<bool> WetSlideOnWater;
+        internal static ConfigEntry<bool> DeathFall;
+        internal static ConfigEntry<float> DeathFallSeconds;
+        internal static ConfigEntry<bool> ShadowClones;
 
         void Awake()
         {
@@ -83,7 +92,11 @@ namespace MarioTest
             CommonLog.Log = Logger;
             string here = Path.GetDirectoryName(Info.Location);
             SpawnMusic.Initialize(Config, here);
-            RunAudio.Initialize(MarioView.Reset);
+            RunAudio.Initialize(() =>
+            {
+                MarioDriver.SettleTheDead();
+                MarioView.Reset();
+            });
 
             var assets = Config.Bind("Paths", "AssetsDir", "",
                 "libsms's assets/ folder (extracted from your own Super Mario Sunshine disc). " +
@@ -179,13 +192,19 @@ namespace MarioTest
             AirUseRecharge = Config.Bind("Items", "AirUseRecharge", 4f,
                 "Seconds for each extra mid-air use (the secondary skill's charges) to come back, " +
                 "one at a time, starting once Mario has touched the ground.");
-            PoundRecovery = Config.Bind("Items", "PoundRecovery", 15f,
+            PoundRecovery = Config.Bind("Items", "PoundRecovery", 6f,
                 "Seconds for a full-strength ground pound (the utility skill's charge) to come back.");
-            WeakPound = Config.Bind("Items", "WeakPound", 0.25f,
+            WeakPound = Config.Bind("Items", "WeakPound", 0.5f,
                 "A ground pound without a charge does this share of its damage.");
             WetSlideCharges = Config.Bind("Items", "WetSlideCharges", true,
-                "A wet belly slide (the special skill) needs a charge; without one the slide is " +
-                "plain. Off: Sunshine's (any slide over FLUDD's water glides).");
+                "A wet belly slide on dry ground takes a charge (the special skill); without one the " +
+                "slide is plain. Off: Sunshine's (only a slide over FLUDD's water glides).");
+            WetSlideOnWater = Config.Bind("Items", "WetSlideOnWater", true,
+                "A belly slide over water FLUDD sprayed glides for free, as in Sunshine (a light " +
+                "press of spray drops some just ahead). Off: that takes a charge too.");
+            WetSlideGlide = Config.Bind("Items", "WetSlideGlide", true,
+                "A wet slide keeps its speed as if the stick were held forward (pull back to brake). " +
+                "Off: Sunshine's, where it only carries on while you hold forward.");
             WetSlideAnywhere = Config.Bind("Items", "WetSlideAnywhere", true,
                 "With a charge, any belly slide glides, not only one over water FLUDD sprayed.");
             WetSlideRecharge = Config.Bind("Items", "WetSlideRecharge", 10f,
@@ -193,9 +212,10 @@ namespace MarioTest
             WetSlideSeconds = Config.Bind("Items", "WetSlideSeconds", 1.5f,
                 "Seconds a wet slide glides before turning plain (cooldown items stretch it). 0: " +
                 "as long as it lasts.");
-            SpraySeconds = Config.Bind("Items", "SpraySeconds", 5f,
-                "Seconds the Spray fires before the trigger must be let go (cooldown items " +
-                "stretch it). 0: no limit.");
+            SpraySeconds = Config.Bind("Items", "SpraySeconds", 0f,
+                "A hard cut: seconds the Spray fires before the trigger must be let go (cooldown " +
+                "items stretch it). 0: none (with Fludd.SprayBursts a held press already fades out " +
+                "after about 5 s, as in Sunshine, and cooldown items stretch that).");
             SprayRateFromItems = Config.Bind("Items", "SprayRateFromItems", true,
                 "Attack speed (Soldier's Syringe, Mocha) fires the Spray faster for the same water.");
             HealToWater = Config.Bind("Items", "HealToWater", 1f,
@@ -210,6 +230,30 @@ namespace MarioTest
                 "At most this share of the tank a second from lifesteal.");
             QuailScale = Config.Bind("Items", "WaxQuail", 1f,
                 "Wax Quail's boost to a sprinting jump, times this (1: RoR2's).");
+            SprayBursts = Config.Bind("Fludd", "SprayBursts", true,
+                "Sunshine's spray pressure: each press of the trigger is a burst. A light press " +
+                "drops a short splash just ahead (handy for wet slides); a full one sprays at full " +
+                "reach for about 5 s, then fades until you let go or press deeper. Off: a steady " +
+                "stream for as long as the trigger is held.");
+            TriggerCurve = Config.Bind("Controls", "TriggerCurve", 2f,
+                "The spray trigger's travel is raised to this power, so a gamepad's light press is " +
+                "easier to hold (Sunshine's light zone is the first tenth of a GameCube trigger). " +
+                "1: linear.");
+            LightTapSeconds = Config.Bind("Controls", "LightTapSeconds", 0.2f,
+                "On keyboard, a press of the primary key starts as a light press of the trigger: " +
+                "tapped, it's a short splash just ahead; held longer than this, a full spray. 0: " +
+                "always full.");
+            CameraAim = Config.Bind("Controls", "CameraAim", true,
+                "Sunshine's L-button camera: while L (the left trigger; the utility key on " +
+                "keyboard) is held, FLUDD points where the camera looks, and Mario crouching turns " +
+                "with the camera (the stick side-steps).");
+            DeathFall = Config.Bind("Look", "DeathFall", true,
+                "When Mario dies he falls down as in Sunshine, with his voice, and lies there.");
+            DeathFallSeconds = Config.Bind("Look", "DeathFallSeconds", 6f,
+                "How long the fallen Mario stays.");
+            ShadowClones = Config.Bind("Look", "ShadowClones", true,
+                "Marios no player controls (Goobo Jr.'s clone) are drawn as Mario in Shadow " +
+                "Mario's colours (from the disc). Off: Commando's model.");
             ExternalForces = Config.Bind("Sim", "ExternalForces", true,
                 "RoR2 can throw Mario: jump pads, geysers, knockback, Milky Chrysalis.");
             CrowdControl = Config.Bind("Sim", "CrowdControl", true,

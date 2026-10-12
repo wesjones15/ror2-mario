@@ -4,62 +4,106 @@ using UnityEngine;
 
 namespace MarioTest
 {
-    // Mario's look and sound, loaded once from the disc's files the first time a Mario needs
-    // them and kept across stages: libsms's view (sms_view_*: the models posed and skinned,
-    // each material's TEV baked into one texture, and the game's sounds on our own output,
-    // since RoR2 plays through Wwise), ror2-common's ModelView putting it in the scene,
-    // FLUDD's water (MarioWater), the game's particle effects (MarioFx) and the HUD's water
-    // gauge (MarioHud).
-    internal static class MarioView
+    // A Mario's look, loaded from the disc's files: libsms's view (sms_view_*: the models posed
+    // and skinned, each material's TEV baked into one texture, and the game's sounds on our own
+    // output, since RoR2 plays through Wwise), ror2-common's ModelView putting it in the scene,
+    // FLUDD's water (MarioWater) and the game's particle effects (MarioFx).
+    //
+    // The local player's Mario has the one with sound and the HUD's water gauge (MarioHud),
+    // made the first time it's needed and kept across stages (Player). A Mario no player
+    // controls (Goobo Jr.'s clone) gets its own, silent and in Shadow Mario's colours
+    // (Shadow). A Mario who dies hands his to MarioCorpse, which plays out the fall.
+    internal sealed class MarioView : IDisposable
     {
         static bool tried;
-        static IntPtr view;
-        static ModelView models;
-        static MarioWater water;
-        static MarioFx fx;
-        static readonly ViewDraw[] firstDraw = new ViewDraw[1];
+        static MarioView player;
+
+        IntPtr view;
+        ModelView models;
+        MarioWater water;
+        MarioFx fx;
+        readonly bool hud;
+        readonly ViewDraw[] firstDraw = new ViewDraw[1];
+
+        /// The local player's, or null before Ensure (or after a failed load).
+        public static MarioView Player => player;
 
         /// The native view (for sms_sim_step's sounds and sms_view_update), or zero.
-        public static IntPtr Handle => view;
-        public static ModelView Models => models;
+        public IntPtr Handle => view;
+        public ModelView Models => models;
         /// The game's own particles are drawn (else MarioFlames stands in).
-        public static bool HasEffects => fx != null;
+        public bool HasEffects => fx != null;
 
-        public static bool Ensure()
+        MarioView(IntPtr view, bool hud, string name)
         {
-            if (RunAudio.Ended) return false;
-            if (tried) return models != null;
+            this.view = view;
+            this.hud = hud;
+            if (!Plugin.DrawModel.Value) return;
+            models = ModelView.Create(new SmsViewSource(view), name);
+            // Sunshine's hit flash is pink (`addDamageFog`).
+            if (models != null) models.FlashColor = new Color(1f, 0f, 0.5f, 0.6f);
+            water = MarioWater.Create(view);
+            fx = MarioFx.Create(view);
+        }
+
+        /// The player's view, made the first time.
+        public static MarioView Ensure()
+        {
+            if (RunAudio.Ended) return null;
+            if (tried) return player;
             tried = true;
-            if (!Plugin.DrawModel.Value && !Plugin.Sound.Value) return false;
+            if (!Plugin.DrawModel.Value && !Plugin.Sound.Value) return null;
+            var v = Open(Plugin.Sound.Value, 0);
+            if (v == IntPtr.Zero)
+            {
+                Plugin.Log.LogWarning($"Mario's models didn't load from {Plugin.AssetsDir}; he stays Commando");
+                return null;
+            }
+            Plugin.Log.LogInfo($"Mario's view: {NativeLib.Utf8(Native.sms_view_status(v))}");
+            player = new MarioView(v, true, "Mario");
+            return player;
+        }
+
+        /// A silent view in Shadow Mario's colours, for a Mario no player controls; null if it
+        /// can't load or drawing is off.
+        public static MarioView Shadow()
+        {
+            if (RunAudio.Ended || !Plugin.DrawModel.Value || !Plugin.ShadowClones.Value) return null;
+            var v = Open(false, 1);
+            if (v == IntPtr.Zero)
+            {
+                Plugin.Log.LogWarning("Shadow Mario's view didn't load; the clone stays Commando");
+                return null;
+            }
+            return new MarioView(v, false, "ShadowMario");
+        }
+
+        static IntPtr Open(bool sound, byte look)
+        {
             try
             {
-                view = Native.sms_view_new(NativeLib.CString(Plugin.AssetsDir), (byte)(Plugin.Sound.Value ? 1 : 0));
+                return Native.sms_view_new_look(NativeLib.CString(Plugin.AssetsDir), (byte)(sound ? 1 : 0), look);
             }
             catch (Exception e)
             {
                 Plugin.Log.LogError($"Mario's view: {e}");
-                view = IntPtr.Zero;
+                return IntPtr.Zero;
             }
-            if (view == IntPtr.Zero)
-            {
-                Plugin.Log.LogWarning($"Mario's models didn't load from {Plugin.AssetsDir}; he stays Commando");
-                return false;
-            }
-            Plugin.Log.LogInfo($"Mario's view: {NativeLib.Utf8(Native.sms_view_status(view))}");
-            if (Plugin.DrawModel.Value)
-            {
-                models = ModelView.Create(new SmsViewSource(view), "Mario");
-                // Sunshine's hit flash is pink (`addDamageFog`).
-                if (models != null) models.FlashColor = new Color(1f, 0f, 0.5f, 0.6f);
-                water = MarioWater.Create(view);
-                fx = MarioFx.Create(view);
-            }
-            return models != null;
+        }
+
+        /// Takes the player's view away from the player slot (a dying Mario's, for his corpse):
+        /// the next Ensure makes a new one.
+        public static MarioView TakePlayer()
+        {
+            var v = player;
+            player = null;
+            tried = false;
+            return v;
         }
 
         /// Poses `sim` for this frame, draws its water, and plays its sounds from the player's
         /// camera. `lag` is how many 120 Hz ticks behind the sim Mario is drawn.
-        public static void Update(IntPtr sim, float lag)
+        public void Update(IntPtr sim, float lag)
         {
             if (view == IntPtr.Zero || sim == IntPtr.Zero) return;
             var frame = new Native.ViewFrame
@@ -79,12 +123,12 @@ namespace MarioTest
             }
             Native.sms_view_update(view, sim, ref frame);
             water?.Update(view, UnityHost.Scale);
-            MarioHud.Update(view);
+            if (hud) MarioHud.Update(view);
         }
 
         /// Draws this frame's particle effects (after Update) with Mario drawn at `feet`: they
         /// move with him from where the sim has him to where he's drawn.
-        public static void Effects(Vector3 feet)
+        public void Effects(Vector3 feet)
         {
             if (fx == null || view == IntPtr.Zero) return;
             if (!Plugin.PoundFlames.Value) { fx.Hide(); return; }
@@ -97,15 +141,21 @@ namespace MarioTest
             fx.Update(view, UnityHost.Scale, offset);
         }
 
+        /// Poses the models at `feet` (after Update).
+        public void Draw(Vector3 feet)
+        {
+            models?.Update(UnityHost.Scale, d => (feet, new Quaternion(d.rot_x, d.rot_y, d.rot_z, d.rot_w)));
+        }
+
         /// Hides the models, the water and the effects (until the next Update).
-        public static void Hide()
+        public void Hide()
         {
             models?.HideAll();
             water?.Hide();
             fx?.Hide();
         }
 
-        public static void Reset()
+        public void Dispose()
         {
             // Free the stream first: its audio thread otherwise keeps rendering held
             // voices after sms_sim_step stops advancing their release timers.
@@ -115,6 +165,16 @@ namespace MarioTest
             models?.Dispose(); models = null;
             water?.Dispose(); water = null;
             fx?.Dispose(); fx = null;
+            if (hud) MarioHud.Reset();
+        }
+
+        /// Frees the player's view (run over, or the player's Mario gone); the next Ensure
+        /// makes it again.
+        public static void Reset()
+        {
+            var v = player;
+            player = null;
+            v?.Dispose();
             MarioHud.Reset();
             tried = false;
         }

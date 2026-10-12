@@ -30,23 +30,25 @@ reads none. Any item that works through the paths above works on Mario in a newe
 |---|---|---|---|
 | Primary | FLUDD | none (never spent) | none |
 | Secondary | extra mid-air FLUDD uses | 0, +1 per Backup Magazine | 4 s each, one at a time; starts once he's touched the ground |
-| Utility | full-strength ground pound | 1, +2 per Hardlight Afterburner | 15 s (Hardlight shortens it) |
-| Special | wet belly slide | 1, +1 per Lysate Cell | 10 s from the slide's start (Lysate shortens it) |
+| Utility | full-strength ground pound | 1, +2 per Hardlight Afterburner | 6 s (Hardlight shortens it) |
+| Special | wet belly slide on dry ground | 1, +1 per Lysate Cell | 10 s from the slide's start (Lysate shortens it) |
 
 - **Mid-air FLUDD uses**: one is free each time Mario leaves the ground. Each start of a nozzle
   in the air costs a use, however long it runs; switching nozzle while airborne costs another.
   With none left, the trigger does nothing until he lands or a charge comes back. Uses don't
   touch the water.
-- **Ground pound**: it always works. Without a charge it does 25% of its damage. (Mario)
-- **Wet slide**: with a charge, a belly slide glides wet for 1.5 s. Cooldown items stretch the
-  glide. Without a charge it's a plain slide.
+- **Ground pound**: it always works. Without a charge it does 50% of its damage. (Mario)
+- **Wet slide**: with a charge, a belly slide glides wet for 1.5 s, keeping its speed as if
+  the stick were held forward (pull back to brake). Cooldown items stretch the glide. Without
+  a charge it's a plain slide, except over water FLUDD sprayed: that glides for free, as in
+  Sunshine (a light press of spray drops a splash just ahead).
 
 ## Cooldown items stretch what has no cooldown
 
 The **(common)** `SkillCooldown.Boost` is 1 / (cooldown ratio ^ 0.5). It's about ×1.15 for one
 Alien Head, ×1.8 for four, ×3.2 for eight, with no hard cap. It stretches:
 - hover time,
-- the Spray's longest burst (5 s base),
+- how long a Spray press lasts before it fades (about 5 s at full),
 - rocket height,
 - Turbo speed,
 - the wet slide's glide (from the special slot, which includes Lysate Cell).
@@ -122,7 +124,7 @@ which runs on the server. A client playing Mario in multiplayer doesn't get it y
 | Hooks of Heresy | fires as a nozzle starts in mid-air |
 | Strides of Heresy | runs on a ground pound (the pound is full strength when it's ready) |
 | Essence of Heresy | runs when a slide would turn wet |
-| Goobo Jr. | the clone is a Mario with his own sim and tank, run by Commando's AI on Mario's buttons (common `SurvivorAi`). It still looks like Commando |
+| Goobo Jr. | the clone is a Mario with his own sim and tank, run by Commando's AI on Mario's buttons (common `SurvivorAi`), drawn in Shadow Mario's colours |
 | Milky Chrysalis | its lift throws Mario (common `NativeBody` velocity bridge) |
 | Volcanic Egg, Eccentric Vase | RoR2 carries him as a vehicle; the sim waits |
 | Fuel Cell, Soulbound Catalyst, Executive Card, every equipment | RoR2's own equipment slot |
@@ -135,7 +137,7 @@ which runs on the server. A client playing Mario in multiplayer doesn't get it y
 
 ## Not done
 
-- Goobo Jr.'s clone looks like Commando. Only the player's Mario has the disc's model and sounds.
+- Goobo Jr.'s clone is silent: only the player's Mario has the disc's sounds.
 - A multiplayer client playing Mario gets no water from healing (heals happen on the server).
 - Mario takes no fall damage (RoR2 calls it from the character motor's landing).
 - The skill icons are Commando's.

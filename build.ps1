@@ -34,6 +34,9 @@ Push-Location $LibSms
 try {
     & $cargo run --offline --release -p libsms-audio --example play -- (Join-Path $dist "spawn.wav") 2.5 MSD_BGM_DOLPIC
     if ($LASTEXITCODE) { throw "spawn music render failed" }
+    # Sunshine's miss jingle (MSD_BGM_MISS, under "Too Bad!"), for Mario's death.
+    & $cargo run --offline --release -p libsms-audio --example play -- (Join-Path $dist "death.wav") 4.6 MSD_BGM_MISS
+    if ($LASTEXITCODE) { throw "death sting render failed" }
 } finally { Pop-Location }
 Copy-Item (Join-Path $PSScriptRoot "MarioTest\bin\Release\netstandard2.0\MarioTest.dll") $dist -Force
 Copy-Item (Join-Path $LibSms "target\release\sms.dll") $dist -Force

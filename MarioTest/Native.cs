@@ -12,7 +12,7 @@ namespace MarioTest
     internal static class Native
     {
         public const string Dll = "sms";
-        public const uint AbiVersion = 9;
+        public const uint AbiVersion = 10;
 
         [StructLayout(LayoutKind.Sequential)]
         public struct Vec3
@@ -126,7 +126,9 @@ namespace MarioTest
             public float jump_height, jump_buffer, chain_grace;
             public float move_speed, spray_reach, stomp_bounce, rocket_height;
             public float pound_jump, stomp_jump, short_hop;
-            public byte enemy_push, cycle_nozzles, unlimited_water, pad0;
+            public byte enemy_push, cycle_nozzles, unlimited_water;
+            /// 1: the Spray holds steady at the trigger's depth; 0: the game's bursts.
+            public byte spray_steady;
         }
 
         /// The host's own limits on FLUDD and the slide (libsms::Limits); zeroes are the game's.
@@ -136,12 +138,17 @@ namespace MarioTest
         public struct Limits
         {
             public float spray_rate, spray_seconds, hover_time, turbo_speed, wet_slide_seconds;
+            /// A Spray press lasts this many times as long before it fades.
+            public float spray_fade;
             public uint air_extra, air_jumps;
             /// 1: mid-air nozzle starts spend uses (one free per time off the ground).
             public byte air_uses;
             /// 0 the game's, 1 a charge over FLUDD's water, 2 a charge anywhere.
             public byte wet_slide;
-            public byte wet_slide_ready, pad0;
+            public byte wet_slide_ready;
+            /// Bit 0: wet slides glide on (as if the stick were held forward); bit 1: a slide
+            /// over FLUDD's water is wet for free.
+            public byte wet_slide_flags;
         }
 
         [StructLayout(LayoutKind.Sequential)]
@@ -227,9 +234,13 @@ namespace MarioTest
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern void sms_sim_set_limits(IntPtr sim, ref Limits limits);
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern void sms_sim_add_water(IntPtr sim, float share);
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern void sms_sim_launch(IntPtr sim, ref Vec3 vel);
+        [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern void sms_sim_set_aim(IntPtr sim, byte on, short yaw, float pitch);
+        [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern void sms_sim_down(IntPtr sim);
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern void sms_sim_boost_jump(IntPtr sim, float factor);
 
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern IntPtr sms_view_new(byte[] assetsDirUtf8, byte sound);
+        /// look: 0 Mario, 1 Shadow Mario's colours.
+        [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern IntPtr sms_view_new_look(byte[] assetsDirUtf8, byte sound, byte look);
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern void sms_view_free(IntPtr view);
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern IntPtr sms_view_status(IntPtr view);
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern uint sms_view_model_count(IntPtr view);

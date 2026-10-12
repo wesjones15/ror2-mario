@@ -85,7 +85,7 @@ namespace MarioTest
             if (!body) return;
             Vector3 mario = body.footPosition;
             bool ignite = Plugin.SuperPoundIgnites.Value;
-            // A pound without a charge (the utility skill's) does a quarter.
+            // A pound without a charge (the utility skill's) does Items.WeakPound of it.
             float strength = it != null ? it.PoundStrength : 1f;
             foreach (var (victim, kind) in blows)
             {

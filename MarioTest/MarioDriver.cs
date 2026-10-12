@@ -34,10 +34,9 @@ namespace MarioTest
         Native.Host host;
         // Body origin minus feet: the sim tracks Mario's feet.
         Vector3 feetToOrigin;
-        // Body origin after the last two sim steps, for smoothing between FixedUpdates, and
-        // where we last put it, to notice when something else (a teleporter, an out-of-bounds
-        // rescue) moves the body.
-        Vector3 prev, cur, written;
+        // The body drawn smoothly between sim steps, and how far behind the sim that is
+        // (ror2-common's StepSmoother).
+        StepSmoother smoother;
         string lastStatus;
         bool bodyHidden;
         // How far behind the sim the body is drawn (Update's smoothing), in 120 Hz ticks.
@@ -69,6 +68,7 @@ namespace MarioTest
             health = GetComponent<HealthComponent>();
             cameraTarget = GetComponent<CameraTargetParams>();
             pivot = new CameraPivot(body);
+            smoother = new StepSmoother(transform);
             host = UnityHost.Table();
         }
 
@@ -100,7 +100,7 @@ namespace MarioTest
             if (spawnAge > 1f) SpawnMusic.PlayOnce(body);
             if (motor.Motor.enabled)
                 motor.Motor.enabled = false;
-            if (!driving || (transform.position - written).sqrMagnitude > 0.25f)
+            if (!driving || smoother.MovedElsewhere)
                 Resync();
             if (!driving) pivot.Use(true);
             driving = true;
@@ -124,11 +124,7 @@ namespace MarioTest
             }
 
             fixedSteps++;
-            prev = cur;
-            cur = UnityHost.ToUnity(st.pos) + feetToOrigin;
-            // Where Update's smoothing starts this step: never ahead of what's drawn.
-            transform.position = prev;
-            written = prev;
+            smoother.Stepped(UnityHost.ToUnity(st.pos) + feetToOrigin);
 
             // mVel is per 30 Hz frame. RoR2 reads these for animation, camera and AI.
             motor.velocity = UnityHost.ToUnity(st.vel) * 30f;
@@ -163,11 +159,9 @@ namespace MarioTest
             FindLocalUser();
             pad.Read(localUser, input);
             if (!driving) return;
-            float a = Mathf.Clamp01((Time.time - Time.fixedTime) / Time.fixedDeltaTime);
-            var p = Vector3.Lerp(prev, cur, a);
-            lagTicks = (1f - a) * Time.fixedDeltaTime * Native.sms_tick_hz();
-            transform.position = p;
-            written = p;
+            smoother.Smooth();
+            // The view poses Mario this far back too, so he doesn't ghost in fast moves.
+            lagTicks = StepSmoother.LagTicks(Native.sms_tick_hz());
         }
 
         // Mario's models at the body's (smoothed) feet, facing as the sim says.
@@ -219,7 +213,7 @@ namespace MarioTest
         {
             var feet = UnityHost.ToSim(transform.position - feetToOrigin);
             Native.sms_sim_teleport(sim, ref feet);
-            prev = cur = written = transform.position;
+            smoother.Reset();
         }
 
         /// Sends the config's tuning, and the body's current move speed, when they change.
@@ -274,7 +268,7 @@ namespace MarioTest
             var player = GameSettings.PlayerCamera();
             if (!player || cam.transform != player) return;
             d.traceFrames--;
-            float a = Mathf.Clamp01((Time.time - Time.fixedTime) / Time.fixedDeltaTime);
+            float a = StepSmoother.Alpha;
             var pivot = d.cameraTarget && d.cameraTarget.cameraPivotTransform ? d.cameraTarget.cameraPivotTransform.position : Vector3.zero;
             var scr = cam.WorldToScreenPoint(d.drawnFeet);
             var c = cam.transform.position;

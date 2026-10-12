@@ -12,6 +12,12 @@ namespace MarioTest
     // pressing them never does a Mario move too. On keyboard and mouse the RoR2 binds stand in:
     // jump A, primary half spray, sprint plant, secondary B, utility L, special nozzle.
     //
+    // RoR2's sprint button (its own bind) is read as is: it sprints for RoR2's sprint items and
+    // adds no speed of its own (MarioDriver).
+    //
+    // A Mario no player controls (Goobo Jr.'s clone) takes the AI's presses from the input bank:
+    // jump A, primary half spray, secondary B, utility L, sprint.
+    //
     // Read every frame; presses are latched until the sim has stepped with them, so a tap
     // between two physics steps still counts. Movement is RoR2's own (the input bank's move
     // vector, from the stick or keys and the camera).
@@ -23,16 +29,31 @@ namespace MarioTest
         float r, rMax;
         // D-pad down (refill the tank): held, and pressed since the last step.
         bool down, downTap;
+        // RoR2's sprint: held, and pressed since the last step.
+        bool sprint, sprintTap;
 
         public void Read(LocalUser user, InputBankTest input)
         {
             var player = user?.inputPlayer;
+            if (user == null && input)
+            {
+                // The AI's buttons.
+                a = input.jump.down;
+                b = input.skill2.down;
+                l = input.skill3.down;
+                x = false;
+                r = input.skill1.down ? 0.6f : 0f;
+                sprint = input.sprint.down;
+                Latch();
+                return;
+            }
             if (player == null || user.isUIFocused)
             {
-                a = b = l = x = down = false;
+                a = b = l = x = down = sprint = false;
                 r = 0f;
                 return;
             }
+            sprint = input && input.sprint.down;
             var gp = Gamepad(player);
             if (gp != null)
             {
@@ -53,16 +74,37 @@ namespace MarioTest
                 x = input.skill4.down;
                 r = input.sprint.down ? 1f : input.skill1.down ? 0.6f : 0f;
             }
+            Latch();
+        }
+
+        void Latch()
+        {
             aTap |= a;
             bTap |= b;
             lTap |= l;
             xTap |= x;
+            sprintTap |= sprint;
             rMax = Mathf.Max(rMax, r);
         }
 
-        /// The pad for the next sim step, with `move` (world XZ); clears the latches.
-        public Native.Pad Take(Vector3 move)
+        /// RoR2's sprint was pressed since the last call.
+        public bool TakeSprint()
         {
+            bool t = sprint || sprintTap;
+            sprintTap = false;
+            return t;
+        }
+
+        /// The pad for the next sim step, with `move` (world XZ); clears the latches. `held`
+        /// (stunned, frozen): nothing pressed.
+        public Native.Pad Take(Vector3 move, bool held = false)
+        {
+            if (held)
+            {
+                aTap = bTap = lTap = xTap = false;
+                rMax = 0f;
+                return new Native.Pad { use_move = 1 };
+            }
             float trigger = Mathf.Max(r, rMax);
             var pad = new Native.Pad
             {

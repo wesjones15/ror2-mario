@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using Ror2Common;
 using RoR2;
 using UnityEngine;
+using UnityEngine.Networking;
 
 namespace MarioTest
 {
@@ -13,7 +14,8 @@ namespace MarioTest
     // damage from Mario's body (ror2-common's NativeHit: his damage stat, crits, on-hit items,
     // kill credit). Water doing damage is this plugin's, not Sunshine's (where most enemies only
     // flinch or slip); each enemy's drops for a step land as one hit, so on-hit items see about
-    // 30 hits a second at a low proc coefficient rather than one per drop.
+    // 30 hits a second; on-hit items proc on at most one of those a second per enemy
+    // (ror2-common's ProcLimiter), at Items.WaterProcCoefficient, the rest at 0.
     //
     // A ground pound hits harder the further it fell (Damage.PoundPerMetre; not Sunshine's):
     // the landing reports its drop, and a pound onto an enemy mid-fall counts from where the
@@ -42,15 +44,19 @@ namespace MarioTest
         static float poundDrop, poundTop;
         static bool fallingSuper;
         static GameObject blast;
+        static MarioItems items;
+        // FLUDD's on-hit items: at most once a second per target, shared by every nozzle.
+        static readonly ProcLimiter waterProcs = new ProcLimiter(1f);
 
         static readonly Native.EventFn eventFn = OnEvent;
         static readonly unsafe Native.EnemiesFn enemiesFn = Enemies;
         public static IntPtr EventPtr => System.Runtime.InteropServices.Marshal.GetFunctionPointerForDelegate(eventFn);
         public static IntPtr EnemiesPtr => System.Runtime.InteropServices.Marshal.GetFunctionPointerForDelegate(enemiesFn);
 
-        public static void Begin(CharacterBody body)
+        public static void Begin(CharacterBody body, MarioItems with)
         {
             attacker = body;
+            items = with;
             team = body && body.teamComponent ? body.teamComponent.teamIndex : TeamIndex.Player;
             byId.Clear();
             blows.Clear();
@@ -73,15 +79,19 @@ namespace MarioTest
         public static void End()
         {
             var body = attacker;
+            var it = items;
             attacker = null;
+            items = null;
             if (!body) return;
             Vector3 mario = body.footPosition;
             bool ignite = Plugin.SuperPoundIgnites.Value;
+            // A pound without a charge (the utility skill's) does a quarter.
+            float strength = it != null ? it.PoundStrength : 1f;
             foreach (var (victim, kind) in blows)
             {
                 // 0 stomp, 1 ground pound, 2 dive or slide.
                 float coefficient = kind == 0 ? Plugin.StompDamage.Value
-                    : kind == 1 ? Plugin.PoundDamage.Value * PoundScale(poundTop - mario.y)
+                    : kind == 1 ? Plugin.PoundDamage.Value * PoundScale(poundTop - mario.y) * strength
                     : Plugin.DiveDamage.Value;
                 var at = victim.body ? victim.body.corePosition : victim.transform.position;
                 var push = kind == 2 ? Flat(at - mario).normalized * 1200f : Vector3.down * 1500f;
@@ -93,7 +103,7 @@ namespace MarioTest
                 // The landing's shock wave (Sunshine's mHipdropRadius reach), on every enemy
                 // around, the pounded one too.
                 float radius = Plugin.PoundRadius.Value * (superPound ? 1.5f : 1f);
-                float coefficient = Plugin.ShockDamage.Value * PoundScale(poundDrop);
+                float coefficient = Plugin.ShockDamage.Value * PoundScale(poundDrop) * strength;
                 var type = superPound && ignite ? DamageType.IgniteOnHit : DamageType.Generic;
                 foreach (var victim in Near(poundAt, radius))
                 {
@@ -103,13 +113,20 @@ namespace MarioTest
                 }
                 if (superPound && Plugin.PoundFlames.Value) Blast(poundAt, radius);
             }
+            // H3AD-5T v2 on a full-strength pound.
+            if (pounded) it?.Stomp(poundAt, poundDrop);
             foreach (var kv in water)
             {
                 var (drops, sum) = kv.Value;
                 var at = sum / drops;
                 Hit(body, kv.Key, drops * Plugin.WaterDamage.Value, at,
-                    Flat(at - mario).normalized * (40f * drops), Plugin.WaterProc.Value);
+                    Flat(at - mario).normalized * (40f * drops),
+                    waterProcs.Coefficient(kv.Key, Plugin.WaterProc.Value));
             }
+            // Water hitting counts as the primary in use, for Shuriken: a throw at most every
+            // half second while it keeps hitting.
+            if (water.Count > 0 && NetworkServer.active)
+                body.GetComponent<NativeBody>()?.PulsePrimary(Plugin.ShurikenInterval.Value);
             blows.Clear();
             water.Clear();
         }
@@ -136,13 +153,16 @@ namespace MarioTest
                 damageType = type,
                 color = DamageColorIndex.Default,
             };
-            NativeHit.Deal(body, victim, spec);
+            MarioItems.Dealing = true;
+            try { NativeHit.Deal(body, victim, spec); }
+            finally { MarioItems.Dealing = false; }
         }
 
         static Vector3 Flat(Vector3 v) => new Vector3(v.x, 0f, v.z);
 
         static void OnEvent(IntPtr user, ref Native.Event e)
         {
+            MarioItems.OnEvent(ref e);
             switch ((Native.EventKind)e.kind)
             {
                 case Native.EventKind.EnemyHit:

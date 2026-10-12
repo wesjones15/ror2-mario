@@ -13,7 +13,10 @@ namespace MarioTest
     // the game's sounds play; other players still see Commando for now.
     //
     // Controls: MarioPad (Sunshine's layout on a gamepad, RoR2's binds on keyboard). Enemies:
-    // MarioCombat (stomps, pounds and FLUDD's water as RoR2 damage).
+    // MarioCombat (stomps, pounds and FLUDD's water as RoR2 damage). Items: MarioItems, and
+    // ror2-common's NativeBody for what RoR2's motor and main state would do (throws, crowd
+    // control, sprinting). A Mario no local player controls (Goobo Jr.'s clone) runs its own sim
+    // on the AI's buttons and keeps Commando's look: the view and sounds are the player's.
     //
     // The camera follows a pivot of our own on the body (ror2-common's CameraPivot: Commando's
     // hangs off his hidden, still animated and turning model, and swayed the camera against
@@ -58,6 +61,18 @@ namespace MarioTest
         Native.Tuning tuning;
         // Standing in water as of the last step (Native.State.in_water).
         byte inWater;
+        // On the ground as of the last step.
+        bool grounded = true;
+        NativeBody native;
+
+        /// RoR2's items on this Mario.
+        internal MarioItems Items { get; private set; }
+
+        /// A local player plays this Mario (the view, sounds and HUD are theirs).
+        bool Local => localUser != null;
+        // This Mario has drawn with the shared view (MarioView), so it's this one's to hide and
+        // free.
+        bool ownsView;
 
         void Awake()
         {
@@ -70,6 +85,8 @@ namespace MarioTest
             pivot = new CameraPivot(body);
             smoother = new StepSmoother(transform);
             host = UnityHost.Table();
+            native = GetComponent<NativeBody>();
+            Items = new MarioItems(body);
         }
 
         bool CanDrive =>
@@ -89,7 +106,7 @@ namespace MarioTest
                     pivot?.Use(false);
                     flames.Set(false, default, 0f);
                     pounding = 0;
-                    if (!health || !health.alive || RunAudio.Ended) MarioView.Reset();
+                    if (ownsView && (!health || !health.alive || RunAudio.Ended)) MarioView.Reset();
                 }
                 driving = false;
                 return;
@@ -97,7 +114,7 @@ namespace MarioTest
             if (sim == IntPtr.Zero && !Create())
                 return;
             // Wait through pod setup; CanDrive stays false while Mario occupies it.
-            if (spawnAge > 1f) SpawnMusic.PlayOnce(body);
+            if (spawnAge > 1f && Local) SpawnMusic.PlayOnce(body);
             if (motor.Motor.enabled)
                 motor.Motor.enabled = false;
             if (!driving || smoother.MovedElsewhere)
@@ -105,16 +122,33 @@ namespace MarioTest
             if (!driving) pivot.Use(true);
             driving = true;
 
+            // Jump pads, knockback, Milky Chrysalis: whatever RoR2 put on the motor since the
+            // last step throws Mario (mVel is per 30 Hz frame); a nudge under 2 m/s (a light
+            // hit's knockback) leaves him be.
+            if (native && native.TakeExternalVelocity(out var thrown, 2f) && Plugin.ExternalForces.Value)
+            {
+                var v = UnityHost.ToSim(thrown / 30f);
+                Native.sms_sim_launch(sim, ref v);
+            }
+            var hold = native && Plugin.CrowdControl.Value ? native.Control() : NativeBody.Hold.None;
+            var move = hold == NativeBody.Hold.None ? input.moveVector : Vector3.zero;
+            bool sprinting = native && native.UpdateSprint(pad.TakeSprint(), move.sqrMagnitude > 0.01f,
+                hold == NativeBody.Hold.None);
+
             Tune();
             if (pad.TakeRefill() && Plugin.DpadRefill.Value)
                 Native.sms_sim_refill(sim);
-            var step = pad.Take(input.moveVector);
+            var step = pad.Take(move, hold == NativeBody.Hold.All);
             // Facing from Mario toward the camera: the reverse of where the player aims.
             short cameraYaw = UnityHost.Yaw(-input.aimDirection);
-            MarioCombat.Begin(body);
-            Native.sms_sim_step(sim, ref host, ref step, cameraYaw, Time.fixedDeltaTime, MarioView.Handle);
+            Items.Begin(sim, sprinting, grounded);
+            MarioCombat.Begin(body, Items);
+            Native.sms_sim_step(sim, ref host, ref step, cameraYaw, Time.fixedDeltaTime,
+                Local ? MarioView.Handle : IntPtr.Zero);
             MarioCombat.End();
             Native.sms_sim_state(sim, out var st);
+            Items.End(sim, st);
+            grounded = st.on_ground != 0;
             MarioCombat.Watch(st);
             pounding = st.pounding;
             if (st.in_water != inWater)
@@ -127,7 +161,8 @@ namespace MarioTest
             smoother.Stepped(UnityHost.ToUnity(st.pos) + feetToOrigin);
 
             // mVel is per 30 Hz frame. RoR2 reads these for animation, camera and AI.
-            motor.velocity = UnityHost.ToUnity(st.vel) * 30f;
+            if (native) native.WroteVelocity(UnityHost.ToUnity(st.vel) * 30f);
+            else motor.velocity = UnityHost.ToUnity(st.vel) * 30f;
             motor.Motor.GroundingStatus.IsStableOnGround = st.on_ground != 0;
             motor.Motor.GroundingStatus.FoundAnyGround = st.on_ground != 0;
             if (direction)
@@ -168,6 +203,12 @@ namespace MarioTest
         void LateUpdate()
         {
             if (!driving || sim == IntPtr.Zero) return;
+            if (!Local)
+            {
+                ShowMario(false);
+                return;
+            }
+            ownsView = true;
             MarioView.Update(sim, lagTicks);
             var models = MarioView.Models;
             if (models == null) return;
@@ -185,7 +226,7 @@ namespace MarioTest
         // Mario's models in place of Commando's, or back.
         void ShowMario(bool show)
         {
-            if (!show) MarioView.Hide();
+            if (!show && ownsView) MarioView.Hide();
             GameSettings.HideModel(body, ref bodyHidden, show && MarioView.Models != null);
         }
 
@@ -214,6 +255,7 @@ namespace MarioTest
             var feet = UnityHost.ToSim(transform.position - feetToOrigin);
             Native.sms_sim_teleport(sim, ref feet);
             smoother.Reset();
+            native?.ForgetVelocity();
         }
 
         /// Sends the config's tuning, and the body's current move speed, when they change.
@@ -227,13 +269,13 @@ namespace MarioTest
                 move_speed = Plugin.SpeedFromItems.Value ? Mathf.Clamp(MinionStats.Of(body).moveSpeed, 0.1f, 10f) : 1f,
                 spray_reach = Plugin.SprayReach.Value,
                 stomp_bounce = Plugin.StompBounce.Value,
-                rocket_height = Plugin.RocketHeight.Value,
+                rocket_height = Plugin.RocketHeight.Value * Items.RocketBoost,
                 pound_jump = Plugin.PoundJump.Value,
                 stomp_jump = Plugin.StompJump.Value,
                 short_hop = Plugin.ShortHop.Value,
                 enemy_push = (byte)(Plugin.SolidEnemies.Value ? 1 : 0),
                 cycle_nozzles = (byte)(Plugin.CycleNozzles.Value ? 1 : 0),
-                unlimited_water = (byte)(Plugin.UnlimitedWater.Value ? 1 : 0),
+                unlimited_water = (byte)(Plugin.UnlimitedWater.Value || Items.UnlimitedWater ? 1 : 0),
             };
             if (t.Equals(tuning)) return;
             tuning = t;
@@ -294,9 +336,10 @@ namespace MarioTest
         void OnDestroy()
         {
             if (traced == this) traced = null;
+            Items?.Dispose();
             pivot?.Use(false);
             flames.Set(false, default, 0f);
-            if (sim != IntPtr.Zero) MarioView.Reset();
+            if (sim != IntPtr.Zero && ownsView) MarioView.Reset();
             if (sim != IntPtr.Zero)
             {
                 Native.sms_sim_free(sim);

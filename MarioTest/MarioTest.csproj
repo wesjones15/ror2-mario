@@ -12,6 +12,8 @@
     <Managed>$(RoR2Dir)\Risk of Rain 2_Data\Managed</Managed>
     <CopyLocalLockFileAssemblies>false</CopyLocalLockFileAssemblies>
     <GenerateDependencyFile>false</GenerateDependencyFile>
+    <!-- ror2-common's IL hooks (ItemHooks, MinionHit): needs the MonoMod references below. -->
+    <DefineConstants>$(DefineConstants);ROR2COMMON_HOOKS</DefineConstants>
   </PropertyGroup>
 
   <ItemDefinitionGroup>
@@ -25,6 +27,9 @@
 
   <ItemGroup>
     <Reference Include="BepInEx"><HintPath>$(RoR2Dir)\BepInEx\core\BepInEx.dll</HintPath></Reference>
+    <Reference Include="Mono.Cecil"><HintPath>$(RoR2Dir)\BepInEx\core\Mono.Cecil.dll</HintPath></Reference>
+    <Reference Include="MonoMod.Utils"><HintPath>$(RoR2Dir)\BepInEx\core\MonoMod.Utils.dll</HintPath></Reference>
+    <Reference Include="MonoMod.RuntimeDetour"><HintPath>$(RoR2Dir)\BepInEx\core\MonoMod.RuntimeDetour.dll</HintPath></Reference>
     <Reference Include="RoR2"><HintPath>$(Managed)\RoR2.dll</HintPath></Reference>
     <Reference Include="LegacyResourcesAPI"><HintPath>$(Managed)\LegacyResourcesAPI.dll</HintPath></Reference>
     <Reference Include="KinematicCharacterController"><HintPath>$(Managed)\KinematicCharacterController.dll</HintPath></Reference>

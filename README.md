@@ -26,6 +26,15 @@ How it works:
   so his damage stat, crits and on-hit items apply. Water damage is this plugin's, not
   Sunshine's.
 - Movement speed items scale how far Mario gets each step (`Sim.SpeedFromItems`).
+- `MarioItems` hooks RoR2's items to Mario's moves; [ITEMS.md](ITEMS.md) goes through them
+  all. His moves sit in RoR2's skill slots so items keep their charges: FLUDD is the primary,
+  extra mid-air FLUDD uses the secondary (Backup Magazine), full-strength ground pounds the
+  utility (Hardlight) and wet belly slides the special (Lysate Cell). The rules for those
+  (one free FLUDD use per jump, charged wet slides, Hopoo Feather's chain jumps, the Spray's
+  rate and limit) are libsms's `Limits`, all off unless a host sets them, so libsms's Mario
+  stays Sunshine's.
+- ror2-common's `NativeBody` does what RoR2's motor would for the items: jump pads, knockback
+  and Milky Chrysalis throw Mario, stuns and roots hold him, RoR2's sprint button sprints.
 - `MarioMain` replaces Commando's main state, so RoR2's own movement, jumping and skills stay
   off.
 - `MarioView` loads libsms's view (`sms_view_*`) the first time a Mario starts.
@@ -49,6 +58,7 @@ Controls, on a gamepad, by button position (Sunshine's layout, whatever your RoR
 | right bumper     | X        | switch nozzle: Spray, Hover, Rocket, Turbo      |
 | D-pad down       |          | fill FLUDD's tank (`Fludd.DpadRefill`)          |
 | X, Y             |          | RoR2's interact and equipment, as ever          |
+| RoR2's sprint    |          | sprint, for sprint items (no speed of its own)  |
 
 On keyboard and mouse your RoR2 binds stand in: jump (A), primary (half spray), sprint (plant
 and spray), secondary (B), utility (L), special (switch nozzle).
@@ -77,8 +87,10 @@ Config is in `BepInEx/config/com.libsms.mariotest.cfg`: `Look.DrawModel`, `Look.
 grace, speed items, solid enemies, stomp bounce, pound jump, timed stomp jump, shortest hop),
 `Fludd.*` (nozzle cycling, spray reach, rocket height, unlimited water, D-pad refill), `Hud.*`
 (Sunshine's water tank gauge: on or off, where, how big), `Damage.*` (stomp, ground pound and its shock wave, damage
-per metre a pound falls, super pounds igniting, dive, water per drop and its proc coefficient)
-and `Paths.AssetsDir`.
+per metre a pound falls, super pounds igniting, dive, water per drop), `Items.*` (see
+ITEMS.md: the skills' charges and recharges, cooldown stretches, water from healing, the
+water's proc limit, Shuriken and Wax Quail), `Sim.ExternalForces`, `Sim.CrowdControl` and
+`Paths.AssetsDir`.
 
 FLUDD's tank empties as in Sunshine and fills back up while you hold spray standing in water
 (anything RoR2 builds as water: Unity's Water layer, or colliders, materials or footstep
@@ -92,7 +104,8 @@ Sunshine's own, drawn from the disc (re-extract older assets for its `game_6/` f
   animation aren't networked yet. Mario's hits are the server's: a client playing him deals no
   damage yet.
 - Yoshi.
-- RoR2's knockback and fall damage don't move Mario.
+- RoR2's fall damage doesn't hurt Mario.
+- Goobo Jr.'s Mario clone looks like Commando, and the skill icons are Commando's.
 - Multiplayer is untested. Every player needs the plugin, and anyone playing Mario needs their
   own extracted `assets/`.
 

@@ -56,6 +56,26 @@ namespace MarioTest
         internal static ConfigEntry<float> TankX;
         internal static ConfigEntry<float> TankY;
         internal static ConfigEntry<float> TankScale;
+        internal static ConfigEntry<bool> CooldownBoosts;
+        internal static ConfigEntry<float> CooldownExponent;
+        internal static ConfigEntry<bool> AirUses;
+        internal static ConfigEntry<float> AirUseRecharge;
+        internal static ConfigEntry<float> PoundRecovery;
+        internal static ConfigEntry<float> WeakPound;
+        internal static ConfigEntry<bool> WetSlideCharges;
+        internal static ConfigEntry<bool> WetSlideAnywhere;
+        internal static ConfigEntry<float> WetSlideRecharge;
+        internal static ConfigEntry<float> WetSlideSeconds;
+        internal static ConfigEntry<float> SpraySeconds;
+        internal static ConfigEntry<bool> SprayRateFromItems;
+        internal static ConfigEntry<float> HealToWater;
+        internal static ConfigEntry<float> LifestealToWater;
+        internal static ConfigEntry<float> LifestealWaterCap;
+        internal static ConfigEntry<float> RegenToWater;
+        internal static ConfigEntry<float> ShurikenInterval;
+        internal static ConfigEntry<float> QuailScale;
+        internal static ConfigEntry<bool> ExternalForces;
+        internal static ConfigEntry<bool> CrowdControl;
 
         void Awake()
         {
@@ -141,8 +161,59 @@ namespace MarioTest
             WaterDamage = Config.Bind("Damage", "WaterPerDrop", 0.035f,
                 "Each FLUDD drop that hits (not Sunshine's: its water mostly only stuns). The Spray " +
                 "fires about 93 a second, so 0.035 is about 330% a second on one enemy.");
-            WaterProc = Config.Bind("Damage", "WaterProcCoefficient", 0.1f,
-                "On-hit item chance for each enemy's drops in a 30 Hz water step (about 30 a second).");
+            WaterProc = Config.Bind("Items", "WaterProcCoefficient", 0.5f,
+                "FLUDD's water procs on-hit items at most once a second on each enemy (every nozzle " +
+                "shares it), at this proc coefficient; the drops in between do damage only.");
+            ShurikenInterval = Config.Bind("Items", "ShurikenInterval", 0.5f,
+                "Water hitting counts as using the primary skill (Shuriken throws) at most this " +
+                "often, in seconds.");
+            CooldownBoosts = Config.Bind("Items", "CooldownBoosts", true,
+                "Cooldown items (Alien Head, Purity; Lysate Cell for the slide) make FLUDD hover " +
+                "and spray longer, rocket higher and turbo faster, and the wet slide glide longer.");
+            CooldownExponent = Config.Bind("Items", "CooldownExponent", 0.5f,
+                "Those boosts are 1 / (cooldown ratio ^ this): with 0.5, one Alien Head is x1.15, " +
+                "four x1.8, eight x3.2.");
+            AirUses = Config.Bind("Items", "AirUses", true,
+                "One FLUDD use per time in the air (each start of a nozzle, however long it runs); " +
+                "Backup Magazine adds more. Off: as many as the tank allows (Sunshine's).");
+            AirUseRecharge = Config.Bind("Items", "AirUseRecharge", 4f,
+                "Seconds for each extra mid-air use (the secondary skill's charges) to come back, " +
+                "one at a time, starting once Mario has touched the ground.");
+            PoundRecovery = Config.Bind("Items", "PoundRecovery", 15f,
+                "Seconds for a full-strength ground pound (the utility skill's charge) to come back.");
+            WeakPound = Config.Bind("Items", "WeakPound", 0.25f,
+                "A ground pound without a charge does this share of its damage.");
+            WetSlideCharges = Config.Bind("Items", "WetSlideCharges", true,
+                "A wet belly slide (the special skill) needs a charge; without one the slide is " +
+                "plain. Off: Sunshine's (any slide over FLUDD's water glides).");
+            WetSlideAnywhere = Config.Bind("Items", "WetSlideAnywhere", true,
+                "With a charge, any belly slide glides, not only one over water FLUDD sprayed.");
+            WetSlideRecharge = Config.Bind("Items", "WetSlideRecharge", 10f,
+                "Seconds for a wet slide charge to come back, counted from the slide's start.");
+            WetSlideSeconds = Config.Bind("Items", "WetSlideSeconds", 1.5f,
+                "Seconds a wet slide glides before turning plain (cooldown items stretch it). 0: " +
+                "as long as it lasts.");
+            SpraySeconds = Config.Bind("Items", "SpraySeconds", 5f,
+                "Seconds the Spray fires before the trigger must be let go (cooldown items " +
+                "stretch it). 0: no limit.");
+            SprayRateFromItems = Config.Bind("Items", "SprayRateFromItems", true,
+                "Attack speed (Soldier's Syringe, Mocha) fires the Spray faster for the same water.");
+            HealToWater = Config.Bind("Items", "HealToWater", 1f,
+                "Healing fills FLUDD's tank: this share of the tank per max health healed, as the " +
+                "heal asks (Bustling Fungus refills even at full health).");
+            RegenToWater = Config.Bind("Items", "RegenToWater", 1f,
+                "Regeneration beyond Mario's own (Cautious Slug and the like) fills the tank at this " +
+                "share of the tank per max health regenerated.");
+            LifestealToWater = Config.Bind("Items", "LifestealToWater", 0.25f,
+                "Lifesteal (Leeching Seed, Harvester's Scythe) fills the tank at this share instead.");
+            LifestealWaterCap = Config.Bind("Items", "LifestealWaterCap", 0.05f,
+                "At most this share of the tank a second from lifesteal.");
+            QuailScale = Config.Bind("Items", "WaxQuail", 1f,
+                "Wax Quail's boost to a sprinting jump, times this (1: RoR2's).");
+            ExternalForces = Config.Bind("Sim", "ExternalForces", true,
+                "RoR2 can throw Mario: jump pads, geysers, knockback, Milky Chrysalis.");
+            CrowdControl = Config.Bind("Sim", "CrowdControl", true,
+                "Stuns, freezes and shocks stop Mario's controls; roots stop him moving.");
             TraceJumps = Config.Bind("Debug", "TraceJumps", false,
                 "For a moment after each jump, log every rendered frame: frame time, physics steps, " +
                 "where Mario and the camera are, and Mario's height on screen.");
@@ -172,6 +243,7 @@ namespace MarioTest
             }
             Log.LogInfo($"libsms ABI {Native.sms_abi_version()}, assets {AssetsDir}");
 
+            ItemHooks.Install();
             ContentProvider.Register(Guid, AddContent);
             Language.onCurrentLanguageChanged += AddTokens;
         }
@@ -203,7 +275,9 @@ namespace MarioTest
             foreach (var esm in body.GetComponents<EntityStateMachine>())
                 if (esm.customName == "Body")
                     esm.mainStateType = new SerializableEntityStateType(typeof(MarioMain));
+            body.AddComponent<NativeBody>();
             body.AddComponent<MarioDriver>();
+            MarioSkills.Add(body, pack);
 
             var display = Prefabs.Clone(commandoDisplay, "MarioTestDisplay", Guid);
             if (DrawModel.Value)
@@ -223,6 +297,8 @@ namespace MarioTest
             survivor.primaryColor = cb.bodyColor;
             survivor.desiredSortPosition = 100f;
 
+            // For Goobo Jr.'s clone and the like: Commando's AI pressing Mario's buttons.
+            SurvivorAi.Register(pack, body, "Prefabs/CharacterMasters/CommandoMonsterMaster", "MarioTestMonsterMaster", Guid);
             pack.bodyPrefabs.Add(new[] { body });
             pack.survivorDefs.Add(new[] { survivor });
             pack.entityStateTypes.Add(new[] { typeof(MarioMain) });
@@ -253,9 +329,10 @@ namespace MarioTest
             lang.SetStringByToken("MARIOTEST_BODY_DESCRIPTION",
                 "Super Mario Sunshine's Mario, moved by libsms.\n\n" +
                 "< ! > Pad: A jump, B dive, right trigger spray (all the way in to plant), left trigger " +
-                "ground pound and crouch, right bumper switch nozzle.\n" +
+                "ground pound and crouch, right bumper switch nozzle, RoR2's sprint to sprint.\n" +
                 "< ! > Keys: jump, primary spray, sprint plant and spray, secondary dive, utility " +
                 "ground pound, special switch nozzle.");
+            MarioSkills.Tokens(lang);
             lang.SetStringByToken("MARIOTEST_BODY_OUTRO", "..and so he left, still wet.");
             lang.SetStringByToken("MARIOTEST_BODY_FAIL", "..and so he vanished, mid-triple-jump.");
         }

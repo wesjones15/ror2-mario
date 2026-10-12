@@ -4,7 +4,7 @@ using Ror2Common;
 
 namespace MarioTest
 {
-    // The libsms C ABI (libsms/crates/libsms-ffi, SMS_ABI_VERSION 8). Layouts mirror the
+    // The libsms C ABI (libsms/crates/libsms-ffi, SMS_ABI_VERSION 9). Layouts mirror the
     // #[repr(C)] structs there field for field; Load checks them with sms_struct_sizes. Sim
     // units: about 1 cm, Y up, a facing angle a (i16, 0x10000 per turn) points along
     // (sin a, 0, cos a). The view's structs are ror2-common's (ViewModelInfo...), which
@@ -12,7 +12,7 @@ namespace MarioTest
     internal static class Native
     {
         public const string Dll = "sms";
-        public const uint AbiVersion = 8;
+        public const uint AbiVersion = 9;
 
         [StructLayout(LayoutKind.Sequential)]
         public struct Vec3
@@ -61,6 +61,21 @@ namespace MarioTest
             EnemyHit = 12,
             /// arg: the enemy's id; value: the drop's attack; pos: where it hit.
             WaterHit = 13,
+            /// A ground pound's wind-up began.
+            PoundStart = 14,
+            /// Limits: FLUDD started in mid-air and spent a use; arg 1 an extra, 0 the free one.
+            AirNozzle = 15,
+            /// Limits: a mid-air jump was spent.
+            AirJump = 16,
+            /// Limits: a belly slide turned wet and spent the charge.
+            WetSlide = 17,
+        }
+
+        /// Jump kinds (Event.arg of Jump).
+        public enum JumpKind
+        {
+            Normal = 0, Second = 1, Triple = 2, Back = 3, Long = 4, UTurn = 5, Wall = 6, Spin = 7,
+            Dive = 8, Forced = 9,
         }
 
         /// An enemy for the sim: a standing cylinder at its feet.
@@ -112,6 +127,21 @@ namespace MarioTest
             public float move_speed, spray_reach, stomp_bounce, rocket_height;
             public float pound_jump, stomp_jump, short_hop;
             public byte enemy_push, cycle_nozzles, unlimited_water, pad0;
+        }
+
+        /// The host's own limits on FLUDD and the slide (libsms::Limits); zeroes are the game's.
+        /// Sent before every step: the sim counts air_extra and wet_slide_ready down as it
+        /// spends them.
+        [StructLayout(LayoutKind.Sequential)]
+        public struct Limits
+        {
+            public float spray_rate, spray_seconds, hover_time, turbo_speed, wet_slide_seconds;
+            public uint air_extra, air_jumps;
+            /// 1: mid-air nozzle starts spend uses (one free per time off the ground).
+            public byte air_uses;
+            /// 0 the game's, 1 a charge over FLUDD's water, 2 a charge anywhere.
+            public byte wet_slide;
+            public byte wet_slide_ready, pad0;
         }
 
         [StructLayout(LayoutKind.Sequential)]
@@ -194,6 +224,10 @@ namespace MarioTest
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern void sms_sim_teleport(IntPtr sim, ref Vec3 pos);
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern void sms_sim_set_tuning(IntPtr sim, ref Tuning tuning);
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern void sms_sim_refill(IntPtr sim);
+        [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern void sms_sim_set_limits(IntPtr sim, ref Limits limits);
+        [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern void sms_sim_add_water(IntPtr sim, float share);
+        [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern void sms_sim_launch(IntPtr sim, ref Vec3 vel);
+        [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern void sms_sim_boost_jump(IntPtr sim, float factor);
 
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern IntPtr sms_view_new(byte[] assetsDirUtf8, byte sound);
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern void sms_view_free(IntPtr view);
@@ -248,6 +282,7 @@ namespace MarioTest
                 ("Enemy", NativeLib.Size<Enemy>()),
                 ("FxVertex", NativeLib.Size<FxVertex>()), ("FxBatch", NativeLib.Size<FxBatch>()),
                 ("FxInfo", NativeLib.Size<FxInfo>()), ("HudInfo", NativeLib.Size<HudInfo>()),
+                ("Limits", NativeLib.Size<Limits>()),
             });
             if (diff != null)
             {

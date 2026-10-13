@@ -118,6 +118,27 @@ surfaces named for water; the log says what each stage has, and when Mario steps
 with D-pad down, and on each new stage, since Mario starts every stage afresh. The gauge is
 Sunshine's own, drawn from the disc (re-extract older assets for its `game_6/` folder).
 
+Mario automatically unsticks after staying within about 13 cm (at his default height) for
+three seconds while fallen, sliding on his belly, or trying to fall. Recovery checks for
+supported ground with room for his standing body above and around the obstruction, then
+tries his last verified safe ground if necessary. If nothing is clear, it retries after
+another three seconds. Standing still, hovering, hanging from a ledge, death, pod occupancy,
+and crowd control do not count toward the timer. External teleports clear the timer and
+remembered ground. Recovery preserves health, items, nozzle and tank; the log reports
+`Mario unstuck after 3 seconds`.
+
+The detector/search regression check runs without the game:
+
+```
+dotnet run --project tests/UnstuckCheck/UnstuckCheck.csproj -c Release
+```
+
+In-game verification (Unity collision queries require the game): trap Mario under the opened
+pod door and in terrain, and confirm recovery after three seconds; confirm a free fall or
+moving slide continues normally, an idle/hovering/hanging Mario stays put, and entering a
+pod, a teleport or death clears a partly elapsed timer. Check that the destination has solid
+ground and headroom and that FLUDD's nozzle and remaining water survive recovery.
+
 ### Not there yet
 
 - Other players see Commando. Only the player who's Mario sees and hears him; the pose and

@@ -49,7 +49,9 @@ namespace MarioTest
 
         readonly CharacterBody body;
         readonly NativeBody native;
-        readonly SkillLocator skills;
+        // Looked up when used: CharacterBody sets its skillLocator in its own Awake, which may run
+        // after the driver's (the slots were then never found, and no charge was ever spent).
+        SkillLocator skills;
 
         float waterOwed;
         bool refillOwed;
@@ -72,7 +74,6 @@ namespace MarioTest
         {
             this.body = body;
             native = body ? body.GetComponent<NativeBody>() : null;
-            skills = body ? body.skillLocator : null;
             ItemHooks.Healed += OnHealed;
             ItemHooks.AmmoPack += OnAmmoPack;
             if (MarioSkills.Air) MarioSkills.Air.RechargeGate = AirRechargeOpen;
@@ -85,7 +86,11 @@ namespace MarioTest
             if (Current == this) Current = null;
         }
 
-        GenericSkill Slot(SkillSlot s) => skills ? skills.GetSkill(s) : null;
+        GenericSkill Slot(SkillSlot s)
+        {
+            if (!skills && body) skills = body.skillLocator;
+            return skills ? skills.GetSkill(s) : null;
+        }
 
         // ---- before and after each step ------------------------------------------------------
 
@@ -186,10 +191,18 @@ namespace MarioTest
                     break;
                 }
                 case Native.EventKind.PoundStart:
-                    PoundCharged = NativeSkills.Spend(Slot(SkillSlot.Utility), MarioSkills.Pound);
+                {
+                    var utility = Slot(SkillSlot.Utility);
+                    PoundCharged = NativeSkills.Spend(utility, MarioSkills.Pound);
+                    Plugin.Log.LogInfo(utility
+                        ? $"Ground pound: {(PoundCharged ? "charge spent" : "no charge")}; the utility slot holds " +
+                          $"{(utility.skillDef ? utility.skillDef.skillName : "nothing")}, stock {utility.stock}/{utility.maxStock}, " +
+                          $"{utility.cooldownRemaining:0.0}s to the next"
+                        : "Ground pound: the body has no utility skill slot");
                     PoundStrength = PoundCharged ? 1f : Mathf.Clamp01(Plugin.WeakPound.Value);
                     NativeBody.MarkCombat(body);
                     break;
+                }
                 case Native.EventKind.WetSlide:
                     NativeSkills.Spend(Slot(SkillSlot.Special), MarioSkills.Slide);
                     break;

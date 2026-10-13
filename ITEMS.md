@@ -110,7 +110,7 @@ which runs on the server. A client playing Mario in multiplayer doesn't get it y
 | Rose Buckler, Little Disciple, Weeping Fungus | while RoR2's sprint is on |
 | Red Whip | FLUDD, pounds, stomps and dives end out-of-combat (common `NativeBody.MarkCombat`) |
 | Wax Quail | a sprinting jump from the ground (normal, double, triple; not side or spin) carries further, by RoR2's formula (Mario) |
-| Hopoo Feather | a mid-air jump per stack, each the next of the double/triple chain, with RoR2's feather puff (Mario; libsms `Limits::air_jumps`) |
+| Hopoo Feather | a mid-air jump per stack, each the next of the double/triple chain, with RoR2's feather puff; during a dive it pulls out into a fresh jump (Mario; libsms `Limits::air_jumps`) |
 | Backup Magazine | +1 mid-air FLUDD use per stack |
 | Hardlight Afterburner | +2 full-strength pounds per stack, faster recovery |
 | Lysate Cell | +1 wet slide per stack, faster recharge, longer glide |

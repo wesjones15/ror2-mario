@@ -88,7 +88,7 @@ and the Air Pump, LT for the Ground Pound, B for the Wet Slide. On keyboard they
 before. The skills' names and descriptions on the character select screen give the same buttons.
 
 Holding LB locks onto an enemy (`Controls.LockOn`), as Olimar's RT does: the one nearest where the
-camera points, within 25 m and in line of sight, kept until you let go, on the ground or in the
+camera points, within `Controls.LockRange` (60 m) and in line of sight, kept until you let go, on the ground or in the
 air. FLUDD's head swivels and tilts to it, its water goes at it whichever way Mario faces or runs,
 and R sprays it; a standing Mario turns to face it. Pressing RB with LB held steps to the next
 target toward where the right stick points (right, with it centred), and doesn't switch nozzles.

@@ -335,6 +335,7 @@ namespace MarioTest
         {
             // An AI's Mario aims at the enemy his brain locked onto.
             camera &= Plugin.CameraAim.Value && input;
+            enemyLock.Range = Plugin.LockRange.Value;
             var locked = ai ? ai : enemyLock.Update(body, lockHeld && input, cycle, direction);
             lockShown = lockHeld && Local ? locked : null;
             if (!camera && !lockHeld)

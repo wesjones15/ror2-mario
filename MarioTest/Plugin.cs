@@ -89,6 +89,7 @@ namespace MarioTest
         internal static ConfigEntry<bool> WetSlideGlide;
         internal static ConfigEntry<bool> WetSlideOnWater, ShallowWetSlide;
         internal static ConfigEntry<bool> ShowLife, HideHealthBar, LockMarker, LockMarkerHealth;
+        internal static ConfigEntry<float> LockRange;
         internal static ConfigEntry<float> LifeX, LifeY, LifeScale, LockMarkerSize, LockMarkerSpin;
         internal static ConfigEntry<bool> KnockdownEnabled, KnockdownGetUpEarly, KnockdownInterruptsPound;
         internal static ConfigEntry<float> KnockdownThreshold;
@@ -178,6 +179,10 @@ namespace MarioTest
                 "Where the life meter's middle is down the screen, 0 top to 1 bottom. Negative: at RoR2's health bar.");
             LifeScale = Config.Bind("Hud", "LifeScale", 0.45f,
                 "The life meter's size; 1 is Sunshine's against the screen's height.");
+            LockRange = Config.Bind("Controls", "LockRange", 60f,
+                new ConfigDescription("How far away, in metres, the lock-on can pick an enemy (with a clear line): " +
+                    "far enough for flying ones. FLUDD's water still falls short of the far ones.",
+                    new AcceptableValueRange<float>(5f, 200f)));
             LockMarker = Config.Bind("Look", "LockMarker", true,
                 "While locked on (Controls.LockOn), a small turning sun made from Sunshine's life meter " +
                 "floats on the enemy, placed as Olimar's cursor is.");
@@ -317,7 +322,7 @@ namespace MarioTest
                 "with the camera (the stick side-steps).");
             LockOn = Config.Bind("Controls", "LockOn", true,
                 "While the left bumper (the utility key on keyboard) is held, lock onto the enemy " +
-                "nearest where the camera points (within 25 m, in line of sight) and aim FLUDD " +
+                "nearest where the camera points (within Controls.LockRange, 60 m, in line of sight) and aim FLUDD " +
                 "at it, so the spray trigger sprays it without Mario crouching. Right bumper " +
                 "then cycles targets. Needs CameraAim.");
             DeathFall = Config.Bind("Look", "DeathFall", true,

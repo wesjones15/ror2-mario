@@ -51,6 +51,8 @@ namespace MarioTest
         internal static ConfigEntry<float> PoundRadius;
         internal static ConfigEntry<float> DiveDamage;
         internal static ConfigEntry<float> WaterDamage;
+        internal static ConfigEntry<bool> FallDamageEnabled;
+        internal static ConfigEntry<float> FallSafeHeight, DiveSafeHeight, FallPerHeight, DiveFallMultiplier;
         internal static ConfigEntry<float> BurstMultiplier;
         internal static ConfigEntry<float> WaterProc;
         internal static ConfigEntry<bool> UnlimitedWater;
@@ -179,6 +181,16 @@ namespace MarioTest
             WaterDamage = Config.Bind("Damage", "WaterPerDrop", 0.035f,
                 "Each FLUDD drop that hits (not Sunshine's: its water mostly only stuns). The Spray " +
                 "fires about 93 a second, so 0.035 is about 330% a second on one enemy.");
+            FallDamageEnabled = Config.Bind("FallDamage", "Enabled", true,
+                "Take RoR2 fall damage after very long drops. Ground pounds are always safe.");
+            FallSafeHeight = Config.Bind("FallDamage", "SafeHeight", 40f,
+                "Safe drop in Mario body heights (160 sim units). Above the default rocket's apex (~34 heights).");
+            DiveSafeHeight = Config.Bind("FallDamage", "DiveSafeHeight", 80f,
+                "A dive landing fully protects drops up to this many Mario heights.");
+            FallPerHeight = Config.Bind("FallDamage", "FractionPerHeight", 0.0125f,
+                "Fraction of maximum health per height beyond the safe drop, capped at 0.9 before dive reduction.");
+            DiveFallMultiplier = Config.Bind("FallDamage", "DiveMultiplier", 0.5f,
+                "Damage multiplier beyond the dive's safe height (0 to 1).");
             BurstMultiplier = Config.Bind("Damage", "BurstMultiplier", 3f,
                 "A light press's short burst of the Spray (Fludd.SprayBursts) doesn't last, so each " +
                 "of its drops does this many times WaterPerDrop. A burst is about 28 drops, so 3 is " +

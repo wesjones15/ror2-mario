@@ -139,13 +139,26 @@ moving slide continues normally, an idle/hovering/hanging Mario stays put, and e
 pod, a teleport or death clears a partly elapsed timer. Check that the destination has solid
 ground and headroom and that FLUDD's nozzle and remaining water survive recovery.
 
+### Fall damage
+
+Mario takes fall damage only beyond 40 body heights; a full default rocket reaches about
+34.7 heights, so returning to its launch floor is safe. Ground pounds are always safe.
+A dive landing fully protects drops through 80 heights and halves damage beyond that.
+Normal damage grows by 1.25% maximum health per extra height, capped at 90% before dive
+reduction. Water, Yoshi and slow landings also protect him. RoR2 handles fall immunity items,
+armor and Frailty/Eclipse modifiers. Tune these rules with `FallDamage.*`.
+
+Headless checks: `dotnet run --project tests/FallDamageCheck -c Release` and libsms's
+`cargo test -p libsms --test scenarios fall_impact`. In game, verify a full rocket return,
+an extreme normal fall, a dive from the same height, and a ground pound; repeat with
+H3AD-5T v2 and Frailty/Eclipse when relevant. Multiplayer remains untested.
+
 ### Not there yet
 
 - Other players see Commando. Only the player who's Mario sees and hears him; the pose and
   animation aren't networked yet. Mario's hits are the server's: a client playing him deals no
   damage yet.
 - Yoshi.
-- RoR2's fall damage doesn't hurt Mario.
 - The skill icons are Commando's.
 - Multiplayer is untested. Every player needs the plugin, and anyone playing Mario needs their
   own extracted `assets/`.

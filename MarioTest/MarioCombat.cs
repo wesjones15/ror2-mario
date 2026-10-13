@@ -42,6 +42,7 @@ namespace MarioTest
         static readonly Dictionary<HealthComponent, (int drops, float weight, Vector3 sum)> water =
             new Dictionary<HealthComponent, (int, float, Vector3)>();
         static bool pounded, superPound;
+        static float fallFraction;
         static Vector3 poundAt;
         // The landing's drop (metres); where the pound's fall began (world Y), and whether it
         // has turned super.
@@ -66,6 +67,7 @@ namespace MarioTest
             blows.Clear();
             water.Clear();
             pounded = false;
+            fallFraction = 0f;
         }
 
         /// Follows Mario's ground pound between steps.
@@ -131,6 +133,16 @@ namespace MarioTest
             // half second while it keeps hitting.
             if (water.Count > 0 && NetworkServer.active)
                 body.GetComponent<NativeBody>()?.PulsePrimary(Plugin.ShurikenInterval.Value);
+            if (fallFraction > 0f && NetworkServer.active && GlobalEventManager.instance
+                && body.healthComponent && body.healthComponent.alive)
+            {
+                // RoR2's OnCharacterHitGroundServer converts excess vertical speed to
+                // max-health damage: (abs(v.y) - jumpPower - 20) / 60. Supply our height
+                // policy through that entry point so fall boots, armor, Frailty and
+                // Eclipse's lethal falls retain the game's normal behavior.
+                float speed = body.jumpPower + 20f + fallFraction * 60f;
+                GlobalEventManager.instance.OnCharacterHitGroundServer(body, Vector3.down * speed);
+            }
             blows.Clear();
             water.Clear();
         }
@@ -169,6 +181,12 @@ namespace MarioTest
             MarioItems.OnEvent(ref e);
             switch ((Native.EventKind)e.kind)
             {
+                case Native.EventKind.FallImpact:
+                    if (Plugin.FallDamageEnabled.Value)
+                        fallFraction = Mathf.Max(fallFraction, MarioFallDamage.Fraction(e.value / 160f, e.arg,
+                            Plugin.FallSafeHeight.Value, Plugin.DiveSafeHeight.Value,
+                            Plugin.FallPerHeight.Value, Plugin.DiveFallMultiplier.Value));
+                    break;
                 case Native.EventKind.EnemyHit:
                     if (byId.TryGetValue((uint)e.arg, out var hc)) blows.Add((hc, (int)e.value));
                     break;

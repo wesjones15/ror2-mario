@@ -4,7 +4,7 @@ using Ror2Common;
 
 namespace MarioTest
 {
-    // The libsms C ABI (libsms/crates/libsms-ffi, SMS_ABI_VERSION 9). Layouts mirror the
+    // The libsms C ABI (libsms/crates/libsms-ffi, SMS_ABI_VERSION 11). Layouts mirror the
     // #[repr(C)] structs there field for field; Load checks them with sms_struct_sizes. Sim
     // units: about 1 cm, Y up, a facing angle a (i16, 0x10000 per turn) points along
     // (sin a, 0, cos a). The view's structs are ror2-common's (ViewModelInfo...), which
@@ -71,6 +71,8 @@ namespace MarioTest
             WetSlide = 17,
             // As WaterHit, by a drop of a light press's burst.
             BurstHit = 18,
+            /// value: fall in sim units; arg bits 1 dive, 2 ground pound, 4 cushioned.
+            FallImpact = 19,
         }
 
         /// Jump kinds (Event.arg of Jump).

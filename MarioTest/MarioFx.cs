@@ -24,6 +24,7 @@ namespace MarioTest
         readonly Dictionary<long, Material> materials = new Dictionary<long, Material>();
         Texture2D[] textures = new Texture2D[0];
         uint[] versions = new uint[0];
+        bool[] worldSpace = new bool[0];
         byte[] scratch = new byte[0];
 
         MarioFx(GameObject go, Mesh mesh, MeshRenderer renderer)
@@ -113,23 +114,34 @@ namespace MarioTest
         }
 
         /// This frame's effects (after sms_view_update): sim units times `scale`, shifted by
-        /// `offset` (where Mario is drawn against where the sim has him).
+        /// `offset` for attached effects. Smoke stays at its emitted world position.
         public unsafe void Update(IntPtr view, float scale, Vector3 offset)
         {
             if (Native.sms_view_fx_info(view, out var info) == 0 || info.batches == 0) { Hide(); return; }
             var v = (Native.FxVertex*)Native.sms_view_fx_vertices(view, out uint count);
             var b = (Native.FxBatch*)Native.sms_view_fx_batches(view, out uint batches);
             if (v == null || b == null || batches == 0) { Hide(); return; }
+            if (worldSpace.Length != info.textures)
+            {
+                worldSpace = new bool[info.textures];
+                for (uint t = 0; t < info.textures; t++)
+                    worldSpace[t] = Native.sms_view_fx_texture_world_space(view, t) != 0;
+            }
 
             verts.Clear();
             uvs.Clear();
             colors.Clear();
             shown.Clear();
             mesh.Clear();
+            uint vertexBatch = 0;
             for (uint i = 0; i < count; i++)
             {
+                while (vertexBatch + 1 < batches && i >= b[vertexBatch].first_vertex + b[vertexBatch].vertex_count)
+                    vertexBatch++;
+                uint texture = b[vertexBatch].texture;
+                var shift = texture < worldSpace.Length && worldSpace[texture] ? Vector3.zero : offset;
                 var w = v[i];
-                verts.Add(new Vector3(w.pos.x, w.pos.y, w.pos.z) * scale + offset);
+                verts.Add(new Vector3(w.pos.x, w.pos.y, w.pos.z) * scale + shift);
                 uvs.Add(new Vector2(w.u, w.v));
                 colors.Add(new Color(w.r, w.g, w.b, w.a));
             }

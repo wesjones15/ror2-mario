@@ -63,7 +63,7 @@ Controls, on a gamepad, by button position (Sunshine's layout, whatever your RoR
 | A                | A        | jumps, wall kicks                               |
 | B                | B        | dive, punch                                     |
 | right trigger    | R        | spray; all the way in plants Mario and sprays   |
-| left trigger     | L        | ground pound (in the air), crouch; aims FLUDD   |
+| left trigger     | L        | ground pound (in the air), crouch; locks on, aims FLUDD |
 | right bumper     | X        | switch nozzle: Spray, Hover, Rocket, Turbo      |
 | D-pad down       |          | fill FLUDD's tank (`Fludd.DpadRefill`)          |
 | X, Y             |          | RoR2's interact and equipment, as ever          |
@@ -82,6 +82,11 @@ keyboard a tap of the primary is a light press and holding it sprays at full
 Holding L is Sunshine's L-button camera (`Controls.CameraAim`): FLUDD points where the camera
 looks (at whatever is under the crosshair), and Mario, crouching, turns with the camera while
 the stick side-steps.
+
+Holding L also locks onto an enemy (`Controls.LockOn`), as Olimar's RT does: the one nearest where
+the camera points, within 25 m and in line of sight, kept until you let go. FLUDD then points at it
+(and a crouching Mario turns to it), so the spray trigger sprays it; with no enemy in reach it
+points at the crosshair as before.
 
 ### Build and install
 

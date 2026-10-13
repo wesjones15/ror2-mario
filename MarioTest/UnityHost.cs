@@ -58,6 +58,31 @@ namespace MarioTest
             return new Vector3(Mathf.Sin(a), 0f, Mathf.Cos(a));
         }
 
+        /// A supported, clear standing position for host recovery, in metres. The capsule
+        /// uses libsms's 50-unit wall radius and 160-unit height (Mario::WALL_RADIUS/HEIGHT).
+        public static bool RecoveryGround(Vector3 sample, float rise, float drop, out Vector3 feet)
+        {
+            feet = default;
+            if (!WorldProbe.Ground(sample + Vector3.up * rise, rise + drop, out var hit)
+                || hit.normal.y < 0.7f) return false;
+            float height = MarioHeight * Scale;
+            float radius = 50f * Scale;
+            float skin = Mathf.Max(0.02f, height * 0.02f);
+            feet = hit.point + Vector3.up * skin;
+            if (Physics.CheckCapsule(feet + Vector3.up * radius,
+                feet + Vector3.up * (height - radius), radius, WorldProbe.Mask,
+                QueryTriggerInteraction.Ignore)) return false;
+            // A centre ray alone could put Mario on a narrow edge or the corner of a door.
+            for (int i = 0; i < 4; i++)
+            {
+                var offset = (i < 2 ? Vector3.right : Vector3.forward) * (i % 2 == 0 ? radius : -radius);
+                if (!WorldProbe.Ground(feet + offset + Vector3.up * (height * 0.1f),
+                    height * 0.2f + skin, out var support) || support.normal.y < 0.7f)
+                    return false;
+            }
+            return true;
+        }
+
         static byte Ground(IntPtr user, ref Native.Vec3 pos, out Native.GroundHit hit)
         {
             hit = default;

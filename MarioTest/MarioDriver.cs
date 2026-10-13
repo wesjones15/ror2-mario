@@ -55,6 +55,7 @@ namespace MarioTest
         CameraPivot pivot;
         readonly MarioPad pad = new MarioPad();
         readonly MarioFlames flames = new MarioFlames();
+        readonly MarioUnstuck unstuck = new MarioUnstuck();
         // The sim's ground pound stage (Native.State.pounding).
         byte pounding;
         LocalUser localUser;
@@ -156,6 +157,22 @@ namespace MarioTest
             MarioCombat.End();
             Native.sms_sim_state(sim, out var st);
             Items.End(sim, st);
+            string status = NativeLib.Utf8(Native.sms_sim_status_name(sim));
+            if (unstuck.Step(UnityHost.ToUnity(st.pos),
+                MarioUnstuck.Fallen(status, st.on_ground != 0, st.vel.y), st.on_ground != 0,
+                native && native.Control() != NativeBody.Hold.None, Time.fixedDeltaTime,
+                UnityHost.MarioHeight * UnityHost.Scale, UnityHost.RecoveryGround, out var recovered))
+            {
+                transform.position = recovered + feetToOrigin;
+                Resync();
+                // Teleport clears velocity but preserves the old status. A zero-speed launch
+                // leaves the knock-down/slide so he can land and accept input again.
+                var rest = new Native.Vec3(0f, 0f, 0f);
+                Native.sms_sim_launch(sim, ref rest);
+                Native.sms_sim_state(sim, out st);
+                status = NativeLib.Utf8(Native.sms_sim_status_name(sim));
+                Plugin.Log.LogInfo($"Mario unstuck after 3 seconds at {recovered}");
+            }
             grounded = st.on_ground != 0;
             MarioCombat.Watch(st);
             pounding = st.pounding;
@@ -182,7 +199,6 @@ namespace MarioTest
 
             if (Plugin.LogStatus.Value)
             {
-                string status = NativeLib.Utf8(Native.sms_sim_status_name(sim));
                 if (status != lastStatus)
                 {
                     Plugin.Log.LogInfo($"{status} ({NativeLib.Utf8(Native.sms_sim_clip_name(sim))})");
@@ -273,6 +289,7 @@ namespace MarioTest
 
         void StopDriving()
         {
+            unstuck.Reset();
             if (driving)
             {
                 pivot?.Use(false);
@@ -349,6 +366,7 @@ namespace MarioTest
 
         void Resync()
         {
+            unstuck.Reset();
             var feet = UnityHost.ToSim(transform.position - feetToOrigin);
             Native.sms_sim_teleport(sim, ref feet);
             smoother.Reset();

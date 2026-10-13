@@ -161,6 +161,9 @@ Smoke stays where it was emitted when Mario jumps, and particle motion blends be
 updates for smooth drawing at the display's frame rate.
 Both normal and super ground-pound landing effects stay at the impact point when Mario
 bounces back up. The falling super pound's flames remain attached to Mario.
+Ground-pound smoke puffs also retain their birth height while spreading and fading,
+so their own upward velocity cannot lift the smoke during a rebound. This applies to both
+normal and super pound smoke, and both follow `Look.SmokeSpeed`.
 `Look.SmokeSpeed` defaults to 2 (twice the original smoke/dust playback speed); set it to 1
 for the disc's timing. This changes smoke only, including its motion and lifetime.
 

@@ -8,7 +8,7 @@ Targets the 2023 build (1.2.4.4, Unity 2019.4.37, BepInEx 5). It compiles agains
 
 ## MarioTest (first test character)
 
-A survivor called **Mario (test)**: Commando's body and HUD, moved by libsms instead of RoR2's
+A survivor called **Mario**: Commando's body and HUD, moved by libsms instead of RoR2's
 character controller, and drawn and heard as the disc's Mario.
 
 How it works:
@@ -106,7 +106,7 @@ game's own DLLs, so no NuGet game libraries are involved. Use `-RoR2Dir` for ano
 and `-NoInstall` to only build into `dist/`.
 
 The log, `BepInEx/LogOutput.log`, should show `libsms ABI 12`, `Mario is 1.xx m tall`, then
-`Mario (test) registered`.
+`Mario registered`.
 In a run it should show `Mario's sim started`, `Mario's view: 12 models, 26 textures; sound
 ...`, and one line per status change (turn that off with `Debug.LogStatus`).
 

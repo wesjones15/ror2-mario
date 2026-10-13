@@ -15,7 +15,7 @@ namespace MarioTest
     // the body moved by the sim instead of RoR2's character controller, and drawn and heard
     // as the disc's Mario. No R2API: content goes in through RoR2's own content-pack hook
     // (ror2-common's ContentProvider).
-    [BepInPlugin(Guid, "Mario (test)", "0.2.0")]
+    [BepInPlugin(Guid, "Mario", "0.2.0")]
     public class Plugin : BaseUnityPlugin
     {
         public const string Guid = "com.libsms.mariotest";
@@ -385,7 +385,7 @@ namespace MarioTest
             pack.bodyPrefabs.Add(new[] { body });
             pack.survivorDefs.Add(new[] { survivor });
             pack.entityStateTypes.Add(new[] { typeof(MarioMain) });
-            Log.LogInfo("Mario (test) registered");
+            Log.LogInfo("Mario registered");
         }
 
         /// Metres per Sunshine unit, from Look.Height or Commando's collision capsule.
@@ -407,7 +407,7 @@ namespace MarioTest
         {
             var lang = Language.currentLanguage;
             if (lang == null) return;
-            lang.SetStringByToken("MARIOTEST_BODY_NAME", "Mario (test)");
+            lang.SetStringByToken("MARIOTEST_BODY_NAME", "Mario");
             lang.SetStringByToken("MARIOTEST_BODY_SUBTITLE", "Super Mario Sunshine movement");
             lang.SetStringByToken("MARIOTEST_BODY_DESCRIPTION",
                 "Super Mario Sunshine's Mario, moved by libsms.\n\n" +

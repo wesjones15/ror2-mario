@@ -4,7 +4,7 @@ using Ror2Common;
 
 namespace MarioTest
 {
-    // The libsms C ABI (libsms/crates/libsms-ffi, SMS_ABI_VERSION 12). Layouts mirror the
+    // The libsms C ABI (libsms/crates/libsms-ffi, SMS_ABI_VERSION 13). Layouts mirror the
     // #[repr(C)] structs there field for field; Load checks them with sms_struct_sizes. Sim
     // units: about 1 cm, Y up, a facing angle a (i16, 0x10000 per turn) points along
     // (sin a, 0, cos a). The view's structs are ror2-common's (ViewModelInfo...), which
@@ -12,7 +12,7 @@ namespace MarioTest
     internal static class Native
     {
         public const string Dll = "sms";
-        public const uint AbiVersion = 12;
+        public const uint AbiVersion = 13;
 
         [StructLayout(LayoutKind.Sequential)]
         public struct Vec3
@@ -130,9 +130,13 @@ namespace MarioTest
             public float jump_height, jump_buffer, chain_grace;
             public float move_speed, spray_reach, stomp_bounce, rocket_height;
             public float pound_jump, stomp_jump, short_hop;
+            /// The belly slide's spray this many times as big (0 or 1: the game's).
+            public float slide_fx_scale;
             public byte enemy_push, cycle_nozzles, unlimited_water;
             /// 1: the Spray holds steady at the trigger's depth; 0: the game's bursts.
             public byte spray_steady;
+            /// 1: shallow water (RoR2's) wets the ground as FLUDD's water does.
+            public byte shallow_wet;
         }
 
         /// The host's own limits on FLUDD and the slide (libsms::Limits); zeroes are the game's.

@@ -87,7 +87,8 @@ namespace MarioTest
         internal static ConfigEntry<float> TriggerCurve;
         internal static ConfigEntry<float> LightTapSeconds;
         internal static ConfigEntry<bool> WetSlideGlide;
-        internal static ConfigEntry<bool> WetSlideOnWater;
+        internal static ConfigEntry<bool> WetSlideOnWater, ShallowWetSlide;
+        internal static ConfigEntry<float> SlideSprayScale;
         internal static ConfigEntry<bool> DeathFall;
         internal static ConfigEntry<float> DeathFallSeconds;
         internal static ConfigEntry<bool> GummyClones;
@@ -224,6 +225,12 @@ namespace MarioTest
             WetSlideOnWater = Config.Bind("Items", "WetSlideOnWater", true,
                 "A belly slide over water FLUDD sprayed glides for free, as in Sunshine (a light " +
                 "press of spray drops some just ahead). Off: that takes a charge too.");
+            ShallowWetSlide = Config.Bind("Sim", "ShallowWetSlide", true,
+                "Standing in shallow water (anything RoR2 builds as water) wets the ground like " +
+                "FLUDD's water does, so a belly slide there glides wet (free with WetSlideOnWater, " +
+                "else on a charge) instead of dragging as Sunshine's water does.");
+            SlideSprayScale = Config.Bind("Look", "SlideSprayScale", 1.4f,
+                "The wet belly slide's spray (Sunshine's own) is this many times as big as the game's.");
             WetSlideGlide = Config.Bind("Items", "WetSlideGlide", true,
                 "A wet slide keeps its speed as if the stick were held forward (pull back to brake). " +
                 "Off: Sunshine's, where it only carries on while you hold forward.");

@@ -137,6 +137,8 @@ namespace MarioTest
             public byte spray_steady;
             /// 1: shallow water (RoR2's) wets the ground as FLUDD's water does.
             public byte shallow_wet;
+            /// 1: a wet belly slide also throws libsms's old stand-in splashes, over the game's spray.
+            public byte slide_splashes;
         }
 
         /// The host's own limits on FLUDD and the slide (libsms::Limits); zeroes are the game's.

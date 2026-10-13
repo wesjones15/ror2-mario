@@ -190,7 +190,9 @@ Shallow water (anything RoR2 builds as water, see the log's `Water in this stage
 as FLUDD's water does (`Sim.ShallowWetSlide`): a belly slide there glides wet, free with
 `Items.WetSlideOnWater`, else on a charge, instead of dragging as Sunshine's water does. A run through
 water that barely covers his feet ripples at each step with the game's own `ms_m_watrun` effects
-(`Look.Effects`), and the wet slide's spray is `Look.SlideSprayScale` (1.4) times Sunshine's size.
+(`Look.Effects`), and the wet slide's spray is `Look.SlideSprayScale` (1.4) times Sunshine's size. The extra splashes
+libsms used to throw during a wet slide, before the game's spray was ported, are off
+(`Look.SlideSplashes`); FLUDD's own water is unchanged.
 
 Mario's movement effects come from the disc's particle files: starting/skidding/landing dust,
 wall-slide and wall-kick dust, bump stars, the ground-pound smear and landing burst,

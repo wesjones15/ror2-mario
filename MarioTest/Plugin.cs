@@ -89,6 +89,7 @@ namespace MarioTest
         internal static ConfigEntry<bool> WetSlideGlide;
         internal static ConfigEntry<bool> WetSlideOnWater, ShallowWetSlide;
         internal static ConfigEntry<float> SlideSprayScale;
+        internal static ConfigEntry<bool> SlideSplashes;
         internal static ConfigEntry<bool> DeathFall;
         internal static ConfigEntry<float> DeathFallSeconds;
         internal static ConfigEntry<bool> GummyClones;
@@ -229,6 +230,9 @@ namespace MarioTest
                 "Standing in shallow water (anything RoR2 builds as water) wets the ground like " +
                 "FLUDD's water does, so a belly slide there glides wet (free with WetSlideOnWater, " +
                 "else on a charge) instead of dragging as Sunshine's water does.");
+            SlideSplashes = Config.Bind("Look", "SlideSplashes", false,
+                "A wet belly slide also throws libsms's old stand-in splashes (a home-made effect, " +
+                "drawn like FLUDD's water) on top of Sunshine's own slide spray. Off: only the game's.");
             SlideSprayScale = Config.Bind("Look", "SlideSprayScale", 1.4f,
                 "The wet belly slide's spray (Sunshine's own) is this many times as big as the game's.");
             WetSlideGlide = Config.Bind("Items", "WetSlideGlide", true,

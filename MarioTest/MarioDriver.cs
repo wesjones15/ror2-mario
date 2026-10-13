@@ -446,6 +446,7 @@ namespace MarioTest
                 // The AI holds its primary down: a steady stream for clones.
                 spray_steady = (byte)(Plugin.SprayBursts.Value && Local ? 0 : 1),
                 shallow_wet = (byte)(Plugin.ShallowWetSlide.Value ? 1 : 0),
+                slide_splashes = (byte)(Plugin.SlideSplashes.Value ? 1 : 0),
                 slide_fx_scale = Mathf.Max(0.1f, Plugin.SlideSprayScale.Value),
             };
             if (t.Equals(tuning)) return;

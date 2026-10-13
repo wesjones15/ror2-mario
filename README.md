@@ -35,6 +35,8 @@ How it works:
   stays Sunshine's.
 - ror2-common's `NativeBody` does what RoR2's motor would for the items: jump pads, knockback
   and Milky Chrysalis throw Mario, stuns and roots hold him, RoR2's sprint button sprints.
+  Jump pads preserve RoR2's complete ballistic trajectory and gravity until collision,
+  bypassing Sunshine's air braking and speed caps so elevated targets remain reachable.
 - `MarioMain` replaces Commando's main state, so RoR2's own movement, jumping and skills stay
   off.
 - `MarioView` loads libsms's view (`sms_view_*`) the first time the player's Mario starts.
@@ -95,7 +97,7 @@ pointing at `libsms/assets`, into `<game>/BepInEx/plugins/MarioTest/`. It compil
 game's own DLLs, so no NuGet game libraries are involved. Use `-RoR2Dir` for another install
 and `-NoInstall` to only build into `dist/`.
 
-The log, `BepInEx/LogOutput.log`, should show `libsms ABI 11`, `Mario is 1.xx m tall`, then
+The log, `BepInEx/LogOutput.log`, should show `libsms ABI 12`, `Mario is 1.xx m tall`, then
 `Mario (test) registered`.
 In a run it should show `Mario's sim started`, `Mario's view: 12 models, 26 textures; sound
 ...`, and one line per status change (turn that off with `Debug.LogStatus`).

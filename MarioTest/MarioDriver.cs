@@ -135,7 +135,9 @@ namespace MarioTest
             if (native && native.TakeExternalVelocity(out var thrown, 2f) && Plugin.ExternalForces.Value)
             {
                 var v = UnityHost.ToSim(thrown / 30f);
-                Native.sms_sim_launch(sim, ref v);
+                if (native.JumpPadLaunch)
+                    Native.sms_sim_launch_pad(sim, ref v, Mathf.Abs(Physics.gravity.y) / (UnityHost.Scale * 30f * 120f));
+                else Native.sms_sim_launch(sim, ref v);
             }
             var hold = native && Plugin.CrowdControl.Value ? native.Control() : NativeBody.Hold.None;
             var move = hold == NativeBody.Hold.None ? input.moveVector : Vector3.zero;
@@ -186,7 +188,11 @@ namespace MarioTest
             smoother.Stepped(UnityHost.ToUnity(st.pos) + feetToOrigin);
 
             // mVel is per 30 Hz frame. RoR2 reads these for animation, camera and AI.
-            if (native) native.WroteVelocity(UnityHost.ToUnity(st.vel) * 30f);
+            if (native)
+            {
+                native.WroteVelocity(UnityHost.ToUnity(st.vel) * 30f);
+                if (grounded) native.Landed();
+            }
             else motor.velocity = UnityHost.ToUnity(st.vel) * 30f;
             motor.Motor.GroundingStatus.IsStableOnGround = st.on_ground != 0;
             motor.Motor.GroundingStatus.FoundAnyGround = st.on_ground != 0;

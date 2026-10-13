@@ -137,7 +137,10 @@ and crowd control do not count toward the timer. External teleports clear the ti
 remembered ground. Recovery preserves health, items, nozzle and tank; the log reports
 `Mario unstuck after 3 seconds`.
 
-The detector/search regression check runs without the game:
+The detector/search is ror2-common's `Unstuck` (Mario supplies which of his statuses count as
+fallen, `MarioUnstuck.Fallen`, and the ground probe). Its regression check runs without the game
+(`dotnet run --project ../ror2-common/tests/UnstuckCheck/UnstuckCheck.csproj -c Release`); the
+status check is here:
 
 ```
 dotnet run --project tests/UnstuckCheck/UnstuckCheck.csproj -c Release

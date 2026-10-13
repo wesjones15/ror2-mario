@@ -55,7 +55,7 @@ namespace MarioTest
         CameraPivot pivot;
         readonly MarioPad pad = new MarioPad();
         readonly MarioFlames flames = new MarioFlames();
-        readonly MarioUnstuck unstuck = new MarioUnstuck();
+        readonly Unstuck unstuck = new Unstuck();
         readonly EnemyLock enemyLock = new EnemyLock();
         readonly MarioBrain brain = new MarioBrain();
         // The sim's ground pound stage (Native.State.pounding).

@@ -188,9 +188,7 @@ Offline / friends-only co-op only.
 
 Shallow water (anything RoR2 builds as water, see the log's `Water in this stage`) wets the ground
 as FLUDD's water does (`Sim.ShallowWetSlide`): a belly slide there glides wet, free with
-`Items.WetSlideOnWater`, else on a charge, instead of dragging as Sunshine's water does. A run through
-water that barely covers his feet ripples at each step with the game's own `ms_m_watrun` effects
-(`Look.Effects`), and the wet slide's spray is `Look.SlideSprayScale` (1.4) times Sunshine's size. The extra splashes
+`Items.WetSlideOnWater`, else on a charge, instead of dragging as Sunshine's water does. The wet slide's spray is `Look.SlideSprayScale` (1.4) times Sunshine's size. The extra splashes
 libsms used to throw during a wet slide, before the game's spray was ported, are off
 (`Look.SlideSplashes`); FLUDD's own water is unchanged.
 
@@ -218,4 +216,4 @@ the log confirms the material loaded with `FLUDD's water refracts`.
 
 ## Arrival music
 
-Mario plays approximately five opening beats (2.5 seconds) of Delfino Plaza once a run, as he leaves the pod on the first stage; later stages and respawns stay quiet. When he dies, Sunshine's miss jingle plays (about 4.5 seconds). SpawnMusic.Enabled, SpawnMusic.DeathSting and SpawnMusic.Volume control them; master and music volume also apply. The build synthesizes spawn.wav and death.wav from your extracted disc audio into the ignored dist folder. Rebuild after extracting assets if a clip is missing. No music data is committed.
+Mario plays approximately five opening beats (2.5 seconds) of Delfino Plaza once a run, as he leaves the pod on the first stage; later stages and respawns stay quiet. When he dies, Sunshine's miss jingle plays (about 4.5 seconds). SpawnMusic.Enabled, SpawnMusic.DeathSting, SpawnMusic.Volume and SpawnMusic.DeathVolume (1.4, extra gain for the death sting) control them; master and music volume also apply. The build synthesizes spawn.wav and death.wav from your extracted disc audio into the ignored dist folder. Rebuild after extracting assets if a clip is missing. No music data is committed.

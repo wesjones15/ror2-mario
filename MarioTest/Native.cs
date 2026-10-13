@@ -4,7 +4,7 @@ using Ror2Common;
 
 namespace MarioTest
 {
-    // The libsms C ABI (libsms/crates/libsms-ffi, SMS_ABI_VERSION 14). Layouts mirror the
+    // The libsms C ABI (libsms/crates/libsms-ffi, SMS_ABI_VERSION 15). Layouts mirror the
     // #[repr(C)] structs there field for field; Load checks them with sms_struct_sizes. Sim
     // units: about 1 cm, Y up, a facing angle a (i16, 0x10000 per turn) points along
     // (sin a, 0, cos a). The view's structs are ror2-common's (ViewModelInfo...), which
@@ -12,7 +12,7 @@ namespace MarioTest
     internal static class Native
     {
         public const string Dll = "sms";
-        public const uint AbiVersion = 14;
+        public const uint AbiVersion = 15;
 
         [StructLayout(LayoutKind.Sequential)]
         public struct Vec3
@@ -284,6 +284,11 @@ namespace MarioTest
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern byte sms_view_fx_texture(IntPtr view, uint which, out ViewTexture info, [Out] byte[] rgba, uint len);
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern byte sms_view_hud_info(IntPtr view, out HudInfo info);
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern byte sms_view_hud_pixels(IntPtr view, [Out] byte[] rgba, uint len);
+        /// Mario's life meter `which` (0 the HUD's, with the splash and text; 1 the sun alone, ten rays):
+        /// health and shield as shares of the meter, then its place and size and its pixels as the water gauge's.
+        [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern byte sms_view_life_set(IntPtr view, byte which, float health, float shield);
+        [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern byte sms_view_life_info(IntPtr view, byte which, out HudInfo info);
+        [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern byte sms_view_life_pixels(IntPtr view, byte which, [Out] byte[] rgba, uint len);
 
         /// Loads sms.dll from the plugin folder and checks it speaks this plugin's ABI with the
         /// same struct layouts.

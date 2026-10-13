@@ -192,6 +192,19 @@ as FLUDD's water does (`Sim.ShallowWetSlide`): a belly slide there glides wet, f
 libsms used to throw during a wet slide, before the game's spray was ported, are off
 (`Look.SlideSplashes`); FLUDD's own water is unchanged.
 
+Sunshine's life meter (`Hud.LifeMeter`) shows Mario's health in place of RoR2's health bar: the
+Shine Sprite sun from the disc, a hub and rays in a ring of eight, lit in whole rays by his health as
+a share of his full health and shield (RoR2's own values are untouched), the shield's rays after them
+in the cyan of Sunshine's air meter. The hub dims to grey under half, as in the game. RoR2's bars
+hide, its numbers stay (`Hud.HideHealthBar`); the meter sits over the left of RoR2's health bar,
+or where `Hud.LifeX`/`LifeY` say, `Hud.LifeScale` big.
+
+While locked on (`Controls.LockOn`), the same sun, alone and with its empty top filled to ten rays,
+turns on the enemy (`Look.LockMarker`): ror2-common's `LockMarker` puts it where Olimar's cursor
+goes (on the line from Mario's chest to the middle of the enemy's hurt boxes, `margin` in front of
+the first it enters) and it faces Mario. Its rays are the enemy's health (`Look.LockMarkerHealth`),
+`LockMarkerSize` metres wide, `LockMarkerSpin` degrees a second.
+
 A powerful hit knocks Mario over (`Knockdown.*`): one that takes a quarter of his max health and
 shield (`Threshold`), apart from falls and damage over time, plays Sunshine's short fall away
 from the attacker (`damageExec`, libsms's `sms_sim_knock_down`) with his big hurt voice, but

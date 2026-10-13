@@ -77,6 +77,9 @@ namespace MarioTest
 
         /// A local player plays this Mario (the view, sounds and HUD are theirs).
         bool Local => localUser != null;
+        // The lock-on marker, and the enemy the lock holds now (set by Aim, shown in LateUpdate).
+        readonly MarioLockMarker lockMarker = new MarioLockMarker();
+        CharacterBody lockShown;
         // This Mario has drawn with the player's view (MarioView.Player), so it's this one's to
         // hide and free.
         bool ownsView;
@@ -303,6 +306,14 @@ namespace MarioTest
                 feet + Vector3.up * (height * 0.5f), height);
             view.Draw(feet);
             ShowMario(true);
+            if (Local)
+            {
+                // The life meter for the player's health, and the marker on the locked enemy
+                // as seen from Mario's chest.
+                MarioLife.Update(view.Handle, health);
+                lockMarker.Update(view.Handle, lockShown,
+                    feet + Vector3.up * (height * 0.55f));
+            }
         }
 
         // Mario's models in place of Commando's, or back.
@@ -325,6 +336,7 @@ namespace MarioTest
             // An AI's Mario aims at the enemy his brain locked onto.
             camera &= Plugin.CameraAim.Value && input;
             var locked = ai ? ai : enemyLock.Update(body, lockHeld && input, cycle, direction);
+            lockShown = lockHeld && Local ? locked : null;
             if (!camera && !lockHeld)
             {
                 Native.sms_sim_set_aim(sim, 0, 0, 0f);
@@ -354,6 +366,10 @@ namespace MarioTest
                 pivot?.Use(false);
                 flames.Set(false, default, 0f);
                 pounding = 0;
+                // RoR2's own health bar and no marker while he's not Mario.
+                lockMarker.Hide();
+                lockShown = null;
+                if (Local) MarioLife.Update(IntPtr.Zero, null);
                 if (health && !health.alive)
                     Died();
                 else
@@ -487,7 +503,11 @@ namespace MarioTest
         // The water gauge, for the player playing this Mario.
         void OnGUI()
         {
-            if (driving && localUser != null) MarioHud.Draw();
+            if (driving && localUser != null)
+            {
+                MarioHud.Draw();
+                MarioLife.Draw();
+            }
         }
 
         /// The local player playing this body, if any (their pad and UI focus).
@@ -542,6 +562,7 @@ namespace MarioTest
             Items?.Dispose();
             pivot?.Use(false);
             flames.Set(false, default, 0f);
+            lockMarker.Dispose();
             if (sim != IntPtr.Zero && ownsView) MarioView.Reset();
             cloneView?.Dispose();
             cloneView = null;

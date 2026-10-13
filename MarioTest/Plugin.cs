@@ -88,6 +88,8 @@ namespace MarioTest
         internal static ConfigEntry<float> LightTapSeconds;
         internal static ConfigEntry<bool> WetSlideGlide;
         internal static ConfigEntry<bool> WetSlideOnWater, ShallowWetSlide;
+        internal static ConfigEntry<bool> ShowLife, HideHealthBar, LockMarker, LockMarkerHealth;
+        internal static ConfigEntry<float> LifeX, LifeY, LifeScale, LockMarkerSize, LockMarkerSpin;
         internal static ConfigEntry<bool> KnockdownEnabled, KnockdownGetUpEarly, KnockdownInterruptsPound;
         internal static ConfigEntry<float> KnockdownThreshold;
         internal static ConfigEntry<float> SlideSprayScale;
@@ -164,6 +166,25 @@ namespace MarioTest
                 "the bottom right, where RoR2 puts its skills).");
             TankScale = Config.Bind("Hud", "TankScale", 0.8f,
                 "The tank's size; 1 is Sunshine's against the screen's height.");
+            ShowLife = Config.Bind("Hud", "LifeMeter", true,
+                "Show Sunshine's life meter (the Shine Sprite sun, from the disc) for Mario's health: " +
+                "whole rays of eight, the shield's after them in cyan. RoR2's own values are unchanged.");
+            HideHealthBar = Config.Bind("Hud", "HideHealthBar", true,
+                "Hide RoR2's health bar (its numbers stay) while the life meter shows.");
+            LifeX = Config.Bind("Hud", "LifeX", -1f,
+                "Where the life meter's middle is across the screen, 0 left to 1 right. Negative: over the " +
+                "left end of RoR2's health bar.");
+            LifeY = Config.Bind("Hud", "LifeY", -1f,
+                "Where the life meter's middle is down the screen, 0 top to 1 bottom. Negative: at RoR2's health bar.");
+            LifeScale = Config.Bind("Hud", "LifeScale", 0.45f,
+                "The life meter's size; 1 is Sunshine's against the screen's height.");
+            LockMarker = Config.Bind("Look", "LockMarker", true,
+                "While locked on (Controls.LockOn), a small turning sun made from Sunshine's life meter " +
+                "floats on the enemy, placed as Olimar's cursor is.");
+            LockMarkerHealth = Config.Bind("Look", "LockMarkerHealth", true,
+                "The marker's rays are the enemy's health, whole rays of ten. Off: always whole.");
+            LockMarkerSize = Config.Bind("Look", "LockMarkerSize", 0.6f, "The marker's width in metres.");
+            LockMarkerSpin = Config.Bind("Look", "LockMarkerSpin", 150f, "How fast the marker turns, degrees a second.");
             SprayReach = Config.Bind("Fludd", "SprayReach", 2f,
                 "The Spray nozzle's water flies about this many times as far as in Sunshine " +
                 "(1: about 6 Marios).");

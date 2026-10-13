@@ -178,6 +178,7 @@ namespace MarioTest
             player = null;
             v?.Dispose();
             MarioHud.Reset();
+            MarioLife.Reset();
             tried = false;
         }
     }

@@ -1,7 +1,6 @@
 using System;
 using Ror2Common;
 using UnityEngine;
-using UnityEngine.AddressableAssets;
 
 namespace MarioTest
 {
@@ -65,27 +64,6 @@ namespace MarioTest
             return player;
         }
 
-        // The material RoR2 draws Goobo Jr.'s clones with (a DLC1 addressable).
-        const string GummyKey = "RoR2/DLC1/GummyClone/matGummyClone.mat";
-        static Material gummy;
-        static bool gummyTried;
-
-        /// RoR2's gummy clone material, or null if the game won't give it.
-        static Material Gummy()
-        {
-            if (gummyTried) return gummy;
-            gummyTried = true;
-            try { gummy = Addressables.LoadAssetAsync<Material>(GummyKey).WaitForCompletion(); }
-            catch (Exception e) { Plugin.Log.LogWarning($"matGummyClone (addressable): {e.Message}"); }
-            if (!gummy)
-            {
-                try { gummy = RoR2.LegacyResourcesAPI.Load<Material>("Materials/matGummyClone"); }
-                catch (Exception e) { Plugin.Log.LogWarning($"matGummyClone (legacy): {e.Message}"); }
-            }
-            if (!gummy) Plugin.Log.LogWarning("RoR2's gummy clone material didn't load; clones are drawn in Mario's own textures");
-            return gummy;
-        }
-
         /// A silent view in RoR2's gummy clone material (Mario's own colours if that won't load),
         /// for a Mario no player controls; null if the view can't load or drawing is off.
         public static MarioView Clone()
@@ -97,7 +75,7 @@ namespace MarioTest
                 Plugin.Log.LogWarning("The clone's view didn't load; the clone stays Commando");
                 return null;
             }
-            return new MarioView(v, false, "GooboMario", Gummy());
+            return new MarioView(v, false, "GooboMario", GummyClone.Material());
         }
 
         static IntPtr Open(bool sound, byte look)

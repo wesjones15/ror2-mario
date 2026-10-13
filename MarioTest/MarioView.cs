@@ -123,6 +123,7 @@ namespace MarioTest
             }
             Native.sms_view_set_fx(view, (byte)(Plugin.Effects.Value ? 1 : 0),
                 (byte)(Plugin.PoundFlames.Value ? 1 : 0));
+            Native.sms_view_set_smoke_speed(view, Plugin.SmokeSpeed.Value);
             Native.sms_view_update(view, sim, ref frame);
             water?.Update(view, UnityHost.Scale);
             if (hud) MarioHud.Update(view);

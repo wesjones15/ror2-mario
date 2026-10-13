@@ -136,6 +136,10 @@ wall-slide and wall-kick dust, bump stars, the ground-pound smear and landing bu
 spin-jump swirls, belly-slide smoke/spray and enemy-stomp bursts.
 `Look.Effects` controls these independently of `Look.PoundFlames`, which controls the super
 pound's flames and fiery landing. Both default to on and work with sound disabled.
+Smoke stays where it was emitted when Mario jumps, and particle motion blends between
+updates for smooth drawing at the display's frame rate.
+`Look.SmokeSpeed` defaults to 2 (twice the original smoke/dust playback speed); set it to 1
+for the disc's timing. This changes smoke only, including its motion and lifetime.
 
 ## Arrival music
 

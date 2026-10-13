@@ -44,6 +44,7 @@ namespace MarioTest
         internal static ConfigEntry<bool> SuperPoundIgnites;
         internal static ConfigEntry<bool> PoundFlames;
         internal static ConfigEntry<bool> Effects;
+        internal static ConfigEntry<float> SmokeSpeed;
         internal static ConfigEntry<float> StompDamage;
         internal static ConfigEntry<float> PoundDamage;
         internal static ConfigEntry<float> ShockDamage;
@@ -283,6 +284,9 @@ namespace MarioTest
             Effects = Config.Bind("Look", "Effects", true,
                 "Draw Sunshine's movement dust, bump stars, ground-pound smear, spin-jump swirl, " +
                 "belly-slide smoke/spray and stomp bursts from the disc. PoundFlames controls fire separately.");
+            SmokeSpeed = Config.Bind("Look", "SmokeSpeed", 2f,
+                "Smoke/dust playback speed (0.25-4, 1: Sunshine's original timing). " +
+                "2 makes puffs move and clear twice as fast. Other effects keep their original timing.");
             DrawModel = Config.Bind("Look", "DrawModel", true,
                 "Draw Mario with the disc's models (off: Commando's model).");
             Sound = Config.Bind("Sound", "Enabled", true,

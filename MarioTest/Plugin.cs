@@ -86,6 +86,8 @@ namespace MarioTest
         internal static ConfigEntry<bool> DeathFall;
         internal static ConfigEntry<float> DeathFallSeconds;
         internal static ConfigEntry<bool> ShadowClones;
+        internal static ConfigEntry<float> WaterOpacity;
+        internal static ConfigEntry<float> WaterRefraction;
 
         void Awake()
         {
@@ -256,6 +258,12 @@ namespace MarioTest
                 "When Mario dies he falls down as in Sunshine, with his voice, and lies there.");
             DeathFallSeconds = Config.Bind("Look", "DeathFallSeconds", 6f,
                 "How long the fallen Mario stays.");
+            WaterOpacity = Config.Bind("Look", "WaterOpacity", 0.12f,
+                "How much of the water's blue each FLUDD drop lays over what's behind it. Drops " +
+                "overlap and add up (Sunshine's whole stream mixes in 0.35).");
+            WaterRefraction = Config.Bind("Look", "WaterRefraction", 1f,
+                "FLUDD's water bends what's behind it, as in Sunshine, through RoR2's refraction " +
+                "effect: its strength (1: RoR2's own). 0: off (tint only).");
             ShadowClones = Config.Bind("Look", "ShadowClones", true,
                 "Marios no player controls (Goobo Jr.'s clone) are drawn as Mario in Shadow " +
                 "Mario's colours (from the disc). Off: Commando's model.");

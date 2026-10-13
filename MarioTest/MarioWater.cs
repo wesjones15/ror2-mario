@@ -2,33 +2,39 @@ using System;
 using System.Collections.Generic;
 using Ror2Common;
 using UnityEngine;
+using UnityEngine.AddressableAssets;
 using UnityEngine.Rendering;
 
 namespace MarioTest
 {
     // FLUDD's water in the scene: libsms's droplets and splashes (sms_view_water_*), rebuilt
-    // every frame as one world-space mesh of camera-facing quads. Drops are see-through in the
-    // water's tint over the disc's soft round mask; splashes are the disc's sprite, fading. The
-    // game melts overlapping drops into one refracting body; overlapping see-through drops are
-    // the cheap stand-in. Unlit (RoR2's Cloud Remap), like RoR2's own water effects.
+    // every frame as one world-space mesh of camera-facing quads. The game melts overlapping
+    // drops into one body that bends what's behind it and mixes in a little of its tint
+    // (`drawRefracAndSpec`, 0.35). Here each drop is drawn twice: through RoR2's own
+    // refraction material (matDistortion, a sphere's normals bending the screen behind it), and
+    // faintly in the water's tint over the disc's soft round mask (Look.WaterOpacity, low, as
+    // overlapping drops add up). Splashes are the disc's sprite, fading. Unlit (RoR2's Cloud
+    // Remap), like RoR2's own water effects.
     internal sealed class MarioWater : IDisposable
     {
         readonly GameObject go;
         readonly Mesh mesh;
-        readonly Material drops, splashes;
+        readonly Material drops, splashes, refraction;
         readonly Texture2D dropTex, splashTex;
         readonly List<Vector3> verts = new List<Vector3>();
         readonly List<Vector2> uvs = new List<Vector2>();
         readonly List<Color> colors = new List<Color>();
         readonly List<int> dropTris = new List<int>(), splashTris = new List<int>();
+        static readonly List<int> none = new List<int>();
 
-        MarioWater(GameObject go, Mesh mesh, Material drops, Material splashes,
+        MarioWater(GameObject go, Mesh mesh, Material drops, Material splashes, Material refraction,
             Texture2D dropTex, Texture2D splashTex)
         {
             this.go = go;
             this.mesh = mesh;
             this.drops = drops;
             this.splashes = splashes;
+            this.refraction = refraction;
             this.dropTex = dropTex;
             this.splashTex = splashTex;
         }
@@ -45,18 +51,51 @@ namespace MarioTest
                 Plugin.Log.LogWarning("FLUDD's water isn't drawn: no see-through shader");
                 return null;
             }
+            // The tint over the refraction, then the splashes.
+            drops.renderQueue = 3001;
+            splashes.renderQueue = 3002;
+            var refraction = Plugin.WaterRefraction.Value > 0f ? Refraction() : null;
             var go = new GameObject("Mario water");
             UnityEngine.Object.DontDestroyOnLoad(go);
             var mesh = new Mesh { name = "Mario water" };
             mesh.MarkDynamic();
-            mesh.subMeshCount = 2;
+            mesh.subMeshCount = 3;
             go.AddComponent<MeshFilter>().sharedMesh = mesh;
             var r = go.AddComponent<MeshRenderer>();
             r.shadowCastingMode = ShadowCastingMode.Off;
             r.receiveShadows = false;
-            r.sharedMaterials = new[] { drops, splashes };
+            r.sharedMaterials = refraction ? new[] { drops, splashes, refraction } : new[] { drops, splashes };
             go.SetActive(false);
-            return new MarioWater(go, mesh, drops, splashes, dropTex, splashTex);
+            return new MarioWater(go, mesh, drops, splashes, refraction, dropTex, splashTex);
+        }
+
+        const string DistortionKey = "RoR2/Base/Common/VFX/Distortion/matDistortion.mat";
+        static readonly int MagnitudeId = Shader.PropertyToID("_Magnitude");
+
+        // A copy of RoR2's refraction material, its strength scaled by Look.WaterRefraction;
+        // null (FLUDD's water is tint alone) if it won't load.
+        static Material Refraction()
+        {
+            try
+            {
+                var src = Addressables.LoadAssetAsync<Material>(DistortionKey).WaitForCompletion();
+                if (!src || !src.shader)
+                {
+                    Plugin.Log.LogWarning("FLUDD's water: RoR2's refraction material didn't load; tint only");
+                    return null;
+                }
+                var m = new Material(src) { name = "Mario water refraction" };
+                if (m.HasProperty(MagnitudeId))
+                    m.SetFloat(MagnitudeId, m.GetFloat(MagnitudeId) * Plugin.WaterRefraction.Value);
+                Plugin.Log.LogInfo($"FLUDD's water refracts ({m.shader.name}, queue {m.renderQueue}" +
+                    (m.HasProperty(MagnitudeId) ? $", magnitude {m.GetFloat(MagnitudeId):0.##})" : ")"));
+                return m;
+            }
+            catch (Exception e)
+            {
+                Plugin.Log.LogWarning($"FLUDD's water: no refraction ({e.Message}); tint only");
+                return null;
+            }
         }
 
         static Texture2D Load(IntPtr view, uint which, string name)
@@ -98,14 +137,17 @@ namespace MarioTest
             mesh.SetVertices(verts);
             mesh.SetUVs(0, uvs);
             mesh.SetColors(colors);
-            mesh.subMeshCount = 2;
+            mesh.subMeshCount = refraction ? 3 : 2;
             mesh.SetTriangles(dropTris, 0, false);
             mesh.SetTriangles(splashTris, 1, false);
+            // Water bends what's behind it; Yoshi's juice is near solid and doesn't.
+            if (refraction) mesh.SetTriangles(info.a > 0.5f ? none : dropTris, 2, false);
             mesh.RecalculateBounds();
 
             // The game mixes a little of its tint into what's behind the water (0.35) and shows
-            // juice nearly solid (0.75); see-through drops need more body than that to read.
-            drops.SetColor("_TintColor", new Color(info.r, info.g, info.b, info.a > 0.5f ? 0.9f : 0.6f));
+            // juice nearly solid (0.75). Overlapping drops add up, so each takes a little.
+            float a = info.a > 0.5f ? 0.9f : Mathf.Clamp01(Plugin.WaterOpacity.Value);
+            drops.SetColor("_TintColor", new Color(info.r, info.g, info.b, a));
             if (!go.activeSelf) go.SetActive(true);
         }
 
@@ -120,6 +162,7 @@ namespace MarioTest
             if (mesh) UnityEngine.Object.Destroy(mesh);
             if (drops) UnityEngine.Object.Destroy(drops);
             if (splashes) UnityEngine.Object.Destroy(splashes);
+            if (refraction) UnityEngine.Object.Destroy(refraction);
             if (dropTex) UnityEngine.Object.Destroy(dropTex);
             if (splashTex) UnityEngine.Object.Destroy(splashTex);
         }

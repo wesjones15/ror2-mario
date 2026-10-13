@@ -31,6 +31,8 @@
     <Reference Include="MonoMod.Utils"><HintPath>$(RoR2Dir)\BepInEx\core\MonoMod.Utils.dll</HintPath></Reference>
     <Reference Include="MonoMod.RuntimeDetour"><HintPath>$(RoR2Dir)\BepInEx\core\MonoMod.RuntimeDetour.dll</HintPath></Reference>
     <Reference Include="RoR2"><HintPath>$(Managed)\RoR2.dll</HintPath></Reference>
+    <Reference Include="Unity.Addressables"><HintPath>$(Managed)\Unity.Addressables.dll</HintPath></Reference>
+    <Reference Include="Unity.ResourceManager"><HintPath>$(Managed)\Unity.ResourceManager.dll</HintPath></Reference>
     <Reference Include="LegacyResourcesAPI"><HintPath>$(Managed)\LegacyResourcesAPI.dll</HintPath></Reference>
     <Reference Include="KinematicCharacterController"><HintPath>$(Managed)\KinematicCharacterController.dll</HintPath></Reference>
     <Reference Include="HGCSharpUtils"><HintPath>$(Managed)\HGCSharpUtils.dll</HintPath></Reference>

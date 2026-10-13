@@ -143,6 +143,13 @@ namespace MarioTest
                     Native.sms_sim_launch_pad(sim, ref v, Mathf.Abs(Physics.gravity.y) / (UnityHost.Scale * 30f * 120f));
                 else Native.sms_sim_launch(sim, ref v);
             }
+            if (knockFrom.HasValue)
+            {
+                var from = UnityHost.ToSim(knockFrom.Value);
+                knockFrom = null;
+                if ((pounding == 0 || Plugin.KnockdownInterruptsPound.Value) && Native.sms_sim_knock_down(sim, ref from, 0) != 0)
+                    Plugin.Log.LogInfo("Mario is knocked down by a powerful hit");
+            }
             var hold = native && Plugin.CrowdControl.Value ? native.Control() : NativeBody.Hold.None;
             var move = hold == NativeBody.Hold.None ? input.moveVector : Vector3.zero;
             // An AI's Mario presses his own buttons (MarioBrain).
@@ -358,6 +365,28 @@ namespace MarioTest
             driving = false;
         }
 
+        // A powerful hit's source, for the next step to knock Mario down from.
+        Vector3? knockFrom;
+
+        /// RoR2 landed a hit (server): one that takes Knockdown.Threshold of a Mario's health knocks him over
+        /// on his next step. Falls, damage over time and his own hits don't.
+        internal static void OnServerDamage(DamageReport report)
+        {
+            if (!Plugin.KnockdownEnabled.Value || report == null || !report.victimBody) return;
+            var info = report.damageInfo;
+            if (info == null || (info.damageType & (DamageType.FallDamage | DamageType.DoT)) != 0
+                || report.attackerBody == report.victimBody) return;
+            var hc = report.victim;
+            if (!hc || hc.fullCombinedHealth <= 0f
+                || report.damageDealt < Plugin.KnockdownThreshold.Value * hc.fullCombinedHealth) return;
+            foreach (var d in all)
+            {
+                if (!d || !d.driving || d.body != report.victimBody) continue;
+                d.knockFrom = report.attackerBody ? report.attackerBody.corePosition : info.position;
+                return;
+            }
+        }
+
         static readonly System.Collections.Generic.List<MarioDriver> all = new System.Collections.Generic.List<MarioDriver>();
 
         /// Before the run's audio is reset: a Mario who has just died (a game over comes the
@@ -448,6 +477,7 @@ namespace MarioTest
                 shallow_wet = (byte)(Plugin.ShallowWetSlide.Value ? 1 : 0),
                 slide_splashes = (byte)(Plugin.SlideSplashes.Value ? 1 : 0),
                 slide_fx_scale = Mathf.Max(0.1f, Plugin.SlideSprayScale.Value),
+                knockdown_cancel = (byte)(Plugin.KnockdownGetUpEarly.Value ? 1 : 0),
             };
             if (t.Equals(tuning)) return;
             tuning = t;

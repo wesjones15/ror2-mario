@@ -192,6 +192,15 @@ as FLUDD's water does (`Sim.ShallowWetSlide`): a belly slide there glides wet, f
 libsms used to throw during a wet slide, before the game's spray was ported, are off
 (`Look.SlideSplashes`); FLUDD's own water is unchanged.
 
+A powerful hit knocks Mario over (`Knockdown.*`): one that takes a quarter of his max health and
+shield (`Threshold`), apart from falls and damage over time, plays Sunshine's short fall away
+from the attacker (`damageExec`, libsms's `sms_sim_knock_down`) with his big hurt voice, but
+costs the sim's health nothing; RoR2 keeps his health. He isn't stunned: once the slide has nearly
+stopped, A, the stick, B, L or R gets him up at once (`GetUpEarly`). A dive isn't knocked out of,
+as in the game; a ground pound is, as in the game (`InterruptsPound` off keeps it going). A second
+knock-down can't land for a second. Hits are the server's, so a client playing Mario (untested)
+gets none.
+
 Mario's movement effects come from the disc's particle files: starting/skidding/landing dust,
 wall-slide and wall-kick dust, bump stars, the ground-pound smear and landing burst,
 spin-jump swirls, belly-slide smoke/spray and enemy-stomp bursts.
@@ -216,4 +225,4 @@ the log confirms the material loaded with `FLUDD's water refracts`.
 
 ## Arrival music
 
-Mario plays approximately five opening beats (2.5 seconds) of Delfino Plaza once a run, as he leaves the pod on the first stage; later stages and respawns stay quiet. When he dies, Sunshine's miss jingle plays (about 4.5 seconds). SpawnMusic.Enabled, SpawnMusic.DeathSting, SpawnMusic.Volume and SpawnMusic.DeathVolume (1.4, extra gain for the death sting) control them; master and music volume also apply. The build synthesizes spawn.wav and death.wav from your extracted disc audio into the ignored dist folder. Rebuild after extracting assets if a clip is missing. No music data is committed.
+Mario plays approximately five opening beats (2.5 seconds) of Delfino Plaza once a run, as he leaves the pod on the first stage; later stages and respawns stay quiet. When he dies, Sunshine's miss jingle plays (about 4.5 seconds). SpawnMusic.Enabled, SpawnMusic.DeathSting, SpawnMusic.Volume and SpawnMusic.DeathVolume (1.15, extra gain for the death sting) control them; master and music volume also apply. The build synthesizes spawn.wav and death.wav from your extracted disc audio into the ignored dist folder. Rebuild after extracting assets if a clip is missing. No music data is committed.

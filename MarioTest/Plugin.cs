@@ -88,6 +88,8 @@ namespace MarioTest
         internal static ConfigEntry<float> LightTapSeconds;
         internal static ConfigEntry<bool> WetSlideGlide;
         internal static ConfigEntry<bool> WetSlideOnWater, ShallowWetSlide;
+        internal static ConfigEntry<bool> KnockdownEnabled, KnockdownGetUpEarly, KnockdownInterruptsPound;
+        internal static ConfigEntry<float> KnockdownThreshold;
         internal static ConfigEntry<float> SlideSprayScale;
         internal static ConfigEntry<bool> SlideSplashes;
         internal static ConfigEntry<bool> DeathFall;
@@ -230,6 +232,18 @@ namespace MarioTest
                 "Standing in shallow water (anything RoR2 builds as water) wets the ground like " +
                 "FLUDD's water does, so a belly slide there glides wet (free with WetSlideOnWater, " +
                 "else on a charge) instead of dragging as Sunshine's water does.");
+            KnockdownEnabled = Config.Bind("Knockdown", "Enabled", true,
+                "A powerful hit knocks Mario over (Sunshine's short fall), without stunning him: see " +
+                "GetUpEarly. His health is RoR2's; the sim's isn't touched.");
+            KnockdownThreshold = Config.Bind("Knockdown", "Threshold", 0.25f,
+                new ConfigDescription("A single hit that takes this share of his max health (and shield) knocks him over.",
+                    new AcceptableValueRange<float>(0.01f, 1f)));
+            KnockdownGetUpEarly = Config.Bind("Knockdown", "GetUpEarly", true,
+                "Once the fall's slide has nearly stopped, A, the stick, B, L or R gets him up at once " +
+                "instead of after the whole get-up clip. Off: Sunshine's.");
+            KnockdownInterruptsPound = Config.Bind("Knockdown", "InterruptsPound", true,
+                "A knock-down can take him out of a ground pound, as a hit does in Sunshine. Off: a hit " +
+                "during the pound only hurts.");
             SlideSplashes = Config.Bind("Look", "SlideSplashes", false,
                 "A wet belly slide also throws libsms's old stand-in splashes (a home-made effect, " +
                 "drawn like FLUDD's water) on top of Sunshine's own slide spray. Off: only the game's.");
@@ -338,6 +352,7 @@ namespace MarioTest
             Log.LogInfo($"libsms ABI {Native.sms_abi_version()}, assets {AssetsDir}");
 
             ItemHooks.Install();
+            GlobalEventManager.onServerDamageDealt += MarioDriver.OnServerDamage;
             // The HUD's skill icons name the buttons Mario's sim reads (MarioPad), not RoR2's binds.
             GlyphOverride.Install();
             GlyphOverride.Set("MarioTestBody", null, new Dictionary<SkillSlot, PadButton[]>

@@ -4,7 +4,7 @@ using Ror2Common;
 
 namespace MarioTest
 {
-    // The libsms C ABI (libsms/crates/libsms-ffi, SMS_ABI_VERSION 13). Layouts mirror the
+    // The libsms C ABI (libsms/crates/libsms-ffi, SMS_ABI_VERSION 14). Layouts mirror the
     // #[repr(C)] structs there field for field; Load checks them with sms_struct_sizes. Sim
     // units: about 1 cm, Y up, a facing angle a (i16, 0x10000 per turn) points along
     // (sin a, 0, cos a). The view's structs are ror2-common's (ViewModelInfo...), which
@@ -12,7 +12,7 @@ namespace MarioTest
     internal static class Native
     {
         public const string Dll = "sms";
-        public const uint AbiVersion = 13;
+        public const uint AbiVersion = 14;
 
         [StructLayout(LayoutKind.Sequential)]
         public struct Vec3
@@ -139,6 +139,8 @@ namespace MarioTest
             public byte shallow_wet;
             /// 1: a wet belly slide also throws libsms's old stand-in splashes, over the game's spray.
             public byte slide_splashes;
+            /// 1: A, the stick, B, L or R gets him up once a knock-down's slide has nearly spent itself.
+            public byte knockdown_cancel;
         }
 
         /// The host's own limits on FLUDD and the slide (libsms::Limits); zeroes are the game's.
@@ -247,6 +249,8 @@ namespace MarioTest
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern void sms_sim_launch_pad(IntPtr sim, ref Vec3 vel, float gravity);
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern void sms_sim_set_aim(IntPtr sim, byte on, short yaw, float pitch);
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern void sms_sim_down(IntPtr sim);
+        /// A hit from `from` knocks Mario down (damage kind 0: the common enemy's) without touching the sim's health.
+        [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern byte sms_sim_knock_down(IntPtr sim, ref Vec3 from, byte kind);
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern void sms_sim_boost_jump(IntPtr sim, float factor);
 
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern IntPtr sms_view_new(byte[] assetsDirUtf8, byte sound);

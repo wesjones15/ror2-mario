@@ -162,6 +162,12 @@ updates for smooth drawing at the display's frame rate.
 `Look.SmokeSpeed` defaults to 2 (twice the original smoke/dust playback speed); set it to 1
 for the disc's timing. This changes smoke only, including its motion and lifetime.
 
+FLUDD's water uses RoR2's refraction material with a faint blue tint. `Look.WaterOpacity`
+defaults to 0.12 before the shared glass tint multiplier of 0.25 (effective peak drop
+opacity 0.03, reduced further by its mask and lifetime fade). Splashes use the same shared
+multiplier. Juice keeps its nearly opaque tint. `Look.WaterRefraction` controls distortion;
+the log confirms the material loaded with `FLUDD's water refracts`.
+
 ## Arrival music
 
 Mario plays approximately five opening beats (2.5 seconds) of Delfino Plaza once a run, as he leaves the pod on the first stage; later stages and respawns stay quiet. When he dies, Sunshine's miss jingle plays (about 4.5 seconds). SpawnMusic.Enabled, SpawnMusic.DeathSting and SpawnMusic.Volume control them; master and music volume also apply. The build synthesizes spawn.wav and death.wav from your extracted disc audio into the ignored dist folder. Rebuild after extracting assets if a clip is missing. No music data is committed.

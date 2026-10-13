@@ -262,7 +262,7 @@ namespace MarioTest
                 "How long the fallen Mario stays.");
             WaterOpacity = Config.Bind("Look", "WaterOpacity", 0.12f,
                 "How much of the water's blue each FLUDD drop lays over what's behind it. Drops " +
-                "overlap and add up (Sunshine's whole stream mixes in 0.35).");
+                "overlap and add up; the shared glass tint multiplier (0.25) also applies.");
             WaterRefraction = Config.Bind("Look", "WaterRefraction", 1f,
                 "FLUDD's water bends what's behind it, as in Sunshine, through RoR2's refraction " +
                 "effect: its strength (1: RoR2's own). 0: off (tint only).");

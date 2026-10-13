@@ -44,8 +44,8 @@ namespace MarioTest
         {
             var dropTex = Load(view, 0, "Mario water drop");
             var splashTex = Load(view, 1, "Mario water splash");
-            var drops = Shaders.SeeThrough("Mario water", dropTex, false, true);
-            var splashes = Shaders.SeeThrough("Mario splash", splashTex, false, true);
+            var drops = Shaders.SeeThrough("Mario water", dropTex, false, true, Shaders.SurfaceTintOpacity);
+            var splashes = Shaders.SeeThrough("Mario splash", splashTex, false, true, Shaders.SurfaceTintOpacity);
             if (!drops || !splashes)
             {
                 Plugin.Log.LogWarning("FLUDD's water isn't drawn: no see-through shader");
@@ -69,7 +69,8 @@ namespace MarioTest
             return new MarioWater(go, mesh, drops, splashes, refraction, dropTex, splashTex);
         }
 
-        const string DistortionKey = "RoR2/Base/Common/VFX/Distortion/matDistortion.mat";
+        // Addressables' public key differs from the asset's internal Distortion/ directory.
+        const string DistortionKey = "RoR2/Base/Common/VFX/matDistortion.mat";
         static readonly int MagnitudeId = Shader.PropertyToID("_Magnitude");
 
         // A copy of RoR2's refraction material, its strength scaled by Look.WaterRefraction;
@@ -147,6 +148,7 @@ namespace MarioTest
             // The game mixes a little of its tint into what's behind the water (0.35) and shows
             // juice nearly solid (0.75). Overlapping drops add up, so each takes a little.
             float a = info.a > 0.5f ? 0.9f : Mathf.Clamp01(Plugin.WaterOpacity.Value);
+            drops.SetFloat("_AlphaBoost", info.a > 0.5f ? 1f : Shaders.SurfaceTintOpacity);
             drops.SetColor("_TintColor", new Color(info.r, info.g, info.b, a));
             if (!go.activeSelf) go.SetActive(true);
         }

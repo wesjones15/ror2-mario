@@ -270,8 +270,9 @@ namespace MarioTest
                 "with the camera (the stick side-steps).");
             LockOn = Config.Bind("Controls", "LockOn", true,
                 "While L is held, lock onto the enemy nearest where the camera points (within " +
-                "25 m, in line of sight) and aim FLUDD at it, so the spray trigger sprays it. " +
-                "Needs CameraAim.");
+                "25 m, in line of sight) and aim FLUDD at it, so the spray trigger sprays it " +
+                "without Mario crouching (a fresh L press in the air still ground pounds). " +
+                "Off: L crouches. Needs CameraAim.");
             DeathFall = Config.Bind("Look", "DeathFall", true,
                 "When Mario dies he falls down as in Sunshine, with his voice, and lies there.");
             DeathFallSeconds = Config.Bind("Look", "DeathFallSeconds", 6f,

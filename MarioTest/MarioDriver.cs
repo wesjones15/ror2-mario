@@ -58,6 +58,8 @@ namespace MarioTest
         readonly Unstuck unstuck = new Unstuck();
         readonly EnemyLock enemyLock = new EnemyLock();
         readonly MarioBrain brain = new MarioBrain();
+        // L held last step, and a ground pound armed by a fresh L press in the air.
+        bool lWasHeld, poundArmed;
         // The sim's ground pound stage (Native.State.pounding).
         byte pounding;
         LocalUser localUser;
@@ -163,7 +165,22 @@ namespace MarioTest
             var step = pad.Take(move, hold == NativeBody.Hold.All);
             // Facing from Mario toward the camera: the reverse of where the player aims.
             short cameraYaw = UnityHost.Yaw(-input.aimDirection);
-            Aim(step.l != 0 && (Local || lockTarget), lockTarget);
+            // L is the lock-on: FLUDD takes its aim from the target (or the camera) and Mario does
+            // not crouch, so R sprays at it on the move. The sim sees L only for a ground pound,
+            // pressed afresh in the air; R's click (which plants and crouches him) is held back.
+            bool lHeld = step.l != 0;
+            bool locking = lHeld && Plugin.LockOn.Value && Plugin.CameraAim.Value && (Local || lockTarget);
+            if (locking)
+            {
+                if (!lHeld || grounded) poundArmed = false;
+                else if (!lWasHeld) poundArmed = true;
+                step.l = (byte)(poundArmed ? 1 : 0);
+                step.l_analog = (byte)(poundArmed ? 255 : 0);
+                step.r = 0;
+            }
+            else poundArmed = false;
+            lWasHeld = lHeld;
+            Aim(locking || (lHeld && (Local || lockTarget)), lockTarget);
             Items.Begin(sim, sprinting, grounded);
             MarioCombat.Begin(body, Items);
             var view = View;

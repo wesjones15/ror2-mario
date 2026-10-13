@@ -75,7 +75,7 @@ namespace MarioTest
                 }
                 if (comboing && !grounded && st.vel.y < 0f && st.pounding == 0 && d < 3f && at.y < feet.y + 1f)
                     poundHold = PoundTap;
-                // On the ground L locks on (and crouches); in the air it pounds, so only when meant.
+                // On the ground L locks on; in the air a fresh press pounds, so only when meant.
                 p.l = grounded ? jumpHold <= 0f : poundHold > 0f;
                 p.r = Spray;
                 p.target = grounded && p.l ? enemy : null;

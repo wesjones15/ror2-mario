@@ -95,13 +95,13 @@ pointing at `libsms/assets`, into `<game>/BepInEx/plugins/MarioTest/`. It compil
 game's own DLLs, so no NuGet game libraries are involved. Use `-RoR2Dir` for another install
 and `-NoInstall` to only build into `dist/`.
 
-The log, `BepInEx/LogOutput.log`, should show `libsms ABI 10`, `Mario is 1.xx m tall`, then
+The log, `BepInEx/LogOutput.log`, should show `libsms ABI 11`, `Mario is 1.xx m tall`, then
 `Mario (test) registered`.
 In a run it should show `Mario's sim started`, `Mario's view: 12 models, 26 textures; sound
 ...`, and one line per status change (turn that off with `Debug.LogStatus`).
 
 Config is in `BepInEx/config/com.libsms.mariotest.cfg`: `Look.DrawModel`, `Look.Height`,
-`Look.PoundFlames`, `Look.DeathFall`, `Look.ShadowClones`, `Sound.Enabled`, `Sound.Volume`,
+`Look.Effects`, `Look.PoundFlames`, `Look.DeathFall`, `Look.ShadowClones`, `Sound.Enabled`, `Sound.Volume`,
 `Sim.*` (jump height, buffer and chain grace, speed items, solid enemies, stomp bounce, pound
 jump, timed stomp jump, shortest hop), `Fludd.*` (nozzle cycling, spray reach, spray bursts,
 rocket height, unlimited water, D-pad refill), `Controls.*` (camera aim, trigger curve,
@@ -130,6 +130,12 @@ Sunshine's own, drawn from the disc (re-extract older assets for its `game_6/` f
   own extracted `assets/`.
 
 Offline / friends-only co-op only.
+
+Mario's movement effects come from the disc's particle files: starting/skidding/landing dust,
+wall-slide and wall-kick dust, bump stars, the ground-pound smear and landing burst,
+spin-jump swirls, belly-slide smoke/spray and enemy-stomp bursts.
+`Look.Effects` controls these independently of `Look.PoundFlames`, which controls the super
+pound's flames and fiery landing. Both default to on and work with sound disabled.
 
 ## Arrival music
 

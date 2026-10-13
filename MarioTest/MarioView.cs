@@ -121,6 +121,8 @@ namespace MarioTest
                 frame.forward = new Native.Vec3(cam.forward.x, cam.forward.y, cam.forward.z);
                 frame.up = new Native.Vec3(cam.up.x, cam.up.y, cam.up.z);
             }
+            Native.sms_view_set_fx(view, (byte)(Plugin.Effects.Value ? 1 : 0),
+                (byte)(Plugin.PoundFlames.Value ? 1 : 0));
             Native.sms_view_update(view, sim, ref frame);
             water?.Update(view, UnityHost.Scale);
             if (hud) MarioHud.Update(view);
@@ -131,7 +133,6 @@ namespace MarioTest
         public void Effects(Vector3 feet)
         {
             if (fx == null || view == IntPtr.Zero) return;
-            if (!Plugin.PoundFlames.Value) { fx.Hide(); return; }
             var offset = Vector3.zero;
             if (Native.sms_view_draws(view, firstDraw, 1) > 0)
             {

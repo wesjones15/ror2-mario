@@ -43,6 +43,7 @@ namespace MarioTest
         internal static ConfigEntry<float> PoundPerMetre;
         internal static ConfigEntry<bool> SuperPoundIgnites;
         internal static ConfigEntry<bool> PoundFlames;
+        internal static ConfigEntry<bool> Effects;
         internal static ConfigEntry<float> StompDamage;
         internal static ConfigEntry<float> PoundDamage;
         internal static ConfigEntry<float> ShockDamage;
@@ -279,6 +280,9 @@ namespace MarioTest
             PoundFlames = Config.Bind("Look", "PoundFlames", true,
                 "A ground pound that falls long enough to turn super (about 7 m) bursts into " +
                 "Sunshine's own flames (from the disc), and lands with a fiery blast.");
+            Effects = Config.Bind("Look", "Effects", true,
+                "Draw Sunshine's movement dust, bump stars, ground-pound smear, spin-jump swirl, " +
+                "belly-slide smoke/spray and stomp bursts from the disc. PoundFlames controls fire separately.");
             DrawModel = Config.Bind("Look", "DrawModel", true,
                 "Draw Mario with the disc's models (off: Commando's model).");
             Sound = Config.Bind("Sound", "Enabled", true,

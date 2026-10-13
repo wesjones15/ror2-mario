@@ -7,8 +7,8 @@ using UnityEngine.Rendering;
 namespace MarioTest
 {
     // The game's own particle effects on Mario, from libsms (sms_view_fx_*: the disc's .jpa
-    // effects run as JParticle runs them): the super ground pound's flames. Rebuilt every
-    // frame as one world-space mesh, a submesh per batch, each batch a texture times its vertex
+    // effects run as JParticle runs them): dust, stars, smears, slides, stomps and pound flames.
+    // Rebuilt every frame as one world-space mesh, a submesh per batch, each batch a texture times its vertex
     // colours, added (or see-through) on RoR2's Cloud Remap, unlit. libsms bakes the game's
     // colour mixing into the textures and colours, so plain texture-times-colour adds up to it.
     internal sealed class MarioFx : IDisposable
@@ -49,7 +49,7 @@ namespace MarioTest
             }
             var go = new GameObject("Mario effects");
             UnityEngine.Object.DontDestroyOnLoad(go);
-            var mesh = new Mesh { name = "Mario effects" };
+            var mesh = new Mesh { name = "Mario effects", indexFormat = IndexFormat.UInt32 };
             mesh.MarkDynamic();
             go.AddComponent<MeshFilter>().sharedMesh = mesh;
             var r = go.AddComponent<MeshRenderer>();

@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using BepInEx;
 using BepInEx.Configuration;
@@ -326,6 +327,15 @@ namespace MarioTest
             Log.LogInfo($"libsms ABI {Native.sms_abi_version()}, assets {AssetsDir}");
 
             ItemHooks.Install();
+            // The HUD's skill icons name the buttons Mario's sim reads (MarioPad), not RoR2's binds.
+            GlyphOverride.Install();
+            GlyphOverride.Set("MarioTestBody", null, new Dictionary<SkillSlot, PadButton[]>
+            {
+                [SkillSlot.Primary] = new[] { PadButton.RT },
+                [SkillSlot.Secondary] = new[] { PadButton.RT },
+                [SkillSlot.Utility] = new[] { PadButton.LT },
+                [SkillSlot.Special] = new[] { PadButton.B },
+            });
             ContentProvider.Register(Guid, AddContent);
             Language.onCurrentLanguageChanged += AddTokens;
         }
@@ -411,11 +421,13 @@ namespace MarioTest
             lang.SetStringByToken("MARIOTEST_BODY_SUBTITLE", "Super Mario Sunshine movement");
             lang.SetStringByToken("MARIOTEST_BODY_DESCRIPTION",
                 "Super Mario Sunshine's Mario, moved by libsms.\n\n" +
-                "< ! > Pad: A jump, B dive, right trigger spray (all the way in to plant), left trigger " +
-                "ground pound and crouch, left bumper lock on (right bumper then cycles targets), " +
-                "right bumper switch nozzle, RoR2's sprint to sprint.\n" +
+                "< ! > FLUDD is Mario's attack: every drop of water hits. Hold the lock-on and its head " +
+                "follows an enemy for you. Stomps, dives and ground pounds hit too.\n\n" +
+                "< ! > Pad: A jump, B dive, RT spray (a light pull sprays on the move, all the way in " +
+                "plants Mario), LT crouch and, in the air, ground pound, LB lock on (RB then cycles " +
+                "targets), RB switch nozzle, D-pad down refill the tank, RoR2's sprint to sprint.\n" +
                 "< ! > Keys: jump, primary spray, sprint plant and spray, secondary dive, utility " +
-                "ground pound, special switch nozzle.");
+                "ground pound and lock on, special switch nozzle (cycle targets while locked).");
             MarioSkills.Tokens(lang);
             lang.SetStringByToken("MARIOTEST_BODY_OUTRO", "..and so he left, still wet.");
             lang.SetStringByToken("MARIOTEST_BODY_FAIL", "..and so he vanished, mid-triple-jump.");

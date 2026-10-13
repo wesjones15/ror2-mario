@@ -83,6 +83,10 @@ trigger's travel is curved so the light zone is easier to hold (`Controls.Trigge
 keyboard a tap of the primary is a light press and holding it sprays at full
 (`Controls.LightTapSeconds`).
 
+The HUD's skill icons show the pad buttons Mario actually uses (ror2-common `GlyphOverride`): RT for FLUDD
+and the Air Pump, LT for the Ground Pound, B for the Wet Slide. On keyboard they are RoR2's binds, as
+before. The skills' names and descriptions on the character select screen give the same buttons.
+
 Holding LB locks onto an enemy (`Controls.LockOn`), as Olimar's RT does: the one nearest where the
 camera points, within 25 m and in line of sight, kept until you let go, on the ground or in the
 air. FLUDD's head swivels and tilts to it, its water goes at it whichever way Mario faces or runs,

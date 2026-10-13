@@ -398,19 +398,22 @@ namespace MarioTest
         {
             lang.SetStringByToken("MARIOTEST_FLUDD_NAME", "FLUDD");
             lang.SetStringByToken("MARIOTEST_FLUDD_DESC",
-                "Spray, Hover, Rocket and Turbo, from one tank. Every drop is an attack; items proc once a second " +
-                "per target. Attack speed sprays faster for the same water. Cooldown items hover and spray longer, " +
-                "rocket higher and turbo faster.");
+                "Spray, Hover, Rocket and Turbo, from one tank (RB switches nozzle). Pull RT to spray: a light pull " +
+                "sprays on the move, all the way in plants Mario. Hold LB to lock onto an enemy and FLUDD's head " +
+                "follows it. Every drop is an attack; items proc once a second per target. Attack speed sprays " +
+                "faster for the same water. Cooldown items hover and spray longer, rocket higher and turbo faster.");
             lang.SetStringByToken("MARIOTEST_AIR_NAME", "Air Pump");
             lang.SetStringByToken("MARIOTEST_AIR_DESC",
-                "One FLUDD use per jump. Each charge is one more in mid-air, recharging once you've landed.");
+                "RT in mid-air. One FLUDD use per jump; each charge is one more in the air, recharging once " +
+                "you've landed.");
             lang.SetStringByToken("MARIOTEST_POUND_NAME", "Ground Pound");
             lang.SetStringByToken("MARIOTEST_POUND_DESC",
-                $"Hits harder the further you fall. Each charge is a full-strength pound; without one it does {Plugin.WeakPound.Value * 100f:0}%.");
+                "LT in the air. Hits harder the further you fall, with a shock wave round the landing. " +
+                $"Each charge is a full-strength pound; without one it does {Plugin.WeakPound.Value * 100f:0}%.");
             lang.SetStringByToken("MARIOTEST_SLIDE_NAME", "Wet Slide");
             lang.SetStringByToken("MARIOTEST_SLIDE_DESC",
-                "Each charge turns a belly slide on dry ground wet, gliding far. Over water FLUDD sprayed " +
-                "(a light press drops some ahead) a slide glides for free.");
+                "Dive with B, then belly slide. Each charge turns a slide on dry ground wet, gliding far. Over " +
+                "water FLUDD sprayed (a light RT pull drops some ahead) a slide glides for free.");
         }
     }
 }

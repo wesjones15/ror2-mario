@@ -16,7 +16,7 @@ namespace MarioTest
     // MarioCombat (stomps, pounds and FLUDD's water as RoR2 damage). Items: MarioItems, and
     // ror2-common's NativeBody for what RoR2's motor and main state would do (throws, crowd
     // control, sprinting). A Mario no local player controls (Goobo Jr.'s clone) runs its own sim
-    // on the AI's buttons and is drawn silent in Shadow Mario's colours (MarioView.Shadow).
+    // on the AI's buttons and is drawn silent in RoR2's gummy clone material (MarioView.Clone).
     // When the player's Mario dies he falls down for good as in Sunshine, the miss jingle
     // plays, and MarioCorpse plays the fall out after RoR2 removes the body.
     //
@@ -78,11 +78,11 @@ namespace MarioTest
         // hide and free.
         bool ownsView;
         // A Mario no local player controls: his own silent view (tried once).
-        MarioView shadowView;
-        bool shadowTried;
+        MarioView cloneView;
+        bool cloneTried;
 
         /// The view this Mario draws with: the player's, or his own.
-        MarioView View => Local ? MarioView.Player : shadowView;
+        MarioView View => Local ? MarioView.Player : cloneView;
 
         void Awake()
         {
@@ -239,10 +239,10 @@ namespace MarioTest
                 MarioView.Ensure();
                 ownsView = true;
             }
-            else if (!shadowTried)
+            else if (!cloneTried)
             {
-                shadowTried = true;
-                shadowView = MarioView.Shadow();
+                cloneTried = true;
+                cloneView = MarioView.Clone();
             }
             var view = View;
             if (view == null)
@@ -267,7 +267,7 @@ namespace MarioTest
         void ShowMario(bool show)
         {
             var view = View;
-            if (!show && view != null && (ownsView || view == shadowView)) view.Hide();
+            if (!show && view != null && (ownsView || view == cloneView)) view.Hide();
             GameSettings.HideModel(body, ref bodyHidden, show && view != null && view.Models != null);
         }
 
@@ -347,11 +347,11 @@ namespace MarioTest
                 Plugin.Log.LogInfo("Mario is down");
                 return;
             }
-            if (shadowView != null)
+            if (cloneView != null)
             {
                 // A clone just goes, like Goobo Jr.'s.
-                shadowView.Dispose();
-                shadowView = null;
+                cloneView.Dispose();
+                cloneView = null;
                 return;
             }
             ShowMario(false);
@@ -472,8 +472,8 @@ namespace MarioTest
             pivot?.Use(false);
             flames.Set(false, default, 0f);
             if (sim != IntPtr.Zero && ownsView) MarioView.Reset();
-            shadowView?.Dispose();
-            shadowView = null;
+            cloneView?.Dispose();
+            cloneView = null;
             if (sim != IntPtr.Zero)
             {
                 Native.sms_sim_free(sim);

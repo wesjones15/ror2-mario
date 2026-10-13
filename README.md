@@ -46,9 +46,8 @@ How it works:
     RoR2's own shader and lighting. Commando's model is hidden meanwhile.
   - The game's sounds (voice, footsteps, FLUDD) play on our own audio output, since RoR2's
     audio is Wwise, at RoR2's master × SFX volume. A short Delfino Plaza sting plays when Mario emerges on the run's first stage; RoR2 keeps its soundtrack.
-  - A Mario no player controls (Goobo Jr.'s clone) gets a view of his own, silent and in
-    Shadow Mario's colours: Mario's textures put through the dark-to-light ramp of Shadow
-    Mario's material, read from his model on the disc (`Look.ShadowClones`).
+  - A Mario no player controls (Goobo Jr.'s clone) gets a view of his own, silent and drawn in
+    RoR2's own gummy clone material (`matGummyClone`, a DLC1 addressable; `Look.GummyClones`).
 - When Mario dies he falls down for good as in Sunshine (the "die" clip and his "down" voices)
   and Sunshine's miss jingle (the "Too Bad!" one) plays. RoR2 removes a dead body a second
   after it comes to rest, so `MarioCorpse` plays the fall out (`Look.DeathFall`,
@@ -108,7 +107,7 @@ In a run it should show `Mario's sim started`, `Mario's view: 12 models, 26 text
 ...`, and one line per status change (turn that off with `Debug.LogStatus`).
 
 Config is in `BepInEx/config/com.libsms.mariotest.cfg`: `Look.DrawModel`, `Look.Height`,
-`Look.Effects`, `Look.PoundFlames`, `Look.DeathFall`, `Look.ShadowClones`, `Sound.Enabled`, `Sound.Volume`,
+`Look.Effects`, `Look.PoundFlames`, `Look.DeathFall`, `Look.GummyClones`, `Sound.Enabled`, `Sound.Volume`,
 `Sim.*` (jump height, buffer and chain grace, speed items, solid enemies, stomp bounce, pound
 jump, timed stomp jump, shortest hop), `Fludd.*` (nozzle cycling, spray reach, spray bursts,
 rocket height, unlimited water, D-pad refill), `Controls.*` (camera aim, trigger curve,

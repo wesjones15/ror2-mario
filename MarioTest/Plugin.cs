@@ -89,7 +89,7 @@ namespace MarioTest
         internal static ConfigEntry<bool> WetSlideOnWater;
         internal static ConfigEntry<bool> DeathFall;
         internal static ConfigEntry<float> DeathFallSeconds;
-        internal static ConfigEntry<bool> ShadowClones;
+        internal static ConfigEntry<bool> GummyClones;
         internal static ConfigEntry<float> WaterOpacity;
         internal static ConfigEntry<float> WaterRefraction;
 
@@ -282,9 +282,9 @@ namespace MarioTest
             WaterRefraction = Config.Bind("Look", "WaterRefraction", 1f,
                 "FLUDD's water bends what's behind it, as in Sunshine, through RoR2's refraction " +
                 "effect: its strength (1: RoR2's own). 0: off (tint only).");
-            ShadowClones = Config.Bind("Look", "ShadowClones", true,
-                "Marios no player controls (Goobo Jr.'s clone) are drawn as Mario in Shadow " +
-                "Mario's colours (from the disc). Off: Commando's model.");
+            GummyClones = Config.Bind("Look", "GummyClones", true,
+                "Marios no player controls (Goobo Jr.'s clone) are drawn in RoR2's gummy clone " +
+                "material. Off: Commando's model.");
             ExternalForces = Config.Bind("Sim", "ExternalForces", true,
                 "RoR2 can throw Mario: jump pads, geysers, knockback, Milky Chrysalis.");
             CrowdControl = Config.Bind("Sim", "CrowdControl", true,

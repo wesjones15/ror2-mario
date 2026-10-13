@@ -1,6 +1,7 @@
 using System;
 using Ror2Common;
 using UnityEngine;
+using UnityEngine.AddressableAssets;
 
 namespace MarioTest
 {
@@ -11,8 +12,8 @@ namespace MarioTest
     //
     // The local player's Mario has the one with sound and the HUD's water gauge (MarioHud),
     // made the first time it's needed and kept across stages (Player). A Mario no player
-    // controls (Goobo Jr.'s clone) gets its own, silent and in Shadow Mario's colours
-    // (Shadow). A Mario who dies hands his to MarioCorpse, which plays out the fall.
+    // controls (Goobo Jr.'s clone) gets its own, silent and in RoR2's gummy clone material
+    // (Clone). A Mario who dies hands his to MarioCorpse, which plays out the fall.
     internal sealed class MarioView : IDisposable
     {
         static bool tried;
@@ -34,12 +35,12 @@ namespace MarioTest
         /// The game's own particles are drawn (else MarioFlames stands in).
         public bool HasEffects => fx != null;
 
-        MarioView(IntPtr view, bool hud, string name)
+        MarioView(IntPtr view, bool hud, string name, Material skin = null)
         {
             this.view = view;
             this.hud = hud;
             if (!Plugin.DrawModel.Value) return;
-            models = ModelView.Create(new SmsViewSource(view), name);
+            models = ModelView.Create(new SmsViewSource(view), name, null, skin);
             // Sunshine's hit flash is pink (`addDamageFog`).
             if (models != null) models.FlashColor = new Color(1f, 0f, 0.5f, 0.6f);
             water = MarioWater.Create(view);
@@ -64,18 +65,39 @@ namespace MarioTest
             return player;
         }
 
-        /// A silent view in Shadow Mario's colours, for a Mario no player controls; null if it
-        /// can't load or drawing is off.
-        public static MarioView Shadow()
+        // The material RoR2 draws Goobo Jr.'s clones with (a DLC1 addressable).
+        const string GummyKey = "RoR2/DLC1/GummyClone/matGummyClone.mat";
+        static Material gummy;
+        static bool gummyTried;
+
+        /// RoR2's gummy clone material, or null if the game won't give it.
+        static Material Gummy()
         {
-            if (RunAudio.Ended || !Plugin.DrawModel.Value || !Plugin.ShadowClones.Value) return null;
-            var v = Open(false, 1);
+            if (gummyTried) return gummy;
+            gummyTried = true;
+            try { gummy = Addressables.LoadAssetAsync<Material>(GummyKey).WaitForCompletion(); }
+            catch (Exception e) { Plugin.Log.LogWarning($"matGummyClone (addressable): {e.Message}"); }
+            if (!gummy)
+            {
+                try { gummy = RoR2.LegacyResourcesAPI.Load<Material>("Materials/matGummyClone"); }
+                catch (Exception e) { Plugin.Log.LogWarning($"matGummyClone (legacy): {e.Message}"); }
+            }
+            if (!gummy) Plugin.Log.LogWarning("RoR2's gummy clone material didn't load; clones are drawn in Mario's own textures");
+            return gummy;
+        }
+
+        /// A silent view in RoR2's gummy clone material (Mario's own colours if that won't load),
+        /// for a Mario no player controls; null if the view can't load or drawing is off.
+        public static MarioView Clone()
+        {
+            if (RunAudio.Ended || !Plugin.DrawModel.Value || !Plugin.GummyClones.Value) return null;
+            var v = Open(false, 0);
             if (v == IntPtr.Zero)
             {
-                Plugin.Log.LogWarning("Shadow Mario's view didn't load; the clone stays Commando");
+                Plugin.Log.LogWarning("The clone's view didn't load; the clone stays Commando");
                 return null;
             }
-            return new MarioView(v, false, "ShadowMario");
+            return new MarioView(v, false, "GooboMario", Gummy());
         }
 
         static IntPtr Open(bool sound, byte look)

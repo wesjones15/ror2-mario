@@ -16,7 +16,7 @@ namespace MarioTest
     {
         public struct Presses
         {
-            public bool a, b, l, sprint;
+            public bool a, b, l, sprint, lockHeld;
             public float r;
             /// The enemy to lock onto while l is held, else null.
             public CharacterBody target;
@@ -75,10 +75,12 @@ namespace MarioTest
                 }
                 if (comboing && !grounded && st.vel.y < 0f && st.pounding == 0 && d < 3f && at.y < feet.y + 1f)
                     poundHold = PoundTap;
-                // On the ground L locks on; in the air a fresh press pounds, so only when meant.
-                p.l = grounded ? jumpHold <= 0f : poundHold > 0f;
+                // Locked on, on the ground or in the air (the left bumper's job for a player); L
+                // is only the pound.
+                p.lockHeld = true;
+                p.target = enemy;
+                p.l = !grounded && poundHold > 0f;
                 p.r = Spray;
-                p.target = grounded && p.l ? enemy : null;
             }
             else
             {

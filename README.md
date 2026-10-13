@@ -66,8 +66,9 @@ Controls, on a gamepad, by button position (Sunshine's layout, whatever your RoR
 | A                | A        | jumps, wall kicks                               |
 | B                | B        | dive, punch                                     |
 | right trigger    | R        | spray; all the way in plants Mario and sprays   |
-| left trigger     | L        | lock on and aim FLUDD (no crouch); a fresh press in the air ground pounds |
-| right bumper     | X        | switch nozzle: Spray, Hover, Rocket, Turbo      |
+| left trigger     | L        | ground pound (in the air), crouch; aims FLUDD at the crosshair |
+| left bumper      |          | hold to lock onto an enemy and aim FLUDD at it, grounded or airborne |
+| right bumper     | X        | switch nozzle: Spray, Hover, Rocket, Turbo; with LB held, next target |
 | D-pad down       |          | fill FLUDD's tank (`Fludd.DpadRefill`)          |
 | X, Y             |          | RoR2's interact and equipment, as ever          |
 | RoR2's sprint    |          | sprint, for sprint items (no speed of its own)  |
@@ -82,14 +83,17 @@ trigger's travel is curved so the light zone is easier to hold (`Controls.Trigge
 keyboard a tap of the primary is a light press and holding it sprays at full
 (`Controls.LightTapSeconds`).
 
-Holding L locks onto an enemy (`Controls.LockOn`), as Olimar's RT does: the one nearest where the
-camera points, within 25 m and in line of sight, kept until you let go. FLUDD's water then goes
-at it whichever way Mario faces or runs, and R sprays it; a standing Mario turns to face it. With
-no enemy in reach it points where the camera looks (what's under the crosshair), as Sunshine's
-L-button camera does (`Controls.CameraAim`). Mario does not crouch for L, and R's full press
-(which plants and crouches him) is held back while L is held, so the spray is on the move. L still
-ground pounds when pressed afresh in the air; holding it through a jump only locks on. With
-`Controls.LockOn` off, L is Sunshine's: crouch, with the camera turning him.
+Holding LB locks onto an enemy (`Controls.LockOn`), as Olimar's RT does: the one nearest where the
+camera points, within 25 m and in line of sight, kept until you let go, on the ground or in the
+air. FLUDD's head swivels and tilts to it, its water goes at it whichever way Mario faces or runs,
+and R sprays it; a standing Mario turns to face it. Pressing RB with LB held steps to the next
+target toward where the right stick points (right, with it centred), and doesn't switch nozzles.
+With no enemy in reach it points where the camera looks (what's under the crosshair). Mario
+doesn't crouch for LB, and R's full press (which plants and crouches him) is held back while it's
+held, so the spray is on the move. L (LT) stays Sunshine's: it crouches, ground pounds in the air,
+and while held points FLUDD where the camera looks (`Controls.CameraAim`), with the lock taking
+over if LB is held too. On a keyboard there's no spare key, so the utility key is both L and the
+lock (a fresh press in the air pounds; it doesn't crouch while locked) and the special key cycles.
 
 ### Build and install
 

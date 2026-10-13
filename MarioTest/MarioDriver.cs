@@ -165,22 +165,28 @@ namespace MarioTest
             var step = pad.Take(move, hold == NativeBody.Hold.All);
             // Facing from Mario toward the camera: the reverse of where the player aims.
             short cameraYaw = UnityHost.Yaw(-input.aimDirection);
-            // L is the lock-on: FLUDD takes its aim from the target (or the camera) and Mario does
-            // not crouch, so R sprays at it on the move. The sim sees L only for a ground pound,
-            // pressed afresh in the air; R's click (which plants and crouches him) is held back.
+            // The lock-on (LB; a keyboard's utility key; the brain's): FLUDD takes its aim, and
+            // its head turns, to the target (or where the camera looks), on the ground or in the
+            // air, and R's click (which plants and crouches him) is held back so R sprays on the
+            // move. L stays Sunshine's: crouch, ground pound, the camera. Only a keyboard has L
+            // and the lock on one key; the sim then sees L as a pound pressed afresh in the air.
             bool lHeld = step.l != 0;
-            bool locking = lHeld && Plugin.LockOn.Value && Plugin.CameraAim.Value && (Local || lockTarget);
+            bool locking = pad.LockHeld && Plugin.LockOn.Value && Plugin.CameraAim.Value && (Local || lockTarget);
             if (locking)
             {
-                if (!lHeld || grounded) poundArmed = false;
-                else if (!lWasHeld) poundArmed = true;
-                step.l = (byte)(poundArmed ? 1 : 0);
-                step.l_analog = (byte)(poundArmed ? 255 : 0);
+                if (pad.LockSharesL)
+                {
+                    if (!lHeld || grounded) poundArmed = false;
+                    else if (!lWasHeld) poundArmed = true;
+                    step.l = (byte)(poundArmed ? 1 : 0);
+                    step.l_analog = (byte)(poundArmed ? 255 : 0);
+                }
                 step.r = 0;
             }
             else poundArmed = false;
             lWasHeld = lHeld;
-            Aim(locking || (lHeld && (Local || lockTarget)), lockTarget);
+            bool cycle = pad.TakeCycle(out var cycleDirection);
+            Aim(lHeld && Local && !(pad.LockSharesL && locking), locking, lockTarget, cycle, cycleDirection);
             Items.Begin(sim, sprinting, grounded);
             MarioCombat.Begin(body, Items);
             var view = View;
@@ -300,17 +306,19 @@ namespace MarioTest
             GameSettings.HideModel(body, ref bodyHidden, show && view != null && view.Models != null);
         }
 
-        // Sunshine's L-button camera (Controls.CameraAim): while L is held, FLUDD points where
-        // the camera looks (at what's under the crosshair) and a crouching Mario turns with it.
-        // With Controls.LockOn, L also locks onto the enemy nearest where the camera points
-        // (ror2-common's EnemyLock, as Olimar's RT does) and FLUDD points at it instead, so the
-        // spray trigger sprays it; with none in reach it's the crosshair.
-        void Aim(bool held, CharacterBody ai)
+        // FLUDD's aim, as the sim takes it (libsms's host aim: the nozzle's pitch and head, the
+        // water's heading, and a standing or crouching Mario turning to it). `camera` is
+        // Sunshine's L-button camera (Controls.CameraAim): FLUDD points where the camera looks
+        // (at what's under the crosshair). `lockHeld` is the lock-on (Controls.LockOn):
+        // ror2-common's EnemyLock picks the enemy nearest where the camera points (Olimar's RT
+        // does the same), `cycle` steps to the next toward `direction` on screen, and FLUDD
+        // points at it, so the spray trigger sprays it; with none in reach it's the crosshair.
+        void Aim(bool camera, bool lockHeld, CharacterBody ai, bool cycle, Vector2 direction)
         {
             // An AI's Mario aims at the enemy his brain locked onto.
-            held &= ai || Plugin.CameraAim.Value && input;
-            var locked = ai ? ai : enemyLock.Update(body, held && Plugin.LockOn.Value, false, Vector2.zero);
-            if (!held)
+            camera &= Plugin.CameraAim.Value && input;
+            var locked = ai ? ai : enemyLock.Update(body, lockHeld && input, cycle, direction);
+            if (!camera && !lockHeld)
             {
                 Native.sms_sim_set_aim(sim, 0, 0, 0f);
                 return;

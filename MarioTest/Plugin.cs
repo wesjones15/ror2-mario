@@ -269,10 +269,10 @@ namespace MarioTest
                 "keyboard) is held, FLUDD points where the camera looks, and Mario crouching turns " +
                 "with the camera (the stick side-steps).");
             LockOn = Config.Bind("Controls", "LockOn", true,
-                "While L is held, lock onto the enemy nearest where the camera points (within " +
-                "25 m, in line of sight) and aim FLUDD at it, so the spray trigger sprays it " +
-                "without Mario crouching (a fresh L press in the air still ground pounds). " +
-                "Off: L crouches. Needs CameraAim.");
+                "While the left bumper (the utility key on keyboard) is held, lock onto the enemy " +
+                "nearest where the camera points (within 25 m, in line of sight) and aim FLUDD " +
+                "at it, so the spray trigger sprays it without Mario crouching. Right bumper " +
+                "then cycles targets. Needs CameraAim.");
             DeathFall = Config.Bind("Look", "DeathFall", true,
                 "When Mario dies he falls down as in Sunshine, with his voice, and lies there.");
             DeathFallSeconds = Config.Bind("Look", "DeathFallSeconds", 6f,
@@ -412,7 +412,8 @@ namespace MarioTest
             lang.SetStringByToken("MARIOTEST_BODY_DESCRIPTION",
                 "Super Mario Sunshine's Mario, moved by libsms.\n\n" +
                 "< ! > Pad: A jump, B dive, right trigger spray (all the way in to plant), left trigger " +
-                "ground pound and crouch, right bumper switch nozzle, RoR2's sprint to sprint.\n" +
+                "ground pound and crouch, left bumper lock on (right bumper then cycles targets), " +
+                "right bumper switch nozzle, RoR2's sprint to sprint.\n" +
                 "< ! > Keys: jump, primary spray, sprint plant and spray, secondary dive, utility " +
                 "ground pound, special switch nozzle.");
             MarioSkills.Tokens(lang);

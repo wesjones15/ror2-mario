@@ -7,8 +7,8 @@ namespace MarioTest
     // Mario's buttons. On a gamepad they're read by position through Rewired's gamepad
     // template, Sunshine's layout on an Xbox-style pad, whatever the player's RoR2 binds:
     // A jump, B dive, right trigger spray (analog: a half press sprays on the move, all the
-    // way in plants Mario), left trigger crouch / ground pound (L), right bumper switch nozzle
-    // (Sunshine's X). X stays RoR2's interact and Y its equipment, and Mario uses neither, so
+    // way in plants Mario), left trigger crouch / ground pound (L), left bumper the lock-on (RB then cycles
+    // the target), right bumper switch nozzle (Sunshine's X). X stays RoR2's interact and Y its equipment, and Mario uses neither, so
     // pressing them never does a Mario move too. On keyboard and mouse the RoR2 binds stand in:
     // jump A, primary half spray, sprint plant, secondary B, utility L, special nozzle.
     //
@@ -50,6 +50,15 @@ namespace MarioTest
         /// A brain presses this Mario's buttons (Press), so the input bank's are ignored.
         public bool Brained;
 
+        /// The lock-on is held: the left bumper on a gamepad, the brain's for an AI, else (a
+        /// keyboard has no spare key) the same button as L (LockSharesL).
+        public bool LockHeld { get; private set; }
+        /// On a keyboard L and the lock are one key.
+        public bool LockSharesL { get; private set; }
+        // RB pressed while locked, and the right stick's screen direction then.
+        bool cycle, rb;
+        Vector2 cycleDirection;
+
         /// A brain's buttons for the next step.
         public void Press(in MarioBrain.Presses p)
         {
@@ -59,6 +68,8 @@ namespace MarioTest
             x = false;
             r = p.r;
             sprint = p.sprint;
+            LockHeld = p.lockHeld;
+            LockSharesL = false;
             Latch();
         }
 
@@ -80,7 +91,7 @@ namespace MarioTest
             }
             if (player == null || user.isUIFocused)
             {
-                a = b = l = x = down = sprint = false;
+                a = b = l = x = down = sprint = LockHeld = false;
                 r = 0f;
                 return;
             }
@@ -91,7 +102,17 @@ namespace MarioTest
                 a = gp.a.value;
                 b = gp.b.value;
                 l = gp.leftTrigger.value > 0.5f;
-                x = gp.rightBumper.value;
+                // LB locks on; RB then cycles the target instead of switching nozzles.
+                LockHeld = gp.leftBumper.value;
+                LockSharesL = false;
+                bool bumper = gp.rightBumper.value;
+                if (LockHeld && bumper && !rb)
+                {
+                    cycle = true;
+                    cycleDirection = gp.rightStick.value;
+                }
+                x = bumper && !LockHeld;
+                rb = bumper;
                 float t = Mathf.Clamp01(gp.rightTrigger.value);
                 r = t >= 0.98f ? 1f : Mathf.Pow(t, Mathf.Clamp(Plugin.TriggerCurve.Value, 0.2f, 5f));
                 bool d = gp.dPad.down.value;
@@ -103,7 +124,14 @@ namespace MarioTest
                 a = input.jump.down;
                 b = input.skill2.down;
                 l = input.skill3.down;
-                x = input.skill4.down;
+                // No spare key: the utility key locks on as well as being L, and the special
+                // key cycles the target while it's held.
+                LockHeld = l;
+                LockSharesL = true;
+                bool special = input.skill4.down;
+                if (LockHeld && special && !rb) cycle = true;
+                x = special && !LockHeld;
+                rb = special;
                 r = input.sprint.down ? 1f : Primary(input.skill1.down);
             }
             Latch();
@@ -167,6 +195,16 @@ namespace MarioTest
             aTap = bTap = lTap = xTap = false;
             rMax = 0f;
             return pad;
+        }
+
+        /// A target cycle was asked for since the last call, toward `direction` on screen (the
+        /// right stick; zero for the default).
+        public bool TakeCycle(out Vector2 direction)
+        {
+            direction = cycleDirection;
+            bool c = cycle;
+            cycle = false;
+            return c;
         }
 
         /// D-pad down was pressed since the last call.

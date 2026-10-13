@@ -20,8 +20,9 @@ namespace MarioTest
     // RoR2's sprint button (its own bind) is read as is: it sprints for RoR2's sprint items and
     // adds no speed of its own (MarioDriver).
     //
-    // A Mario no player controls (Goobo Jr.'s clone) takes the AI's presses from the input bank:
-    // jump A, primary half spray, secondary B, utility L, sprint.
+    // A Mario no player controls (Goobo Jr.'s clone) is pressed by MarioBrain; with no brain he
+    // takes the AI's presses from the input bank: jump A, primary half spray, secondary B,
+    // utility L, sprint.
     //
     // Read every frame; presses are latched until the sim has stepped with them, so a tap
     // between two physics steps still counts. Movement is RoR2's own (the input bank's move
@@ -46,9 +47,25 @@ namespace MarioTest
         // light press this long.
         const float LightBurst = 0.35f;
 
+        /// A brain presses this Mario's buttons (Press), so the input bank's are ignored.
+        public bool Brained;
+
+        /// A brain's buttons for the next step.
+        public void Press(in MarioBrain.Presses p)
+        {
+            a = p.a;
+            b = p.b;
+            l = p.l;
+            x = false;
+            r = p.r;
+            sprint = p.sprint;
+            Latch();
+        }
+
         public void Read(LocalUser user, InputBankTest input)
         {
             var player = user?.inputPlayer;
+            if (user == null && Brained) return;
             if (user == null && input)
             {
                 // The AI's buttons.

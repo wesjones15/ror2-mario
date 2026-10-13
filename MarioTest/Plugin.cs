@@ -378,8 +378,9 @@ namespace MarioTest
             survivor.primaryColor = cb.bodyColor;
             survivor.desiredSortPosition = 100f;
 
-            // For Goobo Jr.'s clone and the like: Commando's AI pressing Mario's buttons.
-            SurvivorAi.Register(pack, body, "Prefabs/CharacterMasters/CommandoMonsterMaster", "MarioTestMonsterMaster", Guid);
+            // For Goobo Jr.'s clone and the like: Commando's AI walking him, MarioBrain pressing his buttons.
+            var ai = SurvivorAi.Register(pack, body, "Prefabs/CharacterMasters/CommandoMonsterMaster", "MarioTestMonsterMaster", Guid);
+            if (ai) SurvivorAi.Drivers(ai, MarioBrain.HoldRange);
             pack.bodyPrefabs.Add(new[] { body });
             pack.survivorDefs.Add(new[] { survivor });
             pack.entityStateTypes.Add(new[] { typeof(MarioMain) });

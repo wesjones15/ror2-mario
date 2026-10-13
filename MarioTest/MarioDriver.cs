@@ -57,6 +57,7 @@ namespace MarioTest
         readonly MarioFlames flames = new MarioFlames();
         readonly MarioUnstuck unstuck = new MarioUnstuck();
         readonly EnemyLock enemyLock = new EnemyLock();
+        readonly MarioBrain brain = new MarioBrain();
         // The sim's ground pound stage (Native.State.pounding).
         byte pounding;
         LocalUser localUser;
@@ -142,6 +143,17 @@ namespace MarioTest
             }
             var hold = native && Plugin.CrowdControl.Value ? native.Control() : NativeBody.Hold.None;
             var move = hold == NativeBody.Hold.None ? input.moveVector : Vector3.zero;
+            // An AI's Mario presses his own buttons (MarioBrain).
+            bool brained = !Local && SurvivorAi.HasAi(body);
+            pad.Brained = brained;
+            CharacterBody lockTarget = null;
+            if (brained)
+            {
+                Native.sms_sim_state(sim, out var now);
+                var presses = brain.Think(body, now, move, Time.fixedDeltaTime);
+                pad.Press(presses);
+                lockTarget = presses.target;
+            }
             bool sprinting = native && native.UpdateSprint(pad.TakeSprint(), move.sqrMagnitude > 0.01f,
                 hold == NativeBody.Hold.None);
 
@@ -151,7 +163,7 @@ namespace MarioTest
             var step = pad.Take(move, hold == NativeBody.Hold.All);
             // Facing from Mario toward the camera: the reverse of where the player aims.
             short cameraYaw = UnityHost.Yaw(-input.aimDirection);
-            Aim(step.l != 0 && Local);
+            Aim(step.l != 0 && (Local || lockTarget), lockTarget);
             Items.Begin(sim, sprinting, grounded);
             MarioCombat.Begin(body, Items);
             var view = View;
@@ -276,10 +288,11 @@ namespace MarioTest
         // With Controls.LockOn, L also locks onto the enemy nearest where the camera points
         // (ror2-common's EnemyLock, as Olimar's RT does) and FLUDD points at it instead, so the
         // spray trigger sprays it; with none in reach it's the crosshair.
-        void Aim(bool held)
+        void Aim(bool held, CharacterBody ai)
         {
-            held &= Plugin.CameraAim.Value && input;
-            var locked = enemyLock.Update(body, held && Plugin.LockOn.Value, false, Vector2.zero);
+            // An AI's Mario aims at the enemy his brain locked onto.
+            held &= ai || Plugin.CameraAim.Value && input;
+            var locked = ai ? ai : enemyLock.Update(body, held && Plugin.LockOn.Value, false, Vector2.zero);
             if (!held)
             {
                 Native.sms_sim_set_aim(sim, 0, 0, 0f);

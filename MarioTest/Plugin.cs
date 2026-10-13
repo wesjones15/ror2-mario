@@ -49,6 +49,7 @@ namespace MarioTest
         internal static ConfigEntry<float> PoundRadius;
         internal static ConfigEntry<float> DiveDamage;
         internal static ConfigEntry<float> WaterDamage;
+        internal static ConfigEntry<float> BurstMultiplier;
         internal static ConfigEntry<float> WaterProc;
         internal static ConfigEntry<bool> UnlimitedWater;
         internal static ConfigEntry<bool> DpadRefill;
@@ -174,6 +175,10 @@ namespace MarioTest
             WaterDamage = Config.Bind("Damage", "WaterPerDrop", 0.035f,
                 "Each FLUDD drop that hits (not Sunshine's: its water mostly only stuns). The Spray " +
                 "fires about 93 a second, so 0.035 is about 330% a second on one enemy.");
+            BurstMultiplier = Config.Bind("Damage", "BurstMultiplier", 3f,
+                "A light press's short burst of the Spray (Fludd.SprayBursts) doesn't last, so each " +
+                "of its drops does this many times WaterPerDrop. A burst is about 28 drops, so 3 is " +
+                "about 290% a burst if it all hits.");
             WaterProc = Config.Bind("Items", "WaterProcCoefficient", 0.5f,
                 "FLUDD's water procs on-hit items at most once a second on each enemy (every nozzle " +
                 "shares it), at this proc coefficient; the drops in between do damage only.");

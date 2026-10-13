@@ -15,7 +15,9 @@ namespace MarioTest
     // kill credit). Water doing damage is this plugin's, not Sunshine's (where most enemies only
     // flinch or slip); each enemy's drops for a step land as one hit, so on-hit items see about
     // 30 hits a second; on-hit items proc on at most one of those a second per enemy
-    // (ror2-common's ProcLimiter), at Items.WaterProcCoefficient, the rest at 0.
+    // (ror2-common's ProcLimiter), at Items.WaterProcCoefficient, the rest at 0. A light
+    // press's short burst (libsms's BurstHit) doesn't last, so each of its drops does
+    // Damage.BurstMultiplier times as much.
     //
     // A ground pound hits harder the further it fell (Damage.PoundPerMetre; not Sunshine's):
     // the landing reports its drop, and a pound onto an enemy mid-fall counts from where the
@@ -35,8 +37,10 @@ namespace MarioTest
         static readonly Dictionary<uint, HealthComponent> byId = new Dictionary<uint, HealthComponent>();
         // Hits reported during the step, landed after it.
         static readonly List<(HealthComponent victim, int kind)> blows = new List<(HealthComponent, int)>();
-        static readonly Dictionary<HealthComponent, (int drops, Vector3 sum)> water =
-            new Dictionary<HealthComponent, (int, Vector3)>();
+        // Each wet enemy's drops this step, their damage in drops (bursts count for more), and
+        // where they hit (summed).
+        static readonly Dictionary<HealthComponent, (int drops, float weight, Vector3 sum)> water =
+            new Dictionary<HealthComponent, (int, float, Vector3)>();
         static bool pounded, superPound;
         static Vector3 poundAt;
         // The landing's drop (metres); where the pound's fall began (world Y), and whether it
@@ -117,9 +121,9 @@ namespace MarioTest
             if (pounded) it?.Stomp(poundAt, poundDrop);
             foreach (var kv in water)
             {
-                var (drops, sum) = kv.Value;
+                var (drops, weight, sum) = kv.Value;
                 var at = sum / drops;
-                Hit(body, kv.Key, drops * Plugin.WaterDamage.Value, at,
+                Hit(body, kv.Key, weight * Plugin.WaterDamage.Value, at,
                     Flat(at - mario).normalized * (40f * drops),
                     waterProcs.Coefficient(kv.Key, Plugin.WaterProc.Value));
             }
@@ -169,10 +173,14 @@ namespace MarioTest
                     if (byId.TryGetValue((uint)e.arg, out var hc)) blows.Add((hc, (int)e.value));
                     break;
                 case Native.EventKind.WaterHit:
+                case Native.EventKind.BurstHit:
                     if (byId.TryGetValue((uint)e.arg, out var wet))
                     {
                         water.TryGetValue(wet, out var w);
-                        water[wet] = (w.drops + Math.Max(1, (int)e.value), w.sum + UnityHost.ToUnity(e.pos));
+                        int n = Math.Max(1, (int)e.value);
+                        float k = e.kind == (uint)Native.EventKind.BurstHit
+                            ? Mathf.Max(0f, Plugin.BurstMultiplier.Value) : 1f;
+                        water[wet] = (w.drops + n, w.weight + n * k, w.sum + UnityHost.ToUnity(e.pos));
                     }
                     break;
                 case Native.EventKind.GroundPound:

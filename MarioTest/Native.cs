@@ -12,7 +12,7 @@ namespace MarioTest
     internal static class Native
     {
         public const string Dll = "sms";
-        public const uint AbiVersion = 10;
+        public const uint AbiVersion = 11;
 
         [StructLayout(LayoutKind.Sequential)]
         public struct Vec3
@@ -69,6 +69,8 @@ namespace MarioTest
             AirJump = 16,
             /// Limits: a belly slide turned wet and spent the charge.
             WetSlide = 17,
+            // As WaterHit, by a drop of a light press's burst.
+            BurstHit = 18,
         }
 
         /// Jump kinds (Event.arg of Jump).

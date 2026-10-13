@@ -48,6 +48,10 @@ How it works:
     audio is Wwise, at RoR2's master × SFX volume. A short Delfino Plaza sting plays when Mario emerges on the run's first stage; RoR2 keeps its soundtrack.
   - A Mario no player controls (Goobo Jr.'s clone) gets a view of his own, silent and drawn in
     RoR2's own gummy clone material (`matGummyClone`, a DLC1 addressable; `Look.GummyClones`).
+  - Its AI master only walks him (common `SurvivorAi.Drivers`: stand and face the enemy within
+    spray range, else run at it, else follow the leader). `MarioBrain` presses his buttons: in
+    range it holds L (locking on, so FLUDD aims at the enemy) and R; close up it jumps and ground
+    pounds; further off it sprints, hops, and dives at middling range.
 - When Mario dies he falls down for good as in Sunshine (the "die" clip and his "down" voices)
   and Sunshine's miss jingle (the "Too Bad!" one) plays. RoR2 removes a dead body a second
   after it comes to rest, so `MarioCorpse` plays the fall out (`Look.DeathFall`,

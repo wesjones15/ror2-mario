@@ -16,7 +16,7 @@ namespace MarioTest
     // MarioCombat (stomps, pounds and FLUDD's water as RoR2 damage). Items: MarioItems, and
     // ror2-common's NativeBody for what RoR2's motor and main state would do (throws, crowd
     // control, sprinting). A Mario no local player controls (Goobo Jr.'s clone) runs its own sim
-    // on the AI's buttons and is drawn silent in RoR2's gummy clone material (MarioView.Clone).
+    // on MarioBrain's buttons and is drawn silent in RoR2's gummy clone material (MarioView.Clone).
     // When the player's Mario dies he falls down for good as in Sunshine, the miss jingle
     // plays, and MarioCorpse plays the fall out after RoR2 removes the body.
     //

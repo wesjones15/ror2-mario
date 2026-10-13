@@ -124,7 +124,7 @@ which runs on the server. A client playing Mario in multiplayer doesn't get it y
 | Hooks of Heresy | fires as a nozzle starts in mid-air |
 | Strides of Heresy | runs on a ground pound (the pound is full strength when it's ready) |
 | Essence of Heresy | runs when a slide would turn wet |
-| Goobo Jr. | the clone is a Mario with his own sim and tank, run by Commando's AI on Mario's buttons (common `SurvivorAi`), drawn in RoR2's gummy clone material |
+| Goobo Jr. | the clone is a Mario with his own sim and tank, walked by Commando's AI master (common `SurvivorAi.Drivers`) and pressed by `MarioBrain`, drawn in RoR2's gummy clone material |
 | Milky Chrysalis | its lift throws Mario (common `NativeBody` velocity bridge) |
 | Volcanic Egg, Eccentric Vase | RoR2 carries him as a vehicle; the sim waits |
 | Fuel Cell, Soulbound Catalyst, Executive Card, every equipment | RoR2's own equipment slot |

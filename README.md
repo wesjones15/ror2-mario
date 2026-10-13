@@ -159,6 +159,8 @@ spin-jump swirls, belly-slide smoke/spray and enemy-stomp bursts.
 pound's flames and fiery landing. Both default to on and work with sound disabled.
 Smoke stays where it was emitted when Mario jumps, and particle motion blends between
 updates for smooth drawing at the display's frame rate.
+Both normal and super ground-pound landing effects stay at the impact point when Mario
+bounces back up. The falling super pound's flames remain attached to Mario.
 `Look.SmokeSpeed` defaults to 2 (twice the original smoke/dust playback speed); set it to 1
 for the disc's timing. This changes smoke only, including its motion and lifetime.
 

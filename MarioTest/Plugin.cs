@@ -81,7 +81,7 @@ namespace MarioTest
         internal static ConfigEntry<float> QuailScale;
         internal static ConfigEntry<bool> ExternalForces;
         internal static ConfigEntry<bool> CrowdControl;
-        internal static ConfigEntry<bool> CameraAim;
+        internal static ConfigEntry<bool> CameraAim, LockOn;
         internal static ConfigEntry<bool> SprayBursts;
         internal static ConfigEntry<float> TriggerCurve;
         internal static ConfigEntry<float> LightTapSeconds;
@@ -268,6 +268,10 @@ namespace MarioTest
                 "Sunshine's L-button camera: while L (the left trigger; the utility key on " +
                 "keyboard) is held, FLUDD points where the camera looks, and Mario crouching turns " +
                 "with the camera (the stick side-steps).");
+            LockOn = Config.Bind("Controls", "LockOn", true,
+                "While L is held, lock onto the enemy nearest where the camera points (within " +
+                "25 m, in line of sight) and aim FLUDD at it, so the spray trigger sprays it. " +
+                "Needs CameraAim.");
             DeathFall = Config.Bind("Look", "DeathFall", true,
                 "When Mario dies he falls down as in Sunshine, with his voice, and lies there.");
             DeathFallSeconds = Config.Bind("Look", "DeathFallSeconds", 6f,

@@ -56,6 +56,7 @@ namespace MarioTest
         readonly MarioPad pad = new MarioPad();
         readonly MarioFlames flames = new MarioFlames();
         readonly MarioUnstuck unstuck = new MarioUnstuck();
+        readonly EnemyLock enemyLock = new EnemyLock();
         // The sim's ground pound stage (Native.State.pounding).
         byte pounding;
         LocalUser localUser;
@@ -272,16 +273,23 @@ namespace MarioTest
 
         // Sunshine's L-button camera (Controls.CameraAim): while L is held, FLUDD points where
         // the camera looks (at what's under the crosshair) and a crouching Mario turns with it.
+        // With Controls.LockOn, L also locks onto the enemy nearest where the camera points
+        // (ror2-common's EnemyLock, as Olimar's RT does) and FLUDD points at it instead, so the
+        // spray trigger sprays it; with none in reach it's the crosshair.
         void Aim(bool held)
         {
-            if (!held || !Plugin.CameraAim.Value || !input)
+            held &= Plugin.CameraAim.Value && input;
+            var locked = enemyLock.Update(body, held && Plugin.LockOn.Value, false, Vector2.zero);
+            if (!held)
             {
                 Native.sms_sim_set_aim(sim, 0, 0, 0f);
                 return;
             }
             var origin = input.aimOrigin;
             var dir = input.aimDirection;
-            var target = Physics.Raycast(origin, dir, out var hit, 300f,
+            Vector3 target;
+            if (locked) target = locked.corePosition;
+            else target = Physics.Raycast(origin, dir, out var hit, 300f,
                 LayerIndex.world.mask | LayerIndex.entityPrecise.mask, QueryTriggerInteraction.Ignore)
                 ? hit.point : origin + dir * 100f;
             var nozzle = transform.position - feetToOrigin

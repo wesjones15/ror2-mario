@@ -46,6 +46,7 @@ namespace MarioTest
         /// disc's files won't load.
         public static IDisplayActor Get()
         {
+            if (!Plugin.AssetsReady) return null;
             if (spare.Count > 0)
             {
                 var d = spare.Pop();

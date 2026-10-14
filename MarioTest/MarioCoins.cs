@@ -63,6 +63,7 @@ namespace MarioTest
 
         bool EnsureModel()
         {
+            if (!Plugin.AssetsReady) return false;
             if (view == IntPtr.Zero && !tried)
             {
                 tried = true;

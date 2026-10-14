@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Threading;
 using BepInEx;
 using BepInEx.Configuration;
 using BepInEx.Logging;
@@ -23,6 +24,9 @@ namespace MarioTest
 
         internal static ManualLogSource Log;
         internal static string AssetsDir;
+        static volatile bool assetsBusy, assetsReady;
+        internal static bool AssetsSettled => !assetsBusy;
+        internal static bool AssetsReady => !assetsBusy && assetsReady;
         internal static ConfigEntry<bool> LogStatus;
         internal static ConfigEntry<bool> TraceJumps;
         internal static ConfigEntry<bool> DrawModel;
@@ -116,7 +120,11 @@ namespace MarioTest
 
             var assets = Config.Bind("Paths", "AssetsDir", "",
                 "libsms's assets/ folder (extracted from your own Super Mario Sunshine disc). " +
-                "Empty: read assets_dir.txt next to the plugin, then $SMS_ASSETS.");
+                "Empty: read assets_dir.txt next to the plugin, then $SMS_ASSETS, then assets/ next to the plugin.");
+            var disc = Config.Bind("Paths", "Disc", "",
+                "Your Super Mario Sunshine (GameCube) disc image (.iso/.gcm/.ciso), used once to " +
+                "build AssetsDir if missing or incomplete. Empty: check $SMS_DISC, the plugin folder " +
+                "and next to AssetsDir. Any region is supported; convert RVZ/WIA/WBFS to ISO first.");
             Height = Config.Bind("Look", "Height", 0f,
                 "Mario's height in metres; everything he does scales with it (his speed, jumps " +
                 "and FLUDD's reach). 0: as tall as Commando.");
@@ -361,13 +369,8 @@ namespace MarioTest
                 Log.LogError(error);
                 return;
             }
-            if (AssetsDir == null || !Directory.Exists(Path.Combine(AssetsDir, "params_mario")))
-            {
-                Log.LogError($"No libsms assets at '{AssetsDir}' (need params_mario/). " +
-                             "Set Paths.AssetsDir in BepInEx/config/" + Guid + ".cfg.");
-                return;
-            }
             Log.LogInfo($"libsms ABI {Native.sms_abi_version()}, assets {AssetsDir}");
+            PrepareAssets(disc.Value, here);
 
             ItemHooks.Install();
             GlobalEventManager.onServerDamageDealt += MarioDriver.OnServerDamage;
@@ -389,8 +392,68 @@ namespace MarioTest
         {
             if (!string.IsNullOrWhiteSpace(configured)) return configured.Trim();
             string file = Path.Combine(here, "assets_dir.txt");
-            if (File.Exists(file)) return File.ReadAllText(file).Trim();
-            return Environment.GetEnvironmentVariable("SMS_ASSETS");
+            if (File.Exists(file))
+            {
+                string pointer = File.ReadAllText(file).Trim();
+                if (!string.IsNullOrWhiteSpace(pointer)) return pointer;
+            }
+            string env = Environment.GetEnvironmentVariable("SMS_ASSETS");
+            if (!string.IsNullOrWhiteSpace(env)) return env.Trim();
+            return Path.Combine(here, "assets");
+        }
+
+        // Match Olimar's first-run flow: register content now, extract on a worker, and let
+        // sims/views wait for the complete cache. Never read files while they are being written.
+        static void PrepareAssets(string configuredDisc, string here)
+        {
+            if (Native.sms_assets_complete(NativeLib.CString(AssetsDir)) != 0)
+            {
+                assetsReady = true;
+                return;
+            }
+            string disc = configuredDisc?.Trim();
+            if (string.IsNullOrEmpty(disc))
+            {
+                string parent = Path.GetDirectoryName(Path.GetFullPath(AssetsDir)) ?? here;
+                var found = new byte[32768];
+                if (Native.sms_find_disc(NativeLib.CString(here + ";" + parent), found, (uint)found.Length) != 0)
+                    disc = Utf8(found);
+            }
+            if (string.IsNullOrEmpty(disc) || !File.Exists(disc))
+            {
+                Log.LogError($"No complete Sunshine assets at '{AssetsDir}' and no disc image to build them from. " +
+                             $"Set Paths.Disc in BepInEx/config/{Guid}.cfg to your own Sunshine ISO/GCM/CISO " +
+                             "and restart. Mario uses Commando until his disc assets are ready.");
+                return;
+            }
+            assetsBusy = true;
+            Log.LogInfo($"Extracting Sunshine assets from {disc} into {AssetsDir}...");
+            var worker = new Thread(() =>
+            {
+                try
+                {
+                    var msg = new byte[4096];
+                    byte ok = Native.sms_extract(NativeLib.CString(disc), NativeLib.CString(AssetsDir), msg, (uint)msg.Length);
+                    assetsReady = ok != 0 && Native.sms_assets_complete(NativeLib.CString(AssetsDir)) != 0;
+                    if (assetsReady) Log.LogInfo($"Extracted: {Utf8(msg)}");
+                    else Log.LogError($"Extraction failed: {Utf8(msg)}. Set Paths.Disc and restart to retry.");
+                }
+                catch (Exception e)
+                {
+                    Log.LogError($"Extraction failed: {e}");
+                }
+                finally
+                {
+                    assetsBusy = false;
+                }
+            }) { IsBackground = true, Name = "sunshine extract" };
+            worker.Start();
+        }
+
+        static string Utf8(byte[] buffer)
+        {
+            int end = Array.IndexOf(buffer, (byte)0);
+            return System.Text.Encoding.UTF8.GetString(buffer, 0, end < 0 ? buffer.Length : end);
         }
 
         static void AddContent(RoR2.ContentManagement.ContentPack pack)

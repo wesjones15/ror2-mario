@@ -104,6 +104,22 @@ and while held points FLUDD where the camera looks (`Controls.CameraAim`), with 
 over if LB is held too. On a keyboard there's no spare key, so the utility key is both L and the
 lock (a fresh press in the air pounds; it doesn't crouch while locked) and the special key cycles.
 
+### First run
+
+Mario uses the same first-run extraction flow as Olimar. Set `Paths.Disc` in
+`BepInEx/config/com.libsms.mariotest.cfg` to your own Sunshine ISO/GCM/CISO (any region),
+or put the image beside the plugin or beside the assets folder. `SMS_DISC` also works.
+RVZ/WIA/WBFS must be converted to ISO first. The plugin extracts models, animation, tuning,
+sounds, HUD and particle effects on a background thread, and repairs incomplete old caches.
+A complete cache is reused on later launches without the disc.
+
+`Paths.AssetsDir` overrides `assets_dir.txt` next to the plugin, then `SMS_ASSETS`, then
+`assets/` next to the plugin. Empty pointer files are ignored. Mario remains registered while
+extraction runs; his sim, views and coins wait for the complete cache. If extraction fails or
+no disc is available, he keeps Commando as a stand-in; the log explains what to fix before
+restarting. If selected before extraction finishes, select another survivor and Mario again
+to refresh the lobby display.
+
 ### Build and install
 
 Needs the Rust toolchain, the .NET SDK, and libsms's `assets/` (extracted from your own disc;
@@ -118,7 +134,7 @@ pointing at `libsms/assets`, into `<game>/BepInEx/plugins/MarioTest/`. It compil
 game's own DLLs, so no NuGet game libraries are involved. Use `-RoR2Dir` for another install
 and `-NoInstall` to only build into `dist/`.
 
-The log, `BepInEx/LogOutput.log`, should show `libsms ABI 12`, `Mario is 1.xx m tall`, then
+The log, `BepInEx/LogOutput.log`, should show `libsms ABI 18`, `Mario is 1.xx m tall`, then
 `Mario registered`.
 In a run it should show `Mario's sim started`, `Mario's view: 12 models, 26 textures; sound
 ...`, and one line per status change (turn that off with `Debug.LogStatus`).

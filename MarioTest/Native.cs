@@ -4,7 +4,7 @@ using Ror2Common;
 
 namespace MarioTest
 {
-    // The libsms C ABI (libsms/crates/libsms-ffi, SMS_ABI_VERSION 17). Layouts mirror the
+    // The libsms C ABI (libsms/crates/libsms-ffi, SMS_ABI_VERSION 18). Layouts mirror the
     // #[repr(C)] structs there field for field; Load checks them with sms_struct_sizes. Sim
     // units: about 1 cm, Y up, a facing angle a (i16, 0x10000 per turn) points along
     // (sin a, 0, cos a). The view's structs are ror2-common's (ViewModelInfo...), which
@@ -12,7 +12,7 @@ namespace MarioTest
     internal static class Native
     {
         public const string Dll = "sms";
-        public const uint AbiVersion = 17;
+        public const uint AbiVersion = 18;
 
         [StructLayout(LayoutKind.Sequential)]
         public struct Vec3
@@ -233,6 +233,9 @@ namespace MarioTest
 
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern uint sms_abi_version();
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern uint sms_tick_hz();
+        [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern byte sms_assets_complete(byte[] dirUtf8);
+        [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern byte sms_find_disc(byte[] dirsUtf8, byte[] pathUtf8, uint pathLen);
+        [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern byte sms_extract(byte[] discUtf8, byte[] outDirUtf8, byte[] msgUtf8, uint msgLen);
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern uint sms_struct_sizes([Out] uint[] sizes, uint max);
 
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern IntPtr sms_sim_new(byte[] assetsDirUtf8, ref Vec3 pos, short yaw);

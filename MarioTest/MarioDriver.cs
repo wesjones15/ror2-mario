@@ -116,7 +116,7 @@ namespace MarioTest
         }
 
         bool CanDrive =>
-            !RunAudio.Ended && !failed && body && motor && input
+            Plugin.AssetsReady && !RunAudio.Ended && !failed && body && motor && input
             && body.hasEffectiveAuthority
             && !body.currentVehicle
             && (!health || health.alive);

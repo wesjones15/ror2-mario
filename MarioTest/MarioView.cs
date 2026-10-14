@@ -49,7 +49,7 @@ namespace MarioTest
         /// The player's view, made the first time.
         public static MarioView Ensure()
         {
-            if (RunAudio.Ended) return null;
+            if (!Plugin.AssetsReady || RunAudio.Ended) return null;
             if (tried) return player;
             tried = true;
             if (!Plugin.DrawModel.Value && !Plugin.Sound.Value) return null;
@@ -68,7 +68,7 @@ namespace MarioTest
         /// for a Mario no player controls; null if the view can't load or drawing is off.
         public static MarioView Clone()
         {
-            if (RunAudio.Ended || !Plugin.DrawModel.Value || !Plugin.GummyClones.Value) return null;
+            if (!Plugin.AssetsReady || RunAudio.Ended || !Plugin.DrawModel.Value || !Plugin.GummyClones.Value) return null;
             var v = Open(false, 0);
             if (v == IntPtr.Zero)
             {

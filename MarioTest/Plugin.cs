@@ -100,10 +100,14 @@ namespace MarioTest
         internal static ConfigEntry<bool> GummyClones;
         internal static ConfigEntry<float> WaterOpacity;
         internal static ConfigEntry<float> WaterRefraction;
+        internal static ConfigEntry<float> GroundWetness;
 
         void Awake()
         {
             Log = Logger;
+            GroundWetness = Config.Bind("Look", "GroundWetness", 0.12f,
+                new ConfigDescription("How much FLUDD's wet patches darken terrain, fading as they dry. 0 hides the marks; wet-slide eligibility is unchanged.",
+                    new AcceptableValueRange<float>(0f, 0.35f)));
             CommonLog.Log = Logger;
             string here = Path.GetDirectoryName(Info.Location);
             SpawnMusic.Initialize(Config, here);

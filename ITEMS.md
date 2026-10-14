@@ -59,6 +59,14 @@ Alien Head, ×1.8 for four, ×3.2 for eight, with no hard cap. It stretches:
 
 It doesn't touch the tank's size or how fast it drains.
 
+## Yellow coin healing
+
+Enemies Mario kills drop the disc's yellow coin. A living allied Mario can collect it once,
+healing `fullCombinedHealth / 8`: one of the Sunshine life meter's eight segments. This goes
+through RoR2's normal healing rules and item hooks, including healing-to-water conversion;
+it does not directly restore shields or barrier. Pickup plays `MSD_SE_SY_COIN` and
+`ms_coinget_a` / `ms_coinget_b` from the user's extracted assets.
+
 ## Water
 
 The tank is Sunshine's. It refills:

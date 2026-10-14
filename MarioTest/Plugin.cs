@@ -371,6 +371,7 @@ namespace MarioTest
 
             ItemHooks.Install();
             GlobalEventManager.onServerDamageDealt += MarioDriver.OnServerDamage;
+            gameObject.AddComponent<MarioCoins>();
             // The HUD's skill icons name the buttons Mario's sim reads (MarioPad), not RoR2's binds.
             GlyphOverride.Install();
             GlyphOverride.Set("MarioTestBody", null, new Dictionary<SkillSlot, PadButton[]>

@@ -19,6 +19,13 @@
 - FLUDD **continues regenerating while spraying or otherwise being used**; water intake and expenditure occur concurrently.
 - No tank-capacity increases are currently planned. Healing-to-water conversion coefficients, caps and safeguards against healing/proc feedback loops are **TBD**.
 
+### Yellow coins from enemy kills
+
+- Each enemy death credited to Mario drops one yellow Sunshine coin, including kills from his damage-over-time and item procs. Other survivors' kills and friendly deaths do not drop one.
+- Coins use the yellow model from the user's ISO. Collecting one plays Sunshine's coin sound and both pickup sparkle effects.
+- A living allied Mario collects a coin by touching it. Collection heals one of the eight life-meter segments: `fullCombinedHealth / 8`, through normal RoR2 healing and healing-item rules. It does not directly refill shields or barrier.
+- Each coin can be collected once. Loose coins expire after 60 seconds and clear on stage changes or run exit; the host keeps at most 128 at once.
+
 ## 3. Nozzle behavior and water-origin attacks
 
 | Nozzle | Direction / attack origin | Item interactions |

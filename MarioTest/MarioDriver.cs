@@ -90,6 +90,15 @@ namespace MarioTest
         /// The view this Mario draws with: the player's, or his own.
         MarioView View => Local ? MarioView.Player : cloneView;
 
+        /// A host-owned yellow coin was collected: Sunshine's pickup sound and sparks.
+        internal void CoinCollected(Vector3 position)
+        {
+            var shown = View;
+            if (shown == null || shown.Handle == IntPtr.Zero) return;
+            var at = UnityHost.ToSim(position);
+            Native.sms_view_coin_get(shown.Handle, ref at);
+        }
+
         void Awake()
         {
             body = GetComponent<CharacterBody>();

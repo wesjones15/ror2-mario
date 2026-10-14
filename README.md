@@ -25,6 +25,10 @@ How it works:
   drops hit them. Each hit lands as RoR2 damage from Mario's body (ror2-common's `NativeHit`),
   so his damage stat, crits and on-hit items apply. Water damage is this plugin's, not
   Sunshine's.
+- Enemies Mario kills drop a yellow coin from the Sunshine ISO, including item-proc kills.
+  Touching one restores one life-meter segment (one eighth of full health-meter capacity),
+  through RoR2 healing, with Sunshine's pickup chime and sparkles. Coins fall onto terrain,
+  spin, and expire after 60 seconds. Friendly kills and other survivors' kills do not drop them.
 - Movement speed items scale how far Mario gets each step (`Sim.SpeedFromItems`).
 - `MarioItems` hooks RoR2's items to Mario's moves; [ITEMS.md](ITEMS.md) goes through them
   all. His moves sit in RoR2's skill slots so items keep their charges: FLUDD is the primary,

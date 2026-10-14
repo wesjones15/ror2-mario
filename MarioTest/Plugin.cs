@@ -101,6 +101,7 @@ namespace MarioTest
         internal static ConfigEntry<float> DeathFallSeconds;
         internal static ConfigEntry<bool> GummyClones;
         internal static ConfigEntry<float> WaterOpacity;
+        internal static ConfigEntry<float> SlideWaveTint;
         internal static ConfigEntry<float> WaterRefraction;
         internal static ConfigEntry<float> GroundWetness;
 
@@ -335,6 +336,9 @@ namespace MarioTest
             WaterRefraction = Config.Bind("Look", "WaterRefraction", 1f,
                 "FLUDD's water bends what's behind it, as in Sunshine, through RoR2's refraction " +
                 "effect: its strength (1: RoR2's own). 0: off (tint only).");
+            SlideWaveTint = Config.Bind("Look", "SlideWaveTint", 0.35f,
+                "How visible the wet slide's side waves are as pale water, on top of their " +
+                "refraction (which is subtle, and can vanish over some backgrounds). 0: refraction only.");
             GummyClones = Config.Bind("Look", "GummyClones", true,
                 "Marios no player controls (Goobo Jr.'s clone) are drawn in RoR2's gummy clone " +
                 "material. Off: Commando's model.");

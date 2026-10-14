@@ -26,6 +26,7 @@ How it works:
   so his damage stat, crits and on-hit items apply. Water damage is this plugin's, not
   Sunshine's.
 - Wet-slide side waves use the disc's broad crossed water ribbon and indirect wave maps,
+  with a faint pale-water tint under them (`Look.SlideWaveTint`) so they show even where refraction doesn't,
   through FLUDD water's existing RoR2 refraction material (`Look.WaterRefraction`).
   Their scale follows Sunshine's looping emitter curve; droplets and spray remain separate.
   Wave normals and coverage are uploaded separately, with compensated strength so RoR2's

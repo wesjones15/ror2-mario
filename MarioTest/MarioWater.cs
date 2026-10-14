@@ -104,6 +104,12 @@ namespace MarioTest
                     // Ribbons meet the ground along their lower edge. The sphere effect's
                     // broad soft-particle fade would erase their shallow side crests.
                     if (m.HasProperty("_InvFade")) m.SetFloat("_InvFade", 2f);
+                    // Ribbons are crossed single-sided sheets seen from either side.
+                    if (m.HasProperty("_Cull")) m.SetFloat("_Cull", 0f);
+                    var props = new List<string>();
+                    var s = m.shader;
+                    for (int i = 0; i < s.GetPropertyCount(); i++) props.Add(s.GetPropertyName(i));
+                    Plugin.Log.LogInfo($"{name}: shader properties {string.Join(", ", props)}");
                 }
                 Plugin.Log.LogInfo($"{name} ({m.shader.name}, queue {m.renderQueue}" +
                     (m.HasProperty(MagnitudeId) ? $", magnitude {m.GetFloat(MagnitudeId):0.##})" : ")"));

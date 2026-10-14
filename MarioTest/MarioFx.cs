@@ -150,6 +150,25 @@ namespace MarioTest
             return m;
         }
 
+        /// The slide waves' pale water, drawn under their refraction: the wave map's coverage
+        /// as alpha, so the crests show even where the refraction itself shows nothing.
+        Material TintFor(uint texture)
+        {
+            const uint Tint = 0x40 | 2;
+            float opacity = Mathf.Clamp01(Plugin.SlideWaveTint.Value);
+            if (opacity <= 0f || texture >= refractionMasks.Length || !refractionMasks[texture]) return null;
+            long key = ((long)texture << 8) | Tint;
+            if (materials.TryGetValue(key, out var m)) return m;
+            m = Shaders.SeeThrough("Mario slide wave tint", refractionMasks[texture], false, true, Shaders.SurfaceTintOpacity);
+            if (m)
+            {
+                m.renderQueue = 3001;
+                m.SetColor("_TintColor", new Color(0.75f, 0.9f, 1f, opacity));
+            }
+            materials[key] = m;
+            return m;
+        }
+
         /// This frame's effects (after sms_view_update): sim units times `scale`, shifted by
         /// `offset` for attached effects. Smoke stays at its emitted world position.
         public unsafe void Update(IntPtr view, float scale, Vector3 offset)
@@ -185,12 +204,12 @@ namespace MarioTest
             mesh.SetVertices(verts);
             mesh.SetUVs(0, uvs);
             mesh.SetColors(colors);
-            mesh.subMeshCount = (int)batches;
+            mesh.subMeshCount = (int)batches * 2;
             for (uint i = 0; i < batches; i++)
             {
                 var batch = b[i];
                 var material = MaterialFor(view, batch.texture, batch.blend);
-                if (!material) continue;
+                if (!material && batch.blend != 2) continue;
                 tris.Clear();
                 uint end = Math.Min(batch.first_vertex + batch.vertex_count, count);
                 for (uint q = batch.first_vertex; q + 4 <= end; q += 4)
@@ -199,6 +218,14 @@ namespace MarioTest
                     tris.Add(c); tris.Add(c + 1); tris.Add(c + 2);
                     tris.Add(c); tris.Add(c + 2); tris.Add(c + 3);
                 }
+                // Slide waves (refraction) get a pale tint pass first, then the refraction.
+                var tint = batch.blend == 2 ? TintFor(batch.texture) : null;
+                if (tint)
+                {
+                    mesh.SetTriangles(tris, shown.Count, false);
+                    shown.Add(tint);
+                }
+                if (!material) continue;
                 mesh.SetTriangles(tris, shown.Count, false);
                 shown.Add(material);
             }

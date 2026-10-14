@@ -2,6 +2,7 @@ using System;
 using Ror2Common;
 using RoR2;
 using UnityEngine;
+using UnityEngine.Networking;
 
 namespace MarioTest
 {
@@ -127,6 +128,8 @@ namespace MarioTest
         void FixedUpdate()
         {
             spawnAge += Time.fixedDeltaTime;
+            // A client's Mario on the server: what healing owes his tank goes to the client.
+            if (NetworkServer.active && body && !body.hasEffectiveAuthority) Items.FlushRemote();
             if (!CanDrive)
             {
                 StopDriving();
@@ -458,6 +461,9 @@ namespace MarioTest
                 return;
             }
         }
+
+        /// The server says healing owes the player's tank this much, or a full refill.
+        internal void WaterOwed(float share, bool refill) => Items.Owed(share, refill);
 
         /// The server says a powerful hit knocks this (the player's own) Mario over.
         internal void KnockFrom(Vector3 from) => knockFrom = from;

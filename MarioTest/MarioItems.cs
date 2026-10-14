@@ -92,6 +92,29 @@ namespace MarioTest
             return skills ? skills.GetSkill(s) : null;
         }
 
+        // ---- a client's Mario ----------------------------------------------------------------
+        // Heals and Bandolier happen on the server, but the tank is in the player's sim: the server's
+        // copy of a client's Mario collects what he is owed and sends it (MarioNet.SendWater).
+
+        float remoteSentAt;
+
+        /// On the server, for a Mario whose sim is on a client's machine: send the tank refills owed.
+        public void FlushRemote()
+        {
+            if (!body || (waterOwed <= 0.0001f && !refillOwed) || Time.fixedTime - remoteSentAt < 0.2f) return;
+            remoteSentAt = Time.fixedTime;
+            MarioNet.SendWater(body, waterOwed, refillOwed);
+            waterOwed = 0f;
+            refillOwed = false;
+        }
+
+        /// The server says the tank is owed this much (a share of full) and maybe a full refill.
+        public void Owed(float share, bool refill)
+        {
+            waterOwed += share;
+            if (refill) refillOwed = true;
+        }
+
         // ---- before and after each step ------------------------------------------------------
 
         /// Before sms_sim_step: water owed, and this step's limits.

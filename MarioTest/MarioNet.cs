@@ -20,6 +20,8 @@ namespace MarioTest
         public const short CombatMsg = 0x4D02;
         /// The server knocks a client's Mario over: server to that client.
         public const short KnockMsg = 0x4D03;
+        /// Healing and Bandolier owe a client's Mario's tank: server to that client.
+        public const short WaterMsg = 0x4D04;
 
         /// One hit a client's Mario made, for the server to land.
         public struct HitRecord
@@ -38,6 +40,7 @@ namespace MarioTest
             Mp.Register(FramesMsg, OnServer, OnClient);
             Mp.Register(CombatMsg, OnCombat, null);
             Mp.Register(KnockMsg, null, OnKnock);
+            Mp.Register(WaterMsg, null, OnWater);
             Run.onRunDestroyGlobal += run => queues.Clear();
         }
 
@@ -164,6 +167,30 @@ namespace MarioTest
             if (r.Failed || !go || !Finite(from)) return;
             var body = go.GetComponent<CharacterBody>();
             if (body && body.hasEffectiveAuthority) go.GetComponent<MarioDriver>()?.KnockFrom(from);
+        }
+
+        /// The server tells a client's Mario what his tank is owed (healing into water, Bandolier).
+        public static void SendWater(CharacterBody body, float share, bool refill)
+        {
+            var user = body && body.master && body.master.playerCharacterMasterController
+                ? body.master.playerCharacterMasterController.networkUser : null;
+            var conn = user ? user.connectionToClient : null;
+            if (conn == null || body.hasEffectiveAuthority) return;
+            var w = new ByteWriter(12);
+            w.U32(body.netId.Value);
+            w.F32(share);
+            w.Bool(refill);
+            Mp.SendTo(conn, WaterMsg, w.ToArray());
+        }
+
+        static void OnWater(NetworkConnection unused, ByteReader r)
+        {
+            var go = Mp.Find(r.U32());
+            float share = r.F32();
+            bool refill = r.Bool();
+            if (r.Failed || !go || !(share >= 0f) || share > 100f) return;
+            var body = go.GetComponent<CharacterBody>();
+            if (body && body.hasEffectiveAuthority) go.GetComponent<MarioDriver>()?.WaterOwed(share, refill);
         }
 
         /// Sends one body's recorded frames.

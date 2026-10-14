@@ -219,7 +219,7 @@ Offline / friends-only co-op only.
 
 FLUDD's water impacts leave terrain wet patches, slightly darkening the ground
 (`Look.GroundWetness`, 0.12 by default) before fading as they dry. A light RT burst wets
-a broad patch ahead, with twice the radius of an ordinary impact. Wet-slide eligibility
+six circles in a trail from Mario's feet forward in his aim, as a short splash does in Sunshine. Wet-slide eligibility
 uses these same surface footprints, rather than a nearby droplet's distance.
 Shallow water (anything RoR2 builds as water, see `Water in this stage`) also counts as
 wet ground (`Sim.ShallowWetSlide`). A belly slide must reach wet ground to begin gliding;

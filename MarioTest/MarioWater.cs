@@ -82,7 +82,7 @@ namespace MarioTest
 
         // A copy of RoR2's refraction material, its strength scaled by Look.WaterRefraction;
         // null (FLUDD's water is tint alone) if it won't load.
-        internal static Material Refraction(string name, Texture bump = null)
+        internal static Material Refraction(string name, Texture bump = null, Texture mask = null, float normalGain = 1f)
         {
             try
             {
@@ -94,18 +94,18 @@ namespace MarioTest
                 }
                 var m = new Material(src) { name = name };
                 if (m.HasProperty(MagnitudeId))
-                    m.SetFloat(MagnitudeId, m.GetFloat(MagnitudeId) * Plugin.WaterRefraction.Value);
+                    m.SetFloat(MagnitudeId, m.GetFloat(MagnitudeId) * Plugin.WaterRefraction.Value / normalGain);
                 if (bump)
                 {
                     // Slide ribbons use the disc's indirect wave map instead of the water
                     // drop's sphere normal. Both use this same existing refraction pass.
                     m.SetTexture("_BumpMap", bump);
-                    m.SetTexture("_MaskTex", Texture2D.whiteTexture);
+                    m.SetTexture("_MaskTex", mask ? mask : Texture2D.whiteTexture);
                     // Ribbons meet the ground along their lower edge. The sphere effect's
                     // broad soft-particle fade would erase their shallow side crests.
                     if (m.HasProperty("_InvFade")) m.SetFloat("_InvFade", 2f);
                 }
-                Plugin.Log.LogInfo($"FLUDD's water refracts ({m.shader.name}, queue {m.renderQueue}" +
+                Plugin.Log.LogInfo($"{name} ({m.shader.name}, queue {m.renderQueue}" +
                     (m.HasProperty(MagnitudeId) ? $", magnitude {m.GetFloat(MagnitudeId):0.##})" : ")"));
                 return m;
             }

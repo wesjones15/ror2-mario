@@ -23,6 +23,7 @@ namespace MarioTest
         readonly List<Material> shown = new List<Material>();
         readonly Dictionary<long, Material> materials = new Dictionary<long, Material>();
         Texture2D[] textures = new Texture2D[0];
+        Texture2D[] refractionMasks = new Texture2D[0];
         uint[] versions = new uint[0];
         bool[] worldSpace = new bool[0];
         byte[] scratch = new byte[0];
@@ -67,6 +68,7 @@ namespace MarioTest
             if (which >= textures.Length)
             {
                 Array.Resize(ref textures, (int)which + 1);
+                Array.Resize(ref refractionMasks, (int)which + 1);
                 Array.Resize(ref versions, (int)which + 1);
             }
             uint version = Native.sms_view_fx_texture_version(view, which);
@@ -99,6 +101,36 @@ namespace MarioTest
             Buffer.BlockCopy(scratch, 0, px, 0, len);
             tex.SetPixelData(px, 0);
             tex.Apply(false, false);
+            if (linear)
+            {
+                // ABI 20 keeps coverage in B, separate from the amplified normal. RoR2's
+                // shader reads normal X from R*A, Y from G, and mask coverage from alpha.
+                var mask = refractionMasks[which];
+                if (!mask || mask.width != t.width || mask.height != t.height)
+                {
+                    if (mask) UnityEngine.Object.Destroy(mask);
+                    mask = new Texture2D((int)t.width, (int)t.height, TextureFormat.RGBA32, false, true)
+                    {
+                        name = $"Mario wave mask {which}",
+                        filterMode = FilterMode.Bilinear,
+                        wrapMode = TextureWrapMode.Clamp,
+                    };
+                    refractionMasks[which] = mask;
+                }
+                var maskPixels = new byte[len];
+                int visible = 0;
+                for (int i = 0; i < len; i += 4)
+                {
+                    maskPixels[i] = maskPixels[i + 1] = maskPixels[i + 2] = 255;
+                    maskPixels[i + 3] = px[i + 2];
+                    float x = px[i + 3] / 255f * 2f - 1f, y = px[i + 1] / 255f * 2f - 1f;
+                    if (maskPixels[i + 3] / 255f >= 0.01f && x * x + y * y >= 1f - 0.99f * 0.99f)
+                        visible++;
+                }
+                mask.SetPixelData(maskPixels, 0);
+                mask.Apply(false, false);
+                Plugin.Log.LogInfo($"Mario slide-wave map: {t.width}x{t.height}, {visible} pixels pass RoR2's distortion cutoff");
+            }
             versions[which] = version;
             return tex;
         }
@@ -110,7 +142,8 @@ namespace MarioTest
             long key = ((long)texture << 8) | blend;
             if (materials.TryGetValue(key, out var m)) return m;
             if (blend == Refraction)
-                m = Plugin.WaterRefraction.Value > 0f ? MarioWater.Refraction("Mario slide waves", tex) : null;
+                m = Plugin.WaterRefraction.Value > 0f
+                    ? MarioWater.Refraction("Mario slide waves", tex, refractionMasks[texture], Native.RefractionNormalGain) : null;
             else
                 m = Shaders.SeeThrough($"Mario effect {texture}", tex, blend == 0, true);
             materials[key] = m;
@@ -187,6 +220,7 @@ namespace MarioTest
             if (mesh) UnityEngine.Object.Destroy(mesh);
             foreach (var m in materials.Values) if (m) UnityEngine.Object.Destroy(m);
             foreach (var t in textures) if (t) UnityEngine.Object.Destroy(t);
+            foreach (var t in refractionMasks) if (t) UnityEngine.Object.Destroy(t);
         }
     }
 }

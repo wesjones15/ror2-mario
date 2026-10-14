@@ -4,7 +4,7 @@ using Ror2Common;
 
 namespace MarioTest
 {
-    // The libsms C ABI (libsms/crates/libsms-ffi, SMS_ABI_VERSION 19). Layouts mirror the
+    // The libsms C ABI (libsms/crates/libsms-ffi, SMS_ABI_VERSION 20). Layouts mirror the
     // #[repr(C)] structs there field for field; Load checks them with sms_struct_sizes. Sim
     // units: about 1 cm, Y up, a facing angle a (i16, 0x10000 per turn) points along
     // (sin a, 0, cos a). The view's structs are ror2-common's (ViewModelInfo...), which
@@ -12,7 +12,10 @@ namespace MarioTest
     internal static class Native
     {
         public const string Dll = "sms";
-        public const uint AbiVersion = 19;
+        public const uint AbiVersion = 20;
+        // ABI 20 refraction maps: R=1, G=4*Y, B=coverage, A=4*X. Separate the mask and
+        // compensate material strength so RoR2's near-flat-normal discard keeps the crests.
+        public const float RefractionNormalGain = 4f;
 
         [StructLayout(LayoutKind.Sequential)]
         public struct Vec3

@@ -61,7 +61,7 @@ namespace MarioTest
             // marks share the native sim's wet-slide footprint and drying lifetime.
             wetness.renderQueue = 2998;
             wetness.SetColor("_TintColor", new Color(0f, 0f, 0f, Mathf.Clamp01(Plugin.GroundWetness.Value)));
-            var refraction = Plugin.WaterRefraction.Value > 0f ? Refraction() : null;
+            var refraction = Plugin.WaterRefraction.Value > 0f ? Refraction("Mario water refraction") : null;
             var go = new GameObject("Mario water");
             UnityEngine.Object.DontDestroyOnLoad(go);
             var mesh = new Mesh { name = "Mario water" };
@@ -82,7 +82,7 @@ namespace MarioTest
 
         // A copy of RoR2's refraction material, its strength scaled by Look.WaterRefraction;
         // null (FLUDD's water is tint alone) if it won't load.
-        static Material Refraction()
+        internal static Material Refraction(string name, Texture bump = null)
         {
             try
             {
@@ -92,9 +92,19 @@ namespace MarioTest
                     Plugin.Log.LogWarning("FLUDD's water: RoR2's refraction material didn't load; tint only");
                     return null;
                 }
-                var m = new Material(src) { name = "Mario water refraction" };
+                var m = new Material(src) { name = name };
                 if (m.HasProperty(MagnitudeId))
                     m.SetFloat(MagnitudeId, m.GetFloat(MagnitudeId) * Plugin.WaterRefraction.Value);
+                if (bump)
+                {
+                    // Slide ribbons use the disc's indirect wave map instead of the water
+                    // drop's sphere normal. Both use this same existing refraction pass.
+                    m.SetTexture("_BumpMap", bump);
+                    m.SetTexture("_MaskTex", Texture2D.whiteTexture);
+                    // Ribbons meet the ground along their lower edge. The sphere effect's
+                    // broad soft-particle fade would erase their shallow side crests.
+                    if (m.HasProperty("_InvFade")) m.SetFloat("_InvFade", 2f);
+                }
                 Plugin.Log.LogInfo($"FLUDD's water refracts ({m.shader.name}, queue {m.renderQueue}" +
                     (m.HasProperty(MagnitudeId) ? $", magnitude {m.GetFloat(MagnitudeId):0.##})" : ")"));
                 return m;

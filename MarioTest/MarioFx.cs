@@ -62,7 +62,7 @@ namespace MarioTest
         }
 
         /// The texture `which`, uploaded (again when libsms says its pixels changed).
-        Texture2D Texture(IntPtr view, uint which)
+        Texture2D Texture(IntPtr view, uint which, bool linear)
         {
             if (which >= textures.Length)
             {
@@ -80,7 +80,7 @@ namespace MarioTest
             {
                 if (tex) UnityEngine.Object.Destroy(tex);
                 // Kept readable: some (a stripe's whole look) change every game frame.
-                tex = new Texture2D((int)t.width, (int)t.height, TextureFormat.RGBA32, false)
+                tex = new Texture2D((int)t.width, (int)t.height, TextureFormat.RGBA32, false, linear)
                 {
                     name = $"Mario effect {which}",
                     filterMode = FilterMode.Bilinear,
@@ -105,10 +105,14 @@ namespace MarioTest
 
         Material MaterialFor(IntPtr view, uint texture, uint blend)
         {
-            var tex = Texture(view, texture);
+            const uint Refraction = 2;
+            var tex = Texture(view, texture, blend == Refraction);
             long key = ((long)texture << 8) | blend;
-            if (materials.TryGetValue(key, out var m) && m) return m;
-            m = Shaders.SeeThrough($"Mario effect {texture}", tex, blend == 0, true);
+            if (materials.TryGetValue(key, out var m)) return m;
+            if (blend == Refraction)
+                m = Plugin.WaterRefraction.Value > 0f ? MarioWater.Refraction("Mario slide waves", tex) : null;
+            else
+                m = Shaders.SeeThrough($"Mario effect {texture}", tex, blend == 0, true);
             materials[key] = m;
             return m;
         }
@@ -152,6 +156,8 @@ namespace MarioTest
             for (uint i = 0; i < batches; i++)
             {
                 var batch = b[i];
+                var material = MaterialFor(view, batch.texture, batch.blend);
+                if (!material) continue;
                 tris.Clear();
                 uint end = Math.Min(batch.first_vertex + batch.vertex_count, count);
                 for (uint q = batch.first_vertex; q + 4 <= end; q += 4)
@@ -160,9 +166,11 @@ namespace MarioTest
                     tris.Add(c); tris.Add(c + 1); tris.Add(c + 2);
                     tris.Add(c); tris.Add(c + 2); tris.Add(c + 3);
                 }
-                mesh.SetTriangles(tris, (int)i, false);
-                shown.Add(MaterialFor(view, batch.texture, batch.blend));
+                mesh.SetTriangles(tris, shown.Count, false);
+                shown.Add(material);
             }
+            mesh.subMeshCount = shown.Count;
+            if (shown.Count == 0) { Hide(); return; }
             mesh.RecalculateBounds();
             renderer.sharedMaterials = shown.ToArray();
             if (!go.activeSelf) go.SetActive(true);

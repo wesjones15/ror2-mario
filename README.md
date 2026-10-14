@@ -25,6 +25,9 @@ How it works:
   drops hit them. Each hit lands as RoR2 damage from Mario's body (ror2-common's `NativeHit`),
   so his damage stat, crits and on-hit items apply. Water damage is this plugin's, not
   Sunshine's.
+- Wet-slide side waves use the disc's broad crossed water ribbon and indirect wave maps,
+  through FLUDD water's existing RoR2 refraction material (`Look.WaterRefraction`).
+  Their scale follows Sunshine's looping emitter curve; droplets and spray remain separate.
 - Enemies Mario kills drop a yellow coin from the Sunshine ISO, including item-proc kills.
   Touching one restores one life-meter segment (one eighth of full health-meter capacity),
   through RoR2 healing, with Sunshine's pickup chime and sparkles. Coins fall onto terrain,
@@ -138,7 +141,7 @@ that does not exist yet; first run creates it. The install copies only these thr
 and stings load from the cache. Use `-RoR2Dir` for another install and `-NoInstall` to
 only build into `dist/`.
 
-The log, `BepInEx/LogOutput.log`, should show `libsms ABI 18`, `Mario is 1.xx m tall`, then
+The log, `BepInEx/LogOutput.log`, should show `libsms ABI 19`, `Mario is 1.xx m tall`, then
 `Mario registered`.
 In a run it should show `Mario's sim started`, `Mario's view: 12 models, 26 textures; sound
 ...`, and one line per status change (turn that off with `Debug.LogStatus`).

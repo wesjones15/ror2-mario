@@ -25,6 +25,7 @@ namespace MarioTest
         internal static ManualLogSource Log;
         internal static string AssetsDir;
         static volatile bool assetsBusy, assetsReady;
+        bool musicInitialized;
         internal static bool AssetsSettled => !assetsBusy;
         internal static bool AssetsReady => !assetsBusy && assetsReady;
         internal static ConfigEntry<bool> LogStatus;
@@ -111,7 +112,6 @@ namespace MarioTest
                     new AcceptableValueRange<float>(0f, 0.35f)));
             CommonLog.Log = Logger;
             string here = Path.GetDirectoryName(Info.Location);
-            SpawnMusic.Initialize(Config, here);
             RunAudio.Initialize(() =>
             {
                 MarioDriver.SettleTheDead();
@@ -406,20 +406,20 @@ namespace MarioTest
         // sims/views wait for the complete cache. Never read files while they are being written.
         static void PrepareAssets(string configuredDisc, string here)
         {
-            if (Native.sms_assets_complete(NativeLib.CString(AssetsDir)) != 0)
-            {
-                assetsReady = true;
+            assetsReady = Native.sms_assets_complete(NativeLib.CString(AssetsDir)) != 0;
+            string stings = Path.Combine(AssetsDir, "ror2_audio");
+            if (assetsReady && File.Exists(Path.Combine(stings, "spawn.wav"))
+                && File.Exists(Path.Combine(stings, "death.wav")))
                 return;
-            }
             string disc = configuredDisc?.Trim();
-            if (string.IsNullOrEmpty(disc))
+            if (!assetsReady && string.IsNullOrEmpty(disc))
             {
                 string parent = Path.GetDirectoryName(Path.GetFullPath(AssetsDir)) ?? here;
                 var found = new byte[32768];
                 if (Native.sms_find_disc(NativeLib.CString(here + ";" + parent), found, (uint)found.Length) != 0)
                     disc = Utf8(found);
             }
-            if (string.IsNullOrEmpty(disc) || !File.Exists(disc))
+            if (!assetsReady && (string.IsNullOrEmpty(disc) || !File.Exists(disc)))
             {
                 Log.LogError($"No complete Sunshine assets at '{AssetsDir}' and no disc image to build them from. " +
                              $"Set Paths.Disc in BepInEx/config/{Guid}.cfg to your own Sunshine ISO/GCM/CISO " +
@@ -427,16 +427,28 @@ namespace MarioTest
                 return;
             }
             assetsBusy = true;
-            Log.LogInfo($"Extracting Sunshine assets from {disc} into {AssetsDir}...");
+            Log.LogInfo(assetsReady ? "Preparing Sunshine arrival/death stings..."
+                : $"Extracting Sunshine assets from {disc} into {AssetsDir}...");
             var worker = new Thread(() =>
             {
                 try
                 {
                     var msg = new byte[4096];
-                    byte ok = Native.sms_extract(NativeLib.CString(disc), NativeLib.CString(AssetsDir), msg, (uint)msg.Length);
-                    assetsReady = ok != 0 && Native.sms_assets_complete(NativeLib.CString(AssetsDir)) != 0;
-                    if (assetsReady) Log.LogInfo($"Extracted: {Utf8(msg)}");
-                    else Log.LogError($"Extraction failed: {Utf8(msg)}. Set Paths.Disc and restart to retry.");
+                    if (!assetsReady)
+                    {
+                        byte ok = Native.sms_extract(NativeLib.CString(disc), NativeLib.CString(AssetsDir), msg, (uint)msg.Length);
+                        assetsReady = ok != 0 && Native.sms_assets_complete(NativeLib.CString(AssetsDir)) != 0;
+                        if (assetsReady) Log.LogInfo($"Extracted: {Utf8(msg)}");
+                        else Log.LogError($"Extraction failed: {Utf8(msg)}. Set Paths.Disc and restart to retry.");
+                    }
+                    // Device-free rendering from the same disc banks. Failure only silences the
+                    // stings; Mario's sim and normal sounds can still use the complete extraction.
+                    if (assetsReady)
+                    {
+                        if (Native.sms_render_stings(NativeLib.CString(AssetsDir), msg, (uint)msg.Length) != 0)
+                            Log.LogInfo($"Sunshine audio: {Utf8(msg)}");
+                        else Log.LogWarning($"Sunshine stings unavailable: {Utf8(msg)}");
+                    }
                 }
                 catch (Exception e)
                 {
@@ -448,6 +460,15 @@ namespace MarioTest
                 }
             }) { IsBackground = true, Name = "sunshine extract" };
             worker.Start();
+        }
+
+        void Update()
+        {
+            if (musicInitialized || !AssetsSettled) return;
+            musicInitialized = true;
+            // Main thread: bind config and load the worker's finished PCM for RoR2 playback.
+            string folder = Path.Combine(AssetsDir, "ror2_audio");
+            if (AssetsReady) SpawnMusic.Initialize(Config, folder);
         }
 
         static string Utf8(byte[] buffer)

@@ -111,6 +111,8 @@ Mario uses the same first-run extraction flow as Olimar. Set `Paths.Disc` in
 or put the image beside the plugin or beside the assets folder. `SMS_DISC` also works.
 RVZ/WIA/WBFS must be converted to ISO first. The plugin extracts models, animation, tuning,
 sounds, HUD and particle effects on a background thread, and repairs incomplete old caches.
+The worker also generates the arrival/death jingles in `AssetsDir/ror2_audio/`; no game
+assets or generated music need to ship with the plugin.
 A complete cache is reused on later launches without the disc.
 
 `Paths.AssetsDir` overrides `assets_dir.txt` next to the plugin, then `SMS_ASSETS`, then
@@ -122,8 +124,8 @@ to refresh the lobby display.
 
 ### Build and install
 
-Needs the Rust toolchain, the .NET SDK, and libsms's `assets/` (extracted from your own disc;
-see libsms's README).
+Needs the Rust toolchain and the .NET SDK. Extracted game assets are optional at build
+time; the plugin can build its cache from your own disc on first run.
 
 ```
 powershell -ExecutionPolicy Bypass -File build.ps1
@@ -131,8 +133,10 @@ powershell -ExecutionPolicy Bypass -File build.ps1
 
 The script builds `sms.dll` and `MarioTest.dll`, then copies them, plus an `assets_dir.txt`
 pointing at `libsms/assets`, into `<game>/BepInEx/plugins/MarioTest/`. It compiles against the
-game's own DLLs, so no NuGet game libraries are involved. Use `-RoR2Dir` for another install
-and `-NoInstall` to only build into `dist/`.
+game's own DLLs, so no NuGet game libraries are involved. The pointer can name a folder
+that does not exist yet; first run creates it. The install copies only these three files,
+and stings load from the cache. Use `-RoR2Dir` for another install and `-NoInstall` to
+only build into `dist/`.
 
 The log, `BepInEx/LogOutput.log`, should show `libsms ABI 18`, `Mario is 1.xx m tall`, then
 `Mario registered`.

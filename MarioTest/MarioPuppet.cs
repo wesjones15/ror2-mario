@@ -1,0 +1,191 @@
+using System;
+using Ror2Common;
+using RoR2;
+using UnityEngine;
+
+namespace MarioTest
+{
+    // Another player's Mario, on this machine. His own machine runs the real sim and sends what
+    // it was told each physics step (MarioFrames); this runs a shadow sim of libsms on the same
+    // calls, a few frames behind, and draws it the way MarioDriver draws the player's own Mario
+    // (the disc's models, FLUDD's water, the dust and flames, and his sounds from where he is).
+    // The body itself is moved by RoR2's own network transform, as ever, and Commando's model on it
+    // stays hidden. There are no enemies in the shadow sim, so the player's recorded position
+    // pulls it back when a stomp or a push makes the two differ.
+    //
+    // Playback keeps a few frames queued so a late packet doesn't stall it: it waits for the
+    // queue to fill, plays one frame per physics step, and plays extra when the queue grows (a
+    // burst after a stall) to catch up.
+    internal sealed class MarioPuppet : MonoBehaviour, IFrameSink
+    {
+        // Frames to hold before starting, and the backlog that makes playback hurry.
+        const int Prebuffer = 3, Hurry = 8, Skip = 30;
+        // How far (sim units, about 1 cm) the shadow sim may drift before it is put back.
+        const float Drift = 30f;
+
+        CharacterBody body;
+        HealthComponent health;
+        IntPtr sim;
+        MarioView view;
+        Native.Host host;
+        GameObject anchor;
+        StepSmoother smoother;
+        FrameQueue queue;
+        bool playing, hidden, failed;
+        float lagTicks;
+        Native.State state;
+
+        static readonly Native.EventFn noEvent = (IntPtr user, ref Native.Event e) => { };
+        static readonly unsafe Native.EnemiesFn noEnemies = (IntPtr user, ref Native.Vec3 pos, float radius, Native.Enemy* output, uint max) => 0u;
+
+        void Awake()
+        {
+            body = GetComponent<CharacterBody>();
+            health = GetComponent<HealthComponent>();
+            host = UnityHost.Table();
+            // A shadow sim hears no enemies and raises no hits: the player's own machine deals them.
+            host.evt = System.Runtime.InteropServices.Marshal.GetFunctionPointerForDelegate(noEvent);
+            host.enemies = System.Runtime.InteropServices.Marshal.GetFunctionPointerForDelegate(noEnemies);
+        }
+
+        /// This body is another player's Mario that this machine should show.
+        bool Wanted =>
+            body && !body.hasEffectiveAuthority && Plugin.AssetsReady && !RunAudio.Ended && !failed
+            && (!health || health.alive) && Mp.Networked;
+
+        void FixedUpdate()
+        {
+            if (!Wanted)
+            {
+                Teardown();
+                return;
+            }
+            queue = MarioNet.QueueFor(body.netId.Value);
+            if (queue == null) return;
+            if (sim == IntPtr.Zero && !Create()) return;
+
+            int waiting = queue.Count;
+            if (!playing)
+            {
+                if (waiting < Prebuffer) return;
+                playing = true;
+            }
+            else if (waiting == 0)
+            {
+                // Starved: wait for the queue to fill again rather than guess.
+                playing = false;
+                return;
+            }
+            int steps = waiting > Skip ? waiting - Prebuffer : waiting > Hurry ? 2 : 1;
+            for (int i = 0; i < steps && queue.TryTake(out var frame); i++)
+                Play(frame);
+        }
+
+        bool Create()
+        {
+            view = MarioView.Remote(queue.Clone);
+            if (view == null || view.Models == null)
+            {
+                view?.Dispose();
+                view = null;
+                failed = true;
+                return false;
+            }
+            var feet = UnityHost.ToSim(body.footPosition);
+            sim = Native.sms_sim_new(NativeLib.CString(Plugin.AssetsDir), ref feet,
+                UnityHost.Yaw(body.transform.forward));
+            if (sim == IntPtr.Zero)
+            {
+                failed = true;
+                view.Dispose();
+                view = null;
+                return false;
+            }
+            anchor = new GameObject("MarioPuppetAnchor");
+            anchor.transform.position = body.footPosition;
+            smoother = new StepSmoother(anchor.transform);
+            Plugin.Log.LogInfo($"Showing another player's Mario ({body.GetDisplayName()}) at {body.footPosition}");
+            return true;
+        }
+
+        void Play(Frame frame)
+        {
+            if (!FrameCodec.Replay(frame, this)) return;
+            Native.sms_sim_state(sim, out state);
+            // Put the shadow back where the player's sim had him if the two have drifted apart.
+            var d = new Vector3(state.pos.x - frame.pos.x, state.pos.y - frame.pos.y, state.pos.z - frame.pos.z);
+            if (d.sqrMagnitude > Drift * Drift)
+            {
+                var at = frame.pos;
+                Native.sms_sim_teleport(sim, ref at);
+                Native.sms_sim_state(sim, out state);
+                smoother.Reset();
+                if (anchor) anchor.transform.position = UnityHost.ToUnity(state.pos);
+            }
+            smoother.Stepped(UnityHost.ToUnity(state.pos));
+        }
+
+        void Update()
+        {
+            if (sim == IntPtr.Zero) return;
+            smoother.Smooth();
+            lagTicks = StepSmoother.LagTicks(Native.sms_tick_hz());
+        }
+
+        void LateUpdate()
+        {
+            if (sim == IntPtr.Zero || view == null) return;
+            view.Update(sim, lagTicks);
+            if (view.Models == null) return;
+            var feet = anchor.transform.position;
+            view.Effects(feet);
+            view.Draw(feet);
+            GameSettings.HideModel(body, ref hidden, true);
+        }
+
+        void Teardown()
+        {
+            if (view != null)
+            {
+                view.Hide();
+                view.Dispose();
+                view = null;
+            }
+            GameSettings.HideModel(body, ref hidden, false);
+            if (sim != IntPtr.Zero)
+            {
+                Native.sms_sim_free(sim);
+                sim = IntPtr.Zero;
+            }
+            if (anchor) Destroy(anchor);
+            anchor = null;
+            playing = false;
+        }
+
+        void OnDestroy()
+        {
+            Teardown();
+            if (body) MarioNet.Drop(body.netId.Value);
+        }
+
+        // ---- the recorded calls, on the shadow sim -----------------------------------------------
+
+        public void Teleport(Native.Vec3 pos) => Native.sms_sim_teleport(sim, ref pos);
+        public void Tuning(in Native.Tuning tuning) { var t = tuning; Native.sms_sim_set_tuning(sim, ref t); }
+        public void Refill() => Native.sms_sim_refill(sim);
+        public void AddWater(float share) => Native.sms_sim_add_water(sim, share);
+        public void Limits(in Native.Limits limits) { var l = limits; Native.sms_sim_set_limits(sim, ref l); }
+        public void BoostJump(float factor) => Native.sms_sim_boost_jump(sim, factor);
+        public void Launch(Native.Vec3 vel) => Native.sms_sim_launch(sim, ref vel);
+        public void LaunchPad(Native.Vec3 vel, float gravity) => Native.sms_sim_launch_pad(sim, ref vel, gravity);
+        public void KnockDown(Native.Vec3 from, byte kind) => Native.sms_sim_knock_down(sim, ref from, kind);
+        public void SetAim(bool on, short yaw, float pitch) => Native.sms_sim_set_aim(sim, (byte)(on ? 1 : 0), yaw, pitch);
+        public void Down() => Native.sms_sim_down(sim);
+
+        public void Step(in Native.Pad pad, short cameraYaw, float dt)
+        {
+            var p = pad;
+            Native.sms_sim_step(sim, ref host, ref p, cameraYaw, dt, view != null ? view.Handle : IntPtr.Zero);
+        }
+    }
+}

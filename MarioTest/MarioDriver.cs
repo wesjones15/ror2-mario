@@ -71,6 +71,9 @@ namespace MarioTest
         // On the ground as of the last step.
         bool grounded = true;
         NativeBody native;
+        // The frames sent to the other players' puppets (MarioNet), when there are any.
+        FrameRecorder recorder;
+        int framesSent, sinceSend;
 
         /// RoR2's items on this Mario.
         internal MarioItems Items { get; private set; }
@@ -133,6 +136,7 @@ namespace MarioTest
                 return;
             // Wait through pod setup; CanDrive stays false while Mario occupies it.
             if (spawnAge > 1f && Local) SpawnMusic.PlayOnce(body);
+            BeginRecording();
             if (motor.Motor.enabled)
                 motor.Motor.enabled = false;
             if (!driving || smoother.MovedElsewhere)
@@ -152,14 +156,14 @@ namespace MarioTest
             {
                 var v = UnityHost.ToSim(thrown / 30f);
                 if (native.JumpPadLaunch)
-                    Native.sms_sim_launch_pad(sim, ref v, Mathf.Abs(Physics.gravity.y) / (UnityHost.Scale * 30f * 120f));
-                else Native.sms_sim_launch(sim, ref v);
+                    SimOps.LaunchPad(sim, ref v, Mathf.Abs(Physics.gravity.y) / (UnityHost.Scale * 30f * 120f));
+                else SimOps.Launch(sim, ref v);
             }
             if (knockFrom.HasValue)
             {
                 var from = UnityHost.ToSim(knockFrom.Value);
                 knockFrom = null;
-                if ((pounding == 0 || Plugin.KnockdownInterruptsPound.Value) && Native.sms_sim_knock_down(sim, ref from, 0) != 0)
+                if ((pounding == 0 || Plugin.KnockdownInterruptsPound.Value) && SimOps.KnockDown(sim, ref from, 0) != 0)
                     Plugin.Log.LogInfo("Mario is knocked down by a powerful hit");
             }
             var hold = native && Plugin.CrowdControl.Value ? native.Control() : NativeBody.Hold.None;
@@ -180,7 +184,7 @@ namespace MarioTest
 
             Tune();
             if (pad.TakeRefill() && Plugin.DpadRefill.Value)
-                Native.sms_sim_refill(sim);
+                SimOps.Refill(sim);
             var step = pad.Take(move, hold == NativeBody.Hold.All);
             // Facing from Mario toward the camera: the reverse of where the player aims.
             short cameraYaw = UnityHost.Yaw(-input.aimDirection);
@@ -209,7 +213,7 @@ namespace MarioTest
             Items.Begin(sim, sprinting, grounded);
             MarioCombat.Begin(body, Items);
             var view = View;
-            Native.sms_sim_step(sim, ref host, ref step, cameraYaw, Time.fixedDeltaTime,
+            SimOps.Step(sim, ref host, ref step, cameraYaw, Time.fixedDeltaTime,
                 view != null ? view.Handle : IntPtr.Zero);
             MarioCombat.End();
             Native.sms_sim_state(sim, out var st);
@@ -225,7 +229,7 @@ namespace MarioTest
                 // Teleport clears velocity but preserves the old status. A zero-speed launch
                 // leaves the knock-down/slide so he can land and accept input again.
                 var rest = new Native.Vec3(0f, 0f, 0f);
-                Native.sms_sim_launch(sim, ref rest);
+                SimOps.Launch(sim, ref rest);
                 Native.sms_sim_state(sim, out st);
                 status = NativeLib.Utf8(Native.sms_sim_status_name(sim));
                 Plugin.Log.LogInfo($"Mario unstuck after 3 seconds at {recovered}");
@@ -258,6 +262,8 @@ namespace MarioTest
                 direction.moveVector = facing;
             }
 
+            EndRecording(st);
+
             if (Plugin.LogStatus.Value)
             {
                 if (status != lastStatus)
@@ -272,6 +278,43 @@ namespace MarioTest
                     }
                 }
             }
+        }
+
+        // With other players in the game, everything this step does to the sim is recorded and sent
+        // to them (MarioFrames); they replay it on a shadow sim (MarioPuppet).
+        const int FramesPerMessage = 3, RefreshFrames = 180;
+
+        void BeginRecording()
+        {
+            SimOps.Rec = null;
+            if (!Mp.Networked)
+            {
+                recorder = null;
+                return;
+            }
+            if (recorder == null)
+            {
+                recorder = new FrameRecorder();
+                // The first frame carries everything a puppet needs to start from.
+                tuning = default;
+            }
+            else if (++sinceSend > RefreshFrames)
+            {
+                sinceSend = 0;
+                recorder.Refresh();
+                tuning = default;
+            }
+            recorder.Begin();
+            SimOps.Rec = recorder;
+        }
+
+        void EndRecording(in Native.State st)
+        {
+            SimOps.Rec = null;
+            if (recorder == null) return;
+            recorder.End(st.pos);
+            if (recorder.Pending >= FramesPerMessage)
+                MarioNet.Send(recorder, body.netId.Value, !Local && SurvivorAi.HasAi(body));
         }
 
         void Update()
@@ -349,7 +392,7 @@ namespace MarioTest
             lockShown = lockHeld && Local ? locked : null;
             if (!camera && !lockHeld)
             {
-                Native.sms_sim_set_aim(sim, 0, 0, 0f);
+                SimOps.SetAim(sim, 0, 0, 0f);
                 return;
             }
             var origin = input.aimOrigin;
@@ -365,7 +408,7 @@ namespace MarioTest
             var flat = new Vector3(d.x, 0f, d.z);
             if (flat.sqrMagnitude < 0.01f) flat = new Vector3(dir.x, 0f, dir.z);
             float pitch = Mathf.Atan2(d.y, flat.magnitude);
-            Native.sms_sim_set_aim(sim, 1, UnityHost.Yaw(flat), pitch);
+            SimOps.SetAim(sim, 1, UnityHost.Yaw(flat), pitch);
         }
 
         void StopDriving()
@@ -432,7 +475,7 @@ namespace MarioTest
             if (Local) SpawnMusic.PlayDeath(body);
             if (Local && sim != IntPtr.Zero && Plugin.DeathFall.Value && ownsView && MarioView.Player != null)
             {
-                Native.sms_sim_down(sim);
+                SimOps.Down(sim);
                 // Commando's ragdoll stays hidden: Mario is the one lying there.
                 MarioCorpse.Begin(sim, MarioView.TakePlayer(), Plugin.DeathFallSeconds.Value);
                 sim = IntPtr.Zero;
@@ -475,7 +518,7 @@ namespace MarioTest
         {
             unstuck.Reset();
             var feet = UnityHost.ToSim(transform.position - feetToOrigin);
-            Native.sms_sim_teleport(sim, ref feet);
+            SimOps.Teleport(sim, ref feet);
             smoother.Reset();
             native?.ForgetVelocity();
         }
@@ -507,7 +550,7 @@ namespace MarioTest
             };
             if (t.Equals(tuning)) return;
             tuning = t;
-            Native.sms_sim_set_tuning(sim, ref t);
+            SimOps.Tuning(sim, ref t);
         }
 
         // The water gauge, for the player playing this Mario.

@@ -379,6 +379,7 @@ namespace MarioTest
             ItemHooks.Install();
             GlobalEventManager.onServerDamageDealt += MarioDriver.OnServerDamage;
             gameObject.AddComponent<MarioCoins>();
+            MarioNet.Register();
             // The HUD's skill icons name the buttons Mario's sim reads (MarioPad), not RoR2's binds.
             GlyphOverride.Install();
             GlyphOverride.Set("MarioTestBody", null, new Dictionary<SkillSlot, PadButton[]>
@@ -502,6 +503,7 @@ namespace MarioTest
                     esm.mainStateType = new SerializableEntityStateType(typeof(MarioMain));
             body.AddComponent<NativeBody>();
             body.AddComponent<MarioDriver>();
+            body.AddComponent<MarioPuppet>();
             MarioSkills.Add(body, pack);
 
             var display = Prefabs.Clone(commandoDisplay, "MarioTestDisplay", Guid);

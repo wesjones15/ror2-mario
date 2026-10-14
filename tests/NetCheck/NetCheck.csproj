@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net6.0</TargetFramework>
+    <LangVersion>9.0</LangVersion>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <RootNamespace>MarioTest</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="../../MarioTest/MarioFrames.cs" Link="MarioFrames.cs" />
+    <Compile Include="../../MarioTest/Native.cs" Link="Native.cs" />
+    <Compile Include="../../../ror2-common/src/ByteIO.cs" Link="ByteIO.cs" />
+    <Compile Include="../../../ror2-common/src/NativeLib.cs" Link="NativeLib.cs" />
+    <Compile Include="../../../ror2-common/src/ViewSource.cs" Link="ViewSource.cs" />
+  </ItemGroup>
+</Project>

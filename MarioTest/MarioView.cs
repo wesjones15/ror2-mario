@@ -78,6 +78,22 @@ namespace MarioTest
             return new MarioView(v, false, "GooboMario", GummyClone.Material());
         }
 
+        /// Another player's Mario (a puppet): his own view, with his sounds from where he is,
+        /// or silent in the gummy clone material if it's a Mario no player controls. Null if
+        /// drawing is off or the view can't load.
+        public static MarioView Remote(bool clone)
+        {
+            if (!Plugin.AssetsReady || RunAudio.Ended || !Plugin.DrawModel.Value) return null;
+            if (clone && !Plugin.GummyClones.Value) return null;
+            var v = Open(Plugin.Sound.Value && !clone, 0);
+            if (v == IntPtr.Zero)
+            {
+                Plugin.Log.LogWarning("Another player's Mario view didn't load; he stays Commando");
+                return null;
+            }
+            return new MarioView(v, false, clone ? "GooboMario" : "RemoteMario", clone ? GummyClone.Material() : null);
+        }
+
         static IntPtr Open(bool sound, byte look)
         {
             try

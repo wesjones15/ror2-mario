@@ -102,17 +102,17 @@ namespace MarioTest
             wasGrounded = grounded;
             if (refillOwed)
             {
-                Native.sms_sim_refill(sim);
+                SimOps.Refill(sim);
                 refillOwed = false;
             }
             waterOwed += RegenWater() * Time.fixedDeltaTime;
             if (waterOwed > 0f)
             {
-                Native.sms_sim_add_water(sim, waterOwed);
+                SimOps.AddWater(sim, waterOwed);
                 waterOwed = 0f;
             }
             var limits = Limits();
-            Native.sms_sim_set_limits(sim, ref limits);
+            SimOps.Limits(sim, ref limits);
         }
 
         /// After the step, with Mario's state.
@@ -122,7 +122,7 @@ namespace MarioTest
             {
                 quailOwed = false;
                 float boost = QuailBoost();
-                if (boost > 1f) Native.sms_sim_boost_jump(sim, boost);
+                if (boost > 1f) SimOps.BoostJump(sim, boost);
             }
             if (st.on_ground != 0) airSpentAloft = false;
             if (Current == this) Current = null;

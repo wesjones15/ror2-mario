@@ -450,11 +450,17 @@ namespace MarioTest
                 || report.damageDealt < Plugin.KnockdownThreshold.Value * hc.fullCombinedHealth) return;
             foreach (var d in all)
             {
-                if (!d || !d.driving || d.body != report.victimBody) continue;
-                d.knockFrom = report.attackerBody ? report.attackerBody.corePosition : info.position;
+                if (!d || d.body != report.victimBody) continue;
+                var from = report.attackerBody ? report.attackerBody.corePosition : info.position;
+                if (d.driving) d.knockFrom = from;
+                // A client's Mario falls over in his own sim: tell him.
+                else MarioNet.SendKnock(d.body, from);
                 return;
             }
         }
+
+        /// The server says a powerful hit knocks this (the player's own) Mario over.
+        internal void KnockFrom(Vector3 from) => knockFrom = from;
 
         static readonly System.Collections.Generic.List<MarioDriver> all = new System.Collections.Generic.List<MarioDriver>();
 

@@ -58,8 +58,20 @@ namespace MarioTest
         public static IntPtr EventPtr => System.Runtime.InteropServices.Marshal.GetFunctionPointerForDelegate(eventFn);
         public static IntPtr EnemiesPtr => System.Runtime.InteropServices.Marshal.GetFunctionPointerForDelegate(enemiesFn);
 
+        // A client's Mario deals nothing itself (damage is the server's): the step's hits, the fall,
+        // the Shuriken pulse and the super pound's blast go to the server (MarioNet.SendCombat),
+        // which lands them as this Mario's.
+        static readonly List<MarioNet.HitRecord> outHits = new List<MarioNet.HitRecord>();
+        static readonly List<(Vector3 at, float radius)> outBlasts = new List<(Vector3, float)>();
+        static bool outPulse;
+        static float outFall;
+
         public static void Begin(CharacterBody body, MarioItems with)
         {
+            outHits.Clear();
+            outBlasts.Clear();
+            outPulse = false;
+            outFall = 0f;
             attacker = body;
             items = with;
             team = body && body.teamComponent ? body.teamComponent.teamIndex : TeamIndex.Player;
@@ -117,7 +129,11 @@ namespace MarioTest
                     var push = Flat(at - poundAt).normalized * 1000f + Vector3.up * 1000f;
                     Hit(body, victim, coefficient, at, push, 1f, type);
                 }
-                if (superPound && Plugin.PoundFlames.Value) Blast(poundAt, radius);
+                if (superPound && Plugin.PoundFlames.Value)
+                {
+                    if (NetworkServer.active) Blast(poundAt, radius);
+                    else outBlasts.Add((poundAt, radius));
+                }
             }
             // H3AD-5T v2 on a full-strength pound.
             if (pounded) it?.Stomp(poundAt, poundDrop);
@@ -131,8 +147,13 @@ namespace MarioTest
             }
             // Water hitting counts as the primary in use, for Shuriken: a throw at most every
             // half second while it keeps hitting.
-            if (water.Count > 0 && NetworkServer.active)
-                body.GetComponent<NativeBody>()?.PulsePrimary(Plugin.ShurikenInterval.Value);
+            if (water.Count > 0)
+            {
+                if (NetworkServer.active) body.GetComponent<NativeBody>()?.PulsePrimary(Plugin.ShurikenInterval.Value);
+                else outPulse = true;
+            }
+            if (fallFraction > 0f && !NetworkServer.active && body.healthComponent && body.healthComponent.alive)
+                outFall = fallFraction;
             if (fallFraction > 0f && NetworkServer.active && GlobalEventManager.instance
                 && body.healthComponent && body.healthComponent.alive)
             {
@@ -145,10 +166,21 @@ namespace MarioTest
             }
             blows.Clear();
             water.Clear();
+            if (!NetworkServer.active)
+                MarioNet.SendCombat(body, outHits, outBlasts, outPulse, outFall);
+            outHits.Clear();
+            outBlasts.Clear();
+        }
+
+        /// What the server does with a client Mario's hit: the same as his own would be.
+        internal static void DealFromClient(CharacterBody body, HealthComponent victim, in MarioNet.HitRecord hit)
+        {
+            Hit(body, victim, hit.coefficient, hit.at, hit.force, hit.proc,
+                hit.ignite ? DamageType.IgniteOnHit : DamageType.Generic);
         }
 
         /// The super pound's landing (Sunshine's MS_M_SPHIPD_HIT_*): RoR2's ignite burst.
-        static void Blast(Vector3 at, float radius)
+        internal static void Blast(Vector3 at, float radius)
         {
             if (!blast) blast = LegacyResourcesAPI.Load<GameObject>("Prefabs/Effects/ImpactEffects/IgniteExplosionVFX");
             if (!blast) return;
@@ -160,6 +192,17 @@ namespace MarioTest
             float proc, DamageType type = DamageType.Generic)
         {
             if (!victim || !victim.alive || coefficient <= 0f) return;
+            if (!NetworkServer.active)
+            {
+                // Sent after the step; the server lands it.
+                if (victim.body && victim.body.netId.Value != 0)
+                    outHits.Add(new MarioNet.HitRecord
+                    {
+                        victim = victim.body.netId.Value, coefficient = coefficient, at = at, force = force,
+                        proc = proc, ignite = (type & DamageType.IgniteOnHit) != 0,
+                    });
+                return;
+            }
             var spec = new NativeHitSpec
             {
                 coefficient = coefficient,

@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using Ror2Common;
 using RoR2;
+using UnityEngine;
 using UnityEngine.Networking;
 
 namespace MarioTest
@@ -15,12 +16,28 @@ namespace MarioTest
         /// Frames of one Mario's sim: client to server, then server to the other clients.
         public const short FramesMsg = 0x4D01;
 
+        /// A client's Mario's hits, fall and blast: client to server.
+        public const short CombatMsg = 0x4D02;
+        /// The server knocks a client's Mario over: server to that client.
+        public const short KnockMsg = 0x4D03;
+
+        /// One hit a client's Mario made, for the server to land.
+        public struct HitRecord
+        {
+            public uint victim;
+            public float coefficient, proc;
+            public Vector3 at, force;
+            public bool ignite;
+        }
+
         static readonly Dictionary<uint, FrameQueue> queues = new Dictionary<uint, FrameQueue>();
         static bool warned;
 
         public static void Register()
         {
             Mp.Register(FramesMsg, OnServer, OnClient);
+            Mp.Register(CombatMsg, OnCombat, null);
+            Mp.Register(KnockMsg, null, OnKnock);
             Run.onRunDestroyGlobal += run => queues.Clear();
         }
 
@@ -59,6 +76,95 @@ namespace MarioTest
             queues.TryGetValue(netId, out var q) ? q : null;
 
         public static void Drop(uint netId) => queues.Remove(netId);
+
+        static void Vec(ByteWriter w, Vector3 v) { w.F32(v.x); w.F32(v.y); w.F32(v.z); }
+        static Vector3 Vec(ByteReader r) => new Vector3(r.F32(), r.F32(), r.F32());
+        static bool Finite(Vector3 v) => !(float.IsNaN(v.x + v.y + v.z) || float.IsInfinity(v.x + v.y + v.z));
+
+        /// A client's Mario's step: what he hit, whether FLUDD's water was hitting (Shuriken's
+        /// pulse), how far he fell (a share of max health), and any super pound's blast.
+        public static void SendCombat(CharacterBody attacker, List<HitRecord> hits,
+            List<(Vector3 at, float radius)> blasts, bool pulse, float fall)
+        {
+            if (!attacker || attacker.netId.Value == 0 || (hits.Count == 0 && blasts.Count == 0 && !pulse && fall <= 0f)) return;
+            var w = new ByteWriter(64 + hits.Count * 44);
+            w.U8(FrameCodec.Protocol);
+            w.U32(attacker.netId.Value);
+            w.U8((byte)(pulse ? 1 : 0));
+            w.F32(fall);
+            w.U8((byte)Mathf.Min(hits.Count, 255));
+            for (int i = 0; i < hits.Count && i < 255; i++)
+            {
+                var h = hits[i];
+                w.U32(h.victim); w.F32(h.coefficient); w.F32(h.proc); Vec(w, h.at); Vec(w, h.force); w.Bool(h.ignite);
+            }
+            w.U8((byte)Mathf.Min(blasts.Count, 8));
+            for (int i = 0; i < blasts.Count && i < 8; i++) { Vec(w, blasts[i].at); w.F32(blasts[i].radius); }
+            Mp.SendToServer(CombatMsg, w.ToArray());
+        }
+
+        /// The server lands a client Mario's hits as his (his damage stat, crits, on-hit items, kill
+        /// credit), applies his fall, pulses Shuriken, and shows the blast to everyone.
+        static void OnCombat(NetworkConnection from, ByteReader r)
+        {
+            if (r.U8() != FrameCodec.Protocol) return;
+            var go = Mp.Find(r.U32());
+            var body = go ? go.GetComponent<CharacterBody>() : null;
+            bool pulse = r.Bool();
+            float fall = r.F32();
+            int n = r.U8();
+            // Only another player's Mario: never the host's own (he lands his hits himself).
+            bool valid = body && body.GetComponent<MarioDriver>() && !body.hasEffectiveAuthority
+                && body.healthComponent && body.healthComponent.alive;
+            for (int i = 0; i < n; i++)
+            {
+                var hit = new HitRecord
+                {
+                    victim = r.U32(), coefficient = r.F32(), proc = r.F32(), at = Vec(r), force = Vec(r), ignite = r.Bool(),
+                };
+                if (r.Failed) return;
+                if (!valid || !Finite(hit.at) || !Finite(hit.force) || !(hit.coefficient > 0f) || !(hit.proc >= 0f)) continue;
+                hit.coefficient = Mathf.Min(hit.coefficient, 200f);
+                hit.proc = Mathf.Min(hit.proc, 1f);
+                var vgo = Mp.Find(hit.victim);
+                var victim = vgo ? vgo.GetComponent<CharacterBody>() : null;
+                if (victim && victim.healthComponent)
+                    MarioCombat.DealFromClient(body, victim.healthComponent, hit);
+            }
+            int blasts = r.U8();
+            for (int i = 0; i < blasts; i++)
+            {
+                var at = Vec(r);
+                float radius = r.F32();
+                if (valid && Finite(at) && radius > 0f && radius < 100f) MarioCombat.Blast(at, radius);
+            }
+            if (!valid || r.Failed) return;
+            if (pulse) body.GetComponent<NativeBody>()?.PulsePrimary(Plugin.ShurikenInterval.Value);
+            if (fall > 0f && fall <= 1f && GlobalEventManager.instance)
+                GlobalEventManager.instance.OnCharacterHitGroundServer(body, Vector3.down * (body.jumpPower + 20f + fall * 60f));
+        }
+
+        /// The server tells a client's Mario a powerful hit knocked him over (his sim is on his machine).
+        public static void SendKnock(CharacterBody body, Vector3 from)
+        {
+            var user = body && body.master && body.master.playerCharacterMasterController
+                ? body.master.playerCharacterMasterController.networkUser : null;
+            var conn = user ? user.connectionToClient : null;
+            if (conn == null || body.hasEffectiveAuthority) return;
+            var w = new ByteWriter(20);
+            w.U32(body.netId.Value);
+            Vec(w, from);
+            Mp.SendTo(conn, KnockMsg, w.ToArray());
+        }
+
+        static void OnKnock(NetworkConnection unused, ByteReader r)
+        {
+            var go = Mp.Find(r.U32());
+            var from = Vec(r);
+            if (r.Failed || !go || !Finite(from)) return;
+            var body = go.GetComponent<CharacterBody>();
+            if (body && body.hasEffectiveAuthority) go.GetComponent<MarioDriver>()?.KnockFrom(from);
+        }
 
         /// Sends one body's recorded frames.
         public static void Send(FrameRecorder recorder, uint netId, bool clone)

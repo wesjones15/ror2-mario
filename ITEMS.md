@@ -1,7 +1,7 @@
 # Mario and RoR2's items
 
 How each item in the 2023 build (1.2.4.4, up to Survivors of the Void) works on Mario. The
-rules come from `../DOCS/mario_ror2_item_ruleset.md`. Almost every item needs nothing
+rules come from `docs/mario_ror2_item_ruleset.md`. Almost every item needs nothing
 Mario-specific, because Mario is wired into what items already act on:
 
 - **Damage**: his hits are RoR2 damage from his body (`MarioCombat` through ror2-common's
@@ -31,17 +31,21 @@ reads none. Any item that works through the paths above works on Mario in a newe
 | Primary | FLUDD | none (never spent) | none |
 | Secondary | extra mid-air FLUDD uses | 0, +1 per Backup Magazine | 4 s each, one at a time; starts once he's touched the ground |
 | Utility | full-strength ground pound | 1, +2 per Hardlight Afterburner | 6 s (Hardlight shortens it) |
-| Special | wet belly slide on dry ground | 1, +1 per Lysate Cell | 10 s from the slide's start (Lysate shortens it) |
+| Special | wet belly slide, requiring wet ground | none (never spent) | none; duration-limited |
 
 - **Mid-air FLUDD uses**: one is free each time Mario leaves the ground. Each start of a nozzle
   in the air costs a use, however long it runs; switching nozzle while airborne costs another.
   With none left, the trigger does nothing until he lands or a charge comes back. Uses don't
   touch the water.
 - **Ground pound**: it always works. A charge is spent when the pound lands (on the floor or an enemy), so an interrupted pound costs nothing. Without a charge it does 50% of its damage. (Mario)
-- **Wet slide**: with a charge, a belly slide glides wet for 1.5 s, keeping its speed as if
-  the stick were held forward (pull back to brake). Cooldown items stretch the glide. Without
-  a charge it's a plain slide, except over water FLUDD sprayed: that glides for free, as in
-  Sunshine (a light press of spray drops a splash just ahead).
+- **Wet slide**: a belly slide must reach wet ground before it can glide. FLUDD's water
+  impacts leave drying wet patches; a light burst makes a broad patch ahead of Mario.
+  Dry ground always gives a regular slide. Wet slides have no charges or recharge.
+  The base glide lasts 1.5 s (`Items.WetSlideSeconds`), including on shallow water;
+  after that it returns to normal sliding. Pull back to brake. A fresh slide on wet
+  ground can glide again immediately. Cooldown reduction extends the duration instead
+  of reducing a recharge. Each stock Lysate would have added grants another base duration,
+  before the special slot's cooldown-item duration multiplier.
 
 ## Cooldown items stretch what has no cooldown
 
@@ -113,7 +117,7 @@ which runs on the server. A client playing Mario in multiplayer doesn't get it y
 | Hopoo Feather | a mid-air jump per stack, each the next of the double/triple chain, with RoR2's feather puff; during a dive it pulls out into a fresh jump (Mario; libsms `Limits::air_jumps`) |
 | Backup Magazine | +1 mid-air FLUDD use per stack |
 | Hardlight Afterburner | +2 full-strength pounds per stack, faster recovery |
-| Lysate Cell | +1 wet slide per stack, faster recharge, longer glide |
+| Lysate Cell | +1 base wet-slide duration per stack, plus its special-slot duration multiplier; no charges |
 | Alien Head, Purity, Light Flux Pauldron | slot cooldowns, and the stretches above (Purity keeps its luck penalty) |
 | Bandolier | refills the tank and restores a charge in every slot |
 | Brainstalks | bottomless tank, free charges, while it lasts |

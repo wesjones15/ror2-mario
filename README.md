@@ -29,8 +29,9 @@ How it works:
 - `MarioItems` hooks RoR2's items to Mario's moves; [ITEMS.md](ITEMS.md) goes through them
   all. His moves sit in RoR2's skill slots so items keep their charges: FLUDD is the primary,
   extra mid-air FLUDD uses the secondary (Backup Magazine), full-strength ground pounds the
-  utility (Hardlight) and wet belly slides the special (Lysate Cell). The rules for those
-  (one free FLUDD use per jump, charged wet slides, Hopoo Feather's chain jumps, the Spray's
+  utility (Hardlight) and wet belly slides the special (Lysate Cell extends their duration).
+  Wet slides require wet ground and have no charge or cooldown. The rules for these moves
+  (one free FLUDD use per jump, duration-limited wet slides, Hopoo Feather's chain jumps, the Spray's
   rate and limit) are libsms's `Limits`, all off unless a host sets them, so libsms's Mario
   stays Sunshine's.
 - ror2-common's `NativeBody` does what RoR2's motor would for the items: jump pads, knockback
@@ -186,11 +187,19 @@ H3AD-5T v2 and Frailty/Eclipse when relevant. Multiplayer remains untested.
 
 Offline / friends-only co-op only.
 
-Shallow water (anything RoR2 builds as water, see the log's `Water in this stage`) wets the ground
-as FLUDD's water does (`Sim.ShallowWetSlide`): a belly slide there glides wet, free with
-`Items.WetSlideOnWater`, else on a charge, instead of dragging as Sunshine's water does. The wet slide's spray is `Look.SlideSprayScale` (1.4) times Sunshine's size. The extra splashes
-libsms used to throw during a wet slide, before the game's spray was ported, are off
-(`Look.SlideSplashes`); FLUDD's own water is unchanged.
+FLUDD's water impacts leave terrain wet patches, slightly darkening the ground
+(`Look.GroundWetness`, 0.12 by default) before fading as they dry. A light RT burst wets
+a broad patch ahead, with twice the radius of an ordinary impact. Wet-slide eligibility
+uses these same surface footprints, rather than a nearby droplet's distance.
+Shallow water (anything RoR2 builds as water, see `Water in this stage`) also counts as
+wet ground (`Sim.ShallowWetSlide`). A belly slide must reach wet ground to begin gliding;
+dry ground stays a normal slide. There are no wet-slide charges or recharge. Every wet
+slide has the `Items.WetSlideSeconds` duration cap (1.5 s by default), including in water.
+Cooldown reduction and Lysate Cell extend that cap; a new slide on wet ground can start
+immediately. Old `WetSlideCharges`, `WetSlideAnywhere`, `WetSlideOnWater`, and
+`WetSlideRecharge` config entries are ignored.
+The wet slide's spray is `Look.SlideSprayScale` (1.4) times Sunshine's size. The extra
+stand-in splashes remain off (`Look.SlideSplashes`).
 
 Sunshine's life meter (`Hud.LifeMeter`) shows Mario's health in place of RoR2's health bar: the
 Shine Sprite sun from the disc, a hub and rays in a ring of eight, lit in whole rays by his health as

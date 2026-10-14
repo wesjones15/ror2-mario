@@ -7,7 +7,7 @@ using UnityEngine.Networking;
 
 namespace MarioTest
 {
-    // RoR2's items on Mario (pikmin-main/DOCS/mario_ror2_item_ruleset.md). Most items need
+    // RoR2's items on Mario (docs/mario_ror2_item_ruleset.md). Most items need
     // nothing here: damage, health, armour, crit and every on-hit, on-kill and stat item work
     // through RoR2 because Mario's hits are RoR2 damage from his body (MarioCombat) and his
     // speed follows his move speed stat (Sim.SpeedFromItems). What's here hooks Mario's own
@@ -17,9 +17,9 @@ namespace MarioTest
     //   primary is FLUDD; the secondary holds his extra mid-air FLUDD uses (none until Backup
     //   Magazine adds them, 4 s each, recharging only after he's touched the ground); the
     //   utility his full-strength ground pounds (6 s; Hardlight adds two and shortens it; a
-    //   pound without one does half the damage); the special his wet belly slides on dry
-    //   ground (10 s from the slide's start; Lysate Cell adds one; without one the slide is
-    //   plain; over water FLUDD sprayed a slide glides for free, as in Sunshine).
+    //   pound without one does half the damage); the special his wet belly slide, requiring
+    //   wet ground and limited by duration. It consumes no stock and has no recharge.
+    //   Lysate's extra stocks extend that duration instead of adding charges.
     //   Bandolier's ammo restocks them all and fills the tank; Brainstalks makes charges free
     //   and the tank bottomless while it lasts. Heresy items override a slot as for any
     //   survivor: the overriding skill runs when Mario makes that slot's move (Visions as
@@ -151,15 +151,15 @@ namespace MarioTest
                 air_extra = (uint)Mathf.Max(0, free ? 99 : NativeSkills.Charges(secondary, MarioSkills.Air)),
                 air_jumps = (uint)Mathf.Max(0, body ? body.maxJumpCount - 1 : 0),
             };
-            if (Plugin.WetSlideCharges.Value)
-            {
-                var slot = special;
-                bool ready = free || (NativeSkills.Holds(slot, MarioSkills.Slide) ? slot.stock > 0 : slot && slot.IsReady());
-                l.wet_slide = (byte)(Plugin.WetSlideAnywhere.Value ? 2 : 1);
-                l.wet_slide_ready = (byte)(ready ? 1 : 0);
-                l.wet_slide_flags = (byte)((Plugin.WetSlideGlide.Value ? 1 : 0) | (Plugin.WetSlideOnWater.Value ? 2 : 0));
-                l.wet_slide_seconds = Plugin.WetSlideSeconds.Value > 0f ? Plugin.WetSlideSeconds.Value * slideBoost : 0f;
-            }
+            // Always require wet ground. Refresh availability each step without consulting
+            // stock; the sim remembers the duration once per slide, including over water.
+            int extraSlideTime = NativeSkills.Holds(special, MarioSkills.Slide)
+                ? Mathf.Max(0, special.maxStock - MarioSkills.Slide.baseMaxStock) : 0;
+            l.wet_slide = 1;
+            l.wet_slide_ready = 1;
+            l.wet_slide_flags = (byte)(Plugin.WetSlideGlide.Value ? 1 : 0);
+            l.wet_slide_seconds = Plugin.WetSlideSeconds.Value > 0f
+                ? Plugin.WetSlideSeconds.Value * (1 + extraSlideTime) * slideBoost : 0f;
             return l;
         }
 
@@ -214,8 +214,14 @@ namespace MarioTest
                     NativeBody.MarkCombat(body);
                     break;
                 case Native.EventKind.WetSlide:
-                    NativeSkills.Spend(Slot(SkillSlot.Special), MarioSkills.Slide);
+                {
+                    var slot = Slot(SkillSlot.Special);
+                    if (NativeSkills.Holds(slot, MarioSkills.Slide))
+                        body.OnSkillActivated(slot); // skill-use items, without spending stock
+                    else
+                        slot?.ExecuteIfReady(); // Essence of Heresy keeps its own cooldown
                     break;
+                }
                 case Native.EventKind.AirJump:
                     airJumpSeen = true;
                     Feather();
@@ -419,7 +425,9 @@ namespace MarioTest
             Pound = NativeSkills.Make("MarioGroundPound", "MARIOTEST_POUND_NAME", "MARIOTEST_POUND_DESC",
                 Icon(SkillSlot.Utility), Plugin.PoundRecovery.Value, 1, true);
             Slide = NativeSkills.Make("MarioWetSlide", "MARIOTEST_SLIDE_NAME", "MARIOTEST_SLIDE_DESC",
-                Icon(SkillSlot.Special), Plugin.WetSlideRecharge.Value, 1, false);
+                Icon(SkillSlot.Special), 0f, 1, false);
+            Slide.requiredStock = 0;
+            Slide.stockToConsume = 0;
             NativeSkills.SetFamily(body, SkillSlot.Primary, Fludd, pack);
             NativeSkills.SetFamily(body, SkillSlot.Secondary, Air, pack);
             NativeSkills.SetFamily(body, SkillSlot.Utility, Pound, pack);
@@ -444,8 +452,9 @@ namespace MarioTest
                 $"Each charge is a full-strength pound, spent when it lands (an interrupted pound costs nothing); without one it does {Plugin.WeakPound.Value * 100f:0}%.");
             lang.SetStringByToken("MARIOTEST_SLIDE_NAME", "Wet Slide");
             lang.SetStringByToken("MARIOTEST_SLIDE_DESC",
-                "Dive with B, then belly slide. Each charge turns a slide on dry ground wet, gliding far. Over " +
-                "water FLUDD sprayed (a light RT pull drops some ahead) a slide glides for free.");
+                "Dive with B, then belly slide over wet ground. A light RT burst wets a broad patch ahead. " +
+                $"Glide for {Plugin.WetSlideSeconds.Value:0.##} seconds, with no charges or cooldown. " +
+                "Cooldown items and Lysate Cell extend the glide instead.");
         }
     }
 }

@@ -155,9 +155,9 @@ namespace MarioTest
             public uint air_extra, air_jumps;
             /// 1: mid-air nozzle starts spend uses (one free per time off the ground).
             public byte air_uses;
-            /// 0 the game's, 1 a charge over FLUDD's water, 2 a charge anywhere.
+            /// 0 the game's, 1 requires wet ground, 2 allows dry ground (unused by this host).
             public byte wet_slide;
-            public byte wet_slide_ready;
+            public byte wet_slide_ready; // always 1 here: duration-only, no recharge gate
             /// Bit 0: wet slides glide on (as if the stick were held forward); bit 1: a slide
             /// over FLUDD's water is wet for free.
             public byte wet_slide_flags;

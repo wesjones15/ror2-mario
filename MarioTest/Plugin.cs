@@ -68,9 +68,6 @@ namespace MarioTest
         internal static ConfigEntry<float> AirUseRecharge;
         internal static ConfigEntry<float> PoundRecovery;
         internal static ConfigEntry<float> WeakPound;
-        internal static ConfigEntry<bool> WetSlideCharges;
-        internal static ConfigEntry<bool> WetSlideAnywhere;
-        internal static ConfigEntry<float> WetSlideRecharge;
         internal static ConfigEntry<float> WetSlideSeconds;
         internal static ConfigEntry<float> SpraySeconds;
         internal static ConfigEntry<bool> SprayRateFromItems;
@@ -87,7 +84,7 @@ namespace MarioTest
         internal static ConfigEntry<float> TriggerCurve;
         internal static ConfigEntry<float> LightTapSeconds;
         internal static ConfigEntry<bool> WetSlideGlide;
-        internal static ConfigEntry<bool> WetSlideOnWater, ShallowWetSlide;
+        internal static ConfigEntry<bool> ShallowWetSlide;
         internal static ConfigEntry<bool> ShowLife, HideHealthBar, LockMarker, LockMarkerHealth;
         internal static ConfigEntry<float> LockRange;
         internal static ConfigEntry<float> LifeX, LifeY, LifeScale, LockMarkerSize, LockMarkerSpin;
@@ -252,16 +249,10 @@ namespace MarioTest
                 "Seconds for a full-strength ground pound (the utility skill's charge) to come back.");
             WeakPound = Config.Bind("Items", "WeakPound", 0.5f,
                 "A ground pound without a charge does this share of its damage.");
-            WetSlideCharges = Config.Bind("Items", "WetSlideCharges", true,
-                "A wet belly slide on dry ground takes a charge (the special skill); without one the " +
-                "slide is plain. Off: Sunshine's (only a slide over FLUDD's water glides).");
-            WetSlideOnWater = Config.Bind("Items", "WetSlideOnWater", true,
-                "A belly slide over water FLUDD sprayed glides for free, as in Sunshine (a light " +
-                "press of spray drops some just ahead). Off: that takes a charge too.");
             ShallowWetSlide = Config.Bind("Sim", "ShallowWetSlide", true,
                 "Standing in shallow water (anything RoR2 builds as water) wets the ground like " +
-                "FLUDD's water does, so a belly slide there glides wet (free with WetSlideOnWater, " +
-                "else on a charge) instead of dragging as Sunshine's water does.");
+                "FLUDD's water does, so a belly slide there glides wet for its duration limit " +
+                "instead of dragging as Sunshine's water does.");
             KnockdownEnabled = Config.Bind("Knockdown", "Enabled", true,
                 "A powerful hit knocks Mario over (Sunshine's short fall), without stunning him: see " +
                 "GetUpEarly. His health is RoR2's; the sim's isn't touched.");
@@ -282,13 +273,10 @@ namespace MarioTest
             WetSlideGlide = Config.Bind("Items", "WetSlideGlide", true,
                 "A wet slide keeps its speed as if the stick were held forward (pull back to brake). " +
                 "Off: Sunshine's, where it only carries on while you hold forward.");
-            WetSlideAnywhere = Config.Bind("Items", "WetSlideAnywhere", true,
-                "With a charge, any belly slide glides, not only one over water FLUDD sprayed.");
-            WetSlideRecharge = Config.Bind("Items", "WetSlideRecharge", 10f,
-                "Seconds for a wet slide charge to come back, counted from the slide's start.");
             WetSlideSeconds = Config.Bind("Items", "WetSlideSeconds", 1.5f,
-                "Seconds a wet slide glides before turning plain (cooldown items stretch it). 0: " +
-                "as long as it lasts.");
+                "Seconds a slide that starts over wet ground glides before turning plain. No charges " +
+                "or cooldown; cooldown reduction stretches this time and each Lysate Cell adds another " +
+                "base duration. 0: as long as the slide lasts.");
             SpraySeconds = Config.Bind("Items", "SpraySeconds", 0f,
                 "A hard cut: seconds the Spray fires before the trigger must be let go (cooldown " +
                 "items stretch it). 0: none (with Fludd.SprayBursts a held press already fades out " +

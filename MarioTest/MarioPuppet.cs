@@ -125,6 +125,14 @@ namespace MarioTest
             smoother.Stepped(UnityHost.ToUnity(state.pos));
         }
 
+        /// This Mario picked up a coin: Sunshine's pickup sound and sparks.
+        public void CoinCollected(Vector3 position)
+        {
+            if (view == null || view.Handle == IntPtr.Zero) return;
+            var at = UnityHost.ToSim(position);
+            Native.sms_view_coin_get(view.Handle, ref at);
+        }
+
         void Update()
         {
             if (sim == IntPtr.Zero) return;

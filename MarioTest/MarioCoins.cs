@@ -31,8 +31,12 @@ namespace MarioTest
         int next;
         bool tried;
 
+        /// The plugin's coins (for the messages that mirror them to the other players).
+        internal static MarioCoins Instance { get; private set; }
+
         void Awake()
         {
+            Instance = this;
             GlobalEventManager.onCharacterDeathGlobal += Killed;
             SceneManager.activeSceneChanged += SceneChanged;
             Run.onRunDestroyGlobal += RunEnded;
@@ -40,6 +44,7 @@ namespace MarioTest
 
         void OnDestroy()
         {
+            if (Instance == this) Instance = null;
             GlobalEventManager.onCharacterDeathGlobal -= Killed;
             SceneManager.activeSceneChanged -= SceneChanged;
             Run.onRunDestroyGlobal -= RunEnded;
@@ -88,18 +93,34 @@ namespace MarioTest
                 || !TeamMask.GetEnemyTeams(attacker.teamComponent.teamIndex).HasTeam(victim.teamComponent.teamIndex)) return;
             if (!rewarded.Add(victim.GetInstanceID()) || !EnsureModel()) return;
             float unit = UnityHost.Scale;
-            coins[next] = new Coin
+            var coin = new Coin
             {
                 pos = victim.corePosition,
                 velocity = UnityEngine.Random.insideUnitSphere * (80f * unit) + Vector3.up * (220f * unit),
                 team = attacker.teamComponent.teamIndex,
             };
+            coins[next] = coin;
+            MarioNet.SendCoin(next, coin.pos, coin.velocity, coin.team);
             next = (next + 1) % Capacity;
+        }
+
+        /// The server made a coin: every other machine drops the same one (it lands where its own world puts it;
+        /// only the server picks coins up).
+        internal void Spawned(int index, Vector3 pos, Vector3 velocity, TeamIndex team)
+        {
+            if (index < 0 || index >= Capacity || !EnsureModel()) return;
+            coins[index] = new Coin { pos = pos, velocity = velocity, team = team };
+        }
+
+        /// The server says a Mario picked this coin up.
+        internal void Taken(int index)
+        {
+            if (index >= 0 && index < Capacity) coins[index] = null;
         }
 
         void FixedUpdate()
         {
-            if (!NetworkServer.active || !Run.instance || PauseManager.isPaused) return;
+            if (!Run.instance || PauseManager.isPaused) return;
             float dt = Time.fixedDeltaTime;
             float unit = UnityHost.Scale;
             for (int i = 0; i < coins.Length; i++)
@@ -123,7 +144,8 @@ namespace MarioTest
                     }
                     else coin.pos += step;
                 }
-                if (coin.age < PickupDelay) continue;
+                // Only the server picks coins up; the others just let them fall and spin.
+                if (coin.age < PickupDelay || !NetworkServer.active) continue;
                 foreach (var body in CharacterBody.readOnlyInstancesList)
                 {
                     if (!body || !body.healthComponent || !body.healthComponent.alive || !body.teamComponent
@@ -138,7 +160,8 @@ namespace MarioTest
                     // Remove first: healing can trigger item callbacks, but a coin heals once.
                     coins[i] = null;
                     body.healthComponent.Heal(body.healthComponent.fullCombinedHealth / 8f, default, true);
-                    mario.CoinCollected(coin.pos);
+                    MarioNet.CoinCollected(body, coin.pos);
+                    MarioNet.SendCoinTaken(i, body, coin.pos);
                     break;
                 }
             }

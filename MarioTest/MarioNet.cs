@@ -22,6 +22,8 @@ namespace MarioTest
         public const short KnockMsg = 0x4D03;
         /// Healing and Bandolier owe a client's Mario's tank: server to that client.
         public const short WaterMsg = 0x4D04;
+        /// A coin dropped, or was picked up: server to the clients.
+        public const short CoinMsg = 0x4D05;
 
         /// One hit a client's Mario made, for the server to land.
         public struct HitRecord
@@ -41,6 +43,7 @@ namespace MarioTest
             Mp.Register(CombatMsg, OnCombat, null);
             Mp.Register(KnockMsg, null, OnKnock);
             Mp.Register(WaterMsg, null, OnWater);
+            Mp.Register(CoinMsg, null, OnCoin);
             Run.onRunDestroyGlobal += run => queues.Clear();
         }
 
@@ -191,6 +194,63 @@ namespace MarioTest
             if (r.Failed || !go || !(share >= 0f) || share > 100f) return;
             var body = go.GetComponent<CharacterBody>();
             if (body && body.hasEffectiveAuthority) go.GetComponent<MarioDriver>()?.WaterOwed(share, refill);
+        }
+
+        // ---- coins -------------------------------------------------------------------------
+        // The server drops and picks up the yellow coins (MarioCoins); everyone else draws a copy.
+
+        public static void SendCoin(int index, Vector3 pos, Vector3 velocity, TeamIndex team)
+        {
+            if (!Mp.Networked) return;
+            var w = new ByteWriter(32);
+            w.U8(0);
+            w.U8((byte)index);
+            Vec(w, pos);
+            Vec(w, velocity);
+            w.U8((byte)team);
+            Mp.SendToAll(CoinMsg, w.ToArray());
+        }
+
+        public static void SendCoinTaken(int index, CharacterBody by, Vector3 pos)
+        {
+            if (!Mp.Networked) return;
+            var w = new ByteWriter(24);
+            w.U8(1);
+            w.U8((byte)index);
+            w.U32(by.netId.Value);
+            Vec(w, pos);
+            Mp.SendToAll(CoinMsg, w.ToArray());
+        }
+
+        /// A Mario's pickup sound and sparks, on whichever of his sims this machine has (the player's
+        /// own, or the puppet of another player's).
+        public static void CoinCollected(CharacterBody body, Vector3 pos)
+        {
+            if (!body) return;
+            body.GetComponent<MarioDriver>()?.CoinCollected(pos);
+            body.GetComponent<MarioPuppet>()?.CoinCollected(pos);
+        }
+
+        static void OnCoin(NetworkConnection unused, ByteReader r)
+        {
+            // The server's own client side gets these too, and already did it.
+            if (NetworkServer.active || !MarioCoins.Instance) return;
+            byte kind = r.U8();
+            int index = r.U8();
+            if (kind == 0)
+            {
+                var pos = Vec(r);
+                var vel = Vec(r);
+                var team = (TeamIndex)r.U8();
+                if (!r.Failed && Finite(pos) && Finite(vel)) MarioCoins.Instance.Spawned(index, pos, vel, team);
+            }
+            else if (kind == 1)
+            {
+                var go = Mp.Find(r.U32());
+                var pos = Vec(r);
+                MarioCoins.Instance.Taken(index);
+                if (!r.Failed && go && Finite(pos)) CoinCollected(go.GetComponent<CharacterBody>(), pos);
+            }
         }
 
         /// Sends one body's recorded frames.

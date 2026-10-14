@@ -349,7 +349,7 @@ namespace MarioTest
             TraceJumps = Config.Bind("Debug", "TraceJumps", false,
                 "For a moment after each jump, log every rendered frame: frame time, physics steps, " +
                 "where Mario and the camera are, and Mario's height on screen.");
-            LogStatus = Config.Bind("Debug", "LogStatus", true,
+            LogStatus = Config.Bind("Debug", "LogStatus", false,
                 "Log each change of Mario's status (Wait, Running, Jump...) to the BepInEx log.");
             PoundFlames = Config.Bind("Look", "PoundFlames", true,
                 "A ground pound that falls long enough to turn super (about 7 m) bursts into " +

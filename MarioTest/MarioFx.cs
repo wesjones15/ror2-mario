@@ -129,7 +129,7 @@ namespace MarioTest
                 }
                 mask.SetPixelData(maskPixels, 0);
                 mask.Apply(false, false);
-                Plugin.Log.LogInfo($"Mario slide-wave map: {t.width}x{t.height}, {visible} pixels pass RoR2's distortion cutoff");
+                Plugin.Log.LogDebug($"Mario slide-wave map: {t.width}x{t.height}, {visible} pixels pass RoR2's distortion cutoff");
             }
             versions[which] = version;
             return tex;

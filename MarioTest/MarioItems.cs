@@ -196,7 +196,7 @@ namespace MarioTest
                     // (PoundLanded), so an interrupted one costs nothing.
                     var utility = Slot(SkillSlot.Utility);
                     PoundCharged = poundOwed = NativeSkills.Ready(utility, MarioSkills.Pound);
-                    Plugin.Log.LogInfo(utility
+                    Plugin.Log.LogDebug(utility
                         ? $"Ground pound: {(PoundCharged ? "a charge to spend on landing" : "no charge")}; the utility slot holds " +
                           $"{(utility.skillDef ? utility.skillDef.skillName : "nothing")}, stock {utility.stock}/{utility.maxStock}, " +
                           $"{utility.cooldownRemaining:0.0}s to the next"
@@ -260,7 +260,7 @@ namespace MarioTest
             poundOwed = false;
             var utility = Slot(SkillSlot.Utility);
             NativeSkills.Spend(utility, MarioSkills.Pound);
-            if (utility) Plugin.Log.LogInfo($"Ground pound landed: stock {utility.stock}/{utility.maxStock}, {utility.cooldownRemaining:0.0}s to the next");
+            if (utility) Plugin.Log.LogDebug($"Ground pound landed: stock {utility.stock}/{utility.maxStock}, {utility.cooldownRemaining:0.0}s to the next");
         }
 
         // ---- recharge ------------------------------------------------------------------------

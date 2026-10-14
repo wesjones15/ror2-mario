@@ -207,13 +207,13 @@ H3AD-5T v2 and Frailty/Eclipse when relevant. Multiplayer remains untested.
 
 ### Not there yet
 
-- Other players see Commando. Only the player who's Mario sees and hears him; the pose and
-  animation aren't networked yet. Mario's hits are the server's: a client playing him deals no
-  damage yet.
+- Multiplayer is implemented but has never been run in a two-player game: other players see
+  Mario through a shadow sim that replays his inputs (`MarioPuppet`), and a client Mario's hits,
+  falls and coin pickups go through the server. Every player needs the same plugin build and their
+  own extracted `assets/`. See [../ror2-common/MULTIPLAYER.md](../ror2-common/MULTIPLAYER.md) for how it
+  works and the test plan.
 - Yoshi.
 - The skill icons are Commando's.
-- Multiplayer is untested. Every player needs the plugin, and anyone playing Mario needs their
-  own extracted `assets/`.
 
 Offline / friends-only co-op only.
 

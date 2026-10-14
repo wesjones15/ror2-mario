@@ -53,11 +53,34 @@ namespace MarioTest
             body && !body.hasEffectiveAuthority && Plugin.AssetsReady && !RunAudio.Ended && !failed
             && (!health || health.alive) && Mp.Networked;
 
+        // His body died: he falls down for good, as the player's own Mario does (MarioCorpse), after
+        // the body is gone too.
+        void Fall()
+        {
+            if (sim == IntPtr.Zero || view == null || !Plugin.DeathFall.Value) return;
+            Native.sms_sim_down(sim);
+            MarioCorpse.Begin(sim, view, Plugin.DeathFallSeconds.Value, true);
+            // The corpse owns them now.
+            sim = IntPtr.Zero;
+            view = null;
+            Teardown();
+        }
+
+        static bool warnedAssets;
+
         void FixedUpdate()
         {
+            if (!warnedAssets && body && !body.hasEffectiveAuthority && !Plugin.AssetsReady
+                && MarioNet.QueueFor(body.netId.Value) != null)
+            {
+                warnedAssets = true;
+                Plugin.Log.LogWarning("Another player is Mario, but this machine has no Sunshine assets yet " +
+                    "(set Paths.Disc to your own disc): they will look like Commando.");
+            }
             if (!Wanted)
             {
-                Teardown();
+                if (health && !health.alive && body && !body.hasEffectiveAuthority) Fall();
+                else Teardown();
                 return;
             }
             queue = MarioNet.QueueFor(body.netId.Value);
@@ -159,7 +182,8 @@ namespace MarioTest
                 view.Dispose();
                 view = null;
             }
-            GameSettings.HideModel(body, ref hidden, false);
+            // A body that is falling over keeps Commando's ragdoll hidden: Mario is the one lying there.
+            if (!(health && !health.alive && failed == false && hidden)) GameSettings.HideModel(body, ref hidden, false);
             if (sim != IntPtr.Zero)
             {
                 Native.sms_sim_free(sim);

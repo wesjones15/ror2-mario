@@ -11,6 +11,8 @@ namespace MarioTest
     internal sealed class MarioCorpse : MonoBehaviour
     {
         static MarioCorpse current;
+        // Another player's Mario who fell: any number at once, each ending on its own.
+        bool others;
 
         IntPtr sim;
         MarioView view;
@@ -18,15 +20,16 @@ namespace MarioTest
         float left;
 
         /// Takes over `sim` and `view` (freeing both when done).
-        public static void Begin(IntPtr sim, MarioView view, float seconds)
+        public static void Begin(IntPtr sim, MarioView view, float seconds, bool otherPlayers = false)
         {
-            End();
+            if (!otherPlayers) End();
             var c = new GameObject("MarioCorpse").AddComponent<MarioCorpse>();
+            c.others = otherPlayers;
             c.sim = sim;
             c.view = view;
             c.host = UnityHost.Table();
             c.left = Mathf.Clamp(seconds, 0f, 30f);
-            current = c;
+            if (!otherPlayers) current = c;
         }
 
         public static void End()

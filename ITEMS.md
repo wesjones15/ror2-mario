@@ -37,7 +37,7 @@ reads none. Any item that works through the paths above works on Mario in a newe
   in the air costs a use, however long it runs; switching nozzle while airborne costs another.
   With none left, the trigger does nothing until he lands or a charge comes back. Uses don't
   touch the water.
-- **Ground pound**: it always works. Without a charge it does 50% of its damage. (Mario)
+- **Ground pound**: it always works. A charge is spent when the pound lands (on the floor or an enemy), so an interrupted pound costs nothing. Without a charge it does 50% of its damage. (Mario)
 - **Wet slide**: with a charge, a belly slide glides wet for 1.5 s, keeping its speed as if
   the stick were held forward (pull back to brake). Cooldown items stretch the glide. Without
   a charge it's a plain slide, except over water FLUDD sprayed: that glides for free, as in

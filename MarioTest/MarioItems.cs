@@ -192,10 +192,12 @@ namespace MarioTest
                 }
                 case Native.EventKind.PoundStart:
                 {
+                    // Full strength with a charge on hand; the charge is spent when the pound lands
+                    // (PoundLanded), so an interrupted one costs nothing.
                     var utility = Slot(SkillSlot.Utility);
-                    PoundCharged = NativeSkills.Spend(utility, MarioSkills.Pound);
+                    PoundCharged = poundOwed = NativeSkills.Ready(utility, MarioSkills.Pound);
                     Plugin.Log.LogInfo(utility
-                        ? $"Ground pound: {(PoundCharged ? "charge spent" : "no charge")}; the utility slot holds " +
+                        ? $"Ground pound: {(PoundCharged ? "a charge to spend on landing" : "no charge")}; the utility slot holds " +
                           $"{(utility.skillDef ? utility.skillDef.skillName : "nothing")}, stock {utility.stock}/{utility.maxStock}, " +
                           $"{utility.cooldownRemaining:0.0}s to the next"
                         : "Ground pound: the body has no utility skill slot");
@@ -203,6 +205,14 @@ namespace MarioTest
                     NativeBody.MarkCombat(body);
                     break;
                 }
+                case Native.EventKind.GroundPound:
+                    PoundLanded();
+                    break;
+                case Native.EventKind.EnemyHit:
+                    // Landing on an enemy with the pound counts too (value 1: a ground pound).
+                    if (e.value == 1) PoundLanded();
+                    NativeBody.MarkCombat(body);
+                    break;
                 case Native.EventKind.WetSlide:
                     NativeSkills.Spend(Slot(SkillSlot.Special), MarioSkills.Slide);
                     break;
@@ -232,10 +242,19 @@ namespace MarioTest
                     NativeBody.MarkCombat(body);
                     break;
                 }
-                case Native.EventKind.EnemyHit:
-                    NativeBody.MarkCombat(body);
-                    break;
             }
+        }
+
+        // The pound's charge, spent on its first impact (the floor or an enemy).
+        bool poundOwed;
+
+        void PoundLanded()
+        {
+            if (!poundOwed) return;
+            poundOwed = false;
+            var utility = Slot(SkillSlot.Utility);
+            NativeSkills.Spend(utility, MarioSkills.Pound);
+            if (utility) Plugin.Log.LogInfo($"Ground pound landed: stock {utility.stock}/{utility.maxStock}, {utility.cooldownRemaining:0.0}s to the next");
         }
 
         // ---- recharge ------------------------------------------------------------------------
@@ -422,7 +441,7 @@ namespace MarioTest
             lang.SetStringByToken("MARIOTEST_POUND_NAME", "Ground Pound");
             lang.SetStringByToken("MARIOTEST_POUND_DESC",
                 "LT in the air. Hits harder the further you fall, with a shock wave round the landing. " +
-                $"Each charge is a full-strength pound; without one it does {Plugin.WeakPound.Value * 100f:0}%.");
+                $"Each charge is a full-strength pound, spent when it lands (an interrupted pound costs nothing); without one it does {Plugin.WeakPound.Value * 100f:0}%.");
             lang.SetStringByToken("MARIOTEST_SLIDE_NAME", "Wet Slide");
             lang.SetStringByToken("MARIOTEST_SLIDE_DESC",
                 "Dive with B, then belly slide. Each charge turns a slide on dry ground wet, gliding far. Over " +

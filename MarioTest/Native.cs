@@ -12,7 +12,7 @@ namespace MarioTest
     internal static class Native
     {
         public const string Dll = "sms";
-        public const uint AbiVersion = 21;
+        public const uint AbiVersion = 22;
         // ABI 20 refraction maps: R=1, G=4*Y, B=coverage, A=4*X. Separate the mask and
         // compensate material strength so RoR2's near-flat-normal discard keeps the crests.
         public const float RefractionNormalGain = 4f;
@@ -299,6 +299,10 @@ namespace MarioTest
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern byte sms_view_life_set(IntPtr view, byte which, float health, float shield);
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern byte sms_view_life_info(IntPtr view, byte which, out HudInfo info);
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern byte sms_view_life_pixels(IntPtr view, byte which, [Out] byte[] rgba, uint len);
+        /// The HUD's coin counters (0 yellow, 1 blue): the number to show, then place, size and pixels as the gauge's.
+        [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern byte sms_view_coins_set(IntPtr view, byte which, uint value);
+        [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern byte sms_view_coins_info(IntPtr view, byte which, out HudInfo info);
+        [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern byte sms_view_coins_pixels(IntPtr view, byte which, [Out] byte[] rgba, uint len);
 
         /// Loads sms.dll from the plugin folder and checks it speaks this plugin's ABI with the
         /// same struct layouts.

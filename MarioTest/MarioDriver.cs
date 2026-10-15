@@ -251,6 +251,8 @@ namespace MarioTest
                 UnityHost.RecoveryGround, out var fellFrom))
             {
                 Plugin.Log.LogInfo($"Mario fell off the map at {UnityHost.ToUnity(st.pos)}; back on the surface at {fellFrom}");
+                // Sunshine's "Too Bad!" (the miss jingle) for a fall, before he stands again.
+                if (Local) SpawnMusic.PlayMiss(body);
                 transform.position = fellFrom + feetToOrigin;
                 Resync();
                 var rest = new Native.Vec3(0f, 0f, 0f);
@@ -408,6 +410,7 @@ namespace MarioTest
                 // The life meter for the player's health, and the marker on the locked enemy
                 // as seen from Mario's chest.
                 MarioLife.Update(view.Handle, health);
+                MarioCoinHud.Update(view.Handle, body, localUser);
                 lockMarker.Update(view.Handle, lockShown,
                     feet + Vector3.up * (height * 0.55f));
             }
@@ -468,7 +471,11 @@ namespace MarioTest
                 // RoR2's own health bar and no marker while he's not Mario.
                 lockMarker.Hide();
                 lockShown = null;
-                if (Local) MarioLife.Update(IntPtr.Zero, null);
+                if (Local)
+                {
+                    MarioLife.Update(IntPtr.Zero, null);
+                    MarioCoinHud.Update(IntPtr.Zero, null, null);
+                }
                 if (health && !health.alive)
                     Died();
                 else
@@ -618,6 +625,7 @@ namespace MarioTest
             {
                 MarioHud.Draw();
                 MarioLife.Draw();
+                MarioCoinHud.Draw();
             }
         }
 

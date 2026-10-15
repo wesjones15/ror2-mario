@@ -160,6 +160,8 @@ namespace MarioTest
                     // Remove first: healing can trigger item callbacks, but a coin heals once.
                     coins[i] = null;
                     body.healthComponent.Heal(body.healthComponent.fullCombinedHealth / 8f, default, true);
+                    // And RoR2's own coin: the gold that the yellow counter shows.
+                    if (body.master && Plugin.CoinGold.Value > 0) body.master.GiveMoney((uint)Plugin.CoinGold.Value);
                     MarioNet.CoinCollected(body, coin.pos);
                     MarioNet.SendCoinTaken(i, body, coin.pos);
                     break;

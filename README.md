@@ -64,7 +64,8 @@ How it works:
     range it holds L (locking on, so FLUDD aims at the enemy) and R; close up it jumps and ground
     pounds; further off it sprints, hops, and dives at middling range.
 - When Mario dies he falls down for good as in Sunshine (the "die" clip and his "down" voices)
-  and Sunshine's miss jingle (the "Too Bad!" one) plays. RoR2 removes a dead body a second
+  and Sunshine's game over song plays (falling off the map plays the miss jingle, the "Too Bad!" one,
+  before he is put back on the surface). RoR2 removes a dead body a second
   after it comes to rest, so `MarioCorpse` plays the fall out (`Look.DeathFall`,
   `Look.DeathFallSeconds`, `SpawnMusic.DeathSting`).
 - No R2API: the survivor is registered through RoR2's content-pack hook.
@@ -231,6 +232,12 @@ immediately. Old `WetSlideCharges`, `WetSlideAnywhere`, `WetSlideOnWater`, and
 The wet slide's spray is `Look.SlideSprayScale` (1.4) times Sunshine's size. The extra
 stand-in splashes remain off (`Look.SlideSplashes`).
 
+Sunshine's coin counters (`Hud.CoinCounters`) replace RoR2's gold and lunar coin counters: the yellow coin shows
+RoR2's gold and the blue coin the lunar coins (once there is one), drawn from the disc's coin icon and digit
+pictures like the game's HUD (more digits than its three: up to seven). Each sits where the counter it replaces
+was, or where `Hud.CoinX`/`CoinY` say, `Hud.CoinScale` big. Each yellow coin Mario picks up (the ones his kills
+drop) is also worth `Coins.Gold` (1) RoR2 gold. The 3D lunar coins in the world are unchanged.
+
 Sunshine's life meter (`Hud.LifeMeter`) shows Mario's health in place of RoR2's health bar: the
 Shine Sprite sun from the disc, a hub and rays in a ring of eight, lit in whole rays by his health as
 a share of his full health and shield (RoR2's own values are untouched), the shield's rays after them
@@ -277,4 +284,4 @@ the log confirms the material loaded with `FLUDD's water refracts`.
 
 ## Arrival music
 
-Mario plays approximately five opening beats (2.5 seconds) of Delfino Plaza once a run, as he leaves the pod on the first stage; later stages and respawns stay quiet. When he dies, Sunshine's miss jingle plays (about 4.5 seconds). SpawnMusic.Enabled, SpawnMusic.DeathSting, SpawnMusic.Volume and SpawnMusic.DeathVolume (1.15, extra gain for the death sting) control them; master and music volume also apply. The build synthesizes spawn.wav and death.wav from your extracted disc audio into the ignored dist folder. Rebuild after extracting assets if a clip is missing. No music data is committed.
+Mario plays approximately five opening beats (2.5 seconds) of Delfino Plaza once a run, as he leaves the pod on the first stage; later stages and respawns stay quiet. When he dies, Sunshine's game over song plays (about 8 seconds); falling off the map plays the miss jingle ("Too Bad!", about 4.5 seconds) before he is put back. A lunar coin picked up plays the blue coin jingle (`SpawnMusic.Cues`). SpawnMusic.Enabled, SpawnMusic.DeathSting, SpawnMusic.Volume and SpawnMusic.DeathVolume (1.15, extra gain for the death sting) control them; master and music volume also apply. The build synthesizes spawn.wav, death.wav (the miss jingle), gameover.wav and bluecoin.wav from your extracted disc audio into the ignored dist folder. Rebuild after extracting assets if a clip is missing. No music data is committed.

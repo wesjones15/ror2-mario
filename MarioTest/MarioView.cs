@@ -195,6 +195,7 @@ namespace MarioTest
             v?.Dispose();
             MarioHud.Reset();
             MarioLife.Reset();
+            MarioCoinHud.Reset();
             tried = false;
         }
     }

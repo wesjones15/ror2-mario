@@ -91,6 +91,9 @@ namespace MarioTest
         internal static ConfigEntry<bool> WetSlideGlide;
         internal static ConfigEntry<bool> ShallowWetSlide;
         internal static ConfigEntry<bool> ShowLife, HideHealthBar, LockMarker, LockMarkerHealth;
+        internal static ConfigEntry<bool> ShowCoins;
+        internal static ConfigEntry<float> CoinX, CoinY, CoinScale;
+        internal static ConfigEntry<int> CoinGold;
         internal static ConfigEntry<float> LockRange;
         internal static ConfigEntry<float> LifeX, LifeY, LifeScale, LockMarkerSize, LockMarkerSpin;
         internal static ConfigEntry<bool> KnockdownEnabled, KnockdownGetUpEarly, KnockdownInterruptsPound;
@@ -189,6 +192,21 @@ namespace MarioTest
                 "Where the life meter's middle is down the screen, 0 top to 1 bottom. Negative: at RoR2's health bar.");
             LifeScale = Config.Bind("Hud", "LifeScale", 0.45f,
                 "The life meter's size; 1 is Sunshine's against the screen's height.");
+            ShowCoins = Config.Bind("Hud", "CoinCounters", true,
+                "Show Sunshine's coin counters (from the disc) for RoR2's gold (the yellow coin) and lunar coins " +
+                "(the blue coin), and hide RoR2's own while they show. A lunar coin also plays Sunshine's " +
+                "blue coin jingle.");
+            CoinX = Config.Bind("Hud", "CoinX", -1f,
+                "Where the counters' left edge is across the screen, 0 left to 1 right. Negative: where " +
+                "RoR2's own gold and lunar coin counters are.");
+            CoinY = Config.Bind("Hud", "CoinY", -1f,
+                "Where the yellow counter's middle is down the screen, 0 top to 1 bottom (the blue one goes " +
+                "below it). Negative: where RoR2's own are.");
+            CoinScale = Config.Bind("Hud", "CoinScale", 0.4f,
+                "The counters' size; 1 is Sunshine's against the screen's height.");
+            CoinGold = Config.Bind("Coins", "Gold", 1,
+                new ConfigDescription("RoR2 gold each yellow coin Mario picks up is worth, on top of the " +
+                    "health it heals. 0: none.", new AcceptableValueRange<int>(0, 1000)));
             LockRange = Config.Bind("Controls", "LockRange", 60f,
                 new ConfigDescription("How far away, in metres, the lock-on can pick an enemy (with a clear line): " +
                     "far enough for flying ones. FLUDD's water still falls short of the far ones.",
@@ -414,7 +432,9 @@ namespace MarioTest
             assetsReady = Native.sms_assets_complete(NativeLib.CString(AssetsDir)) != 0;
             string stings = Path.Combine(AssetsDir, "ror2_audio");
             if (assetsReady && File.Exists(Path.Combine(stings, "spawn.wav"))
-                && File.Exists(Path.Combine(stings, "death.wav")))
+                && File.Exists(Path.Combine(stings, "death.wav"))
+                && File.Exists(Path.Combine(stings, "gameover.wav"))
+                && File.Exists(Path.Combine(stings, "bluecoin.wav")))
                 return;
             string disc = configuredDisc?.Trim();
             if (!assetsReady && string.IsNullOrEmpty(disc))

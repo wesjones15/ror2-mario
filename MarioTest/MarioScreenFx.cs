@@ -61,7 +61,7 @@ namespace MarioTest
             foreach (var name in new[] { "ExtraLife", "ExtraLifeVoid" })
             {
                 var item = ByName.Item(name);
-                if (item != ItemIndex.None) n += inventory.GetItemCount(item);
+                if (item != ItemIndex.None) n += inventory.GetItemCountEffective(item);
             }
             return n;
         }

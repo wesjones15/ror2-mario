@@ -4,11 +4,9 @@
 #   powershell -ExecutionPolicy Bypass -File build.ps1 [-RoR2Dir <game to compile against>]
 #       [-InstallDir <game to install into>] [-NoInstall]
 #
-# Compiles against the 1.2.4.4 copy next to this repo and installs into the Steam install the
-# user plays (falling back to the copy).
 param(
-    [string]$RoR2Dir = (Join-Path $PSScriptRoot "..\Risk Of Rain 2 2023"),
-    [string]$InstallDir = "D:\SteamLibrary\steamapps\common\Risk of Rain 2",
+    [string]$RoR2Dir = (Join-Path $PSScriptRoot "..\2026 Mod Stuff\RiskOfRain2_DLC4"),
+    [string]$InstallDir = $RoR2Dir,
     [string]$LibSms = (Join-Path $PSScriptRoot "..\libsms"),
     [switch]$NoInstall
 )
@@ -31,7 +29,7 @@ $dist = Join-Path $PSScriptRoot "dist\MarioTest"
 New-Item -ItemType Directory -Force $dist | Out-Null
 # The first-run worker renders the arrival/death stings into the user's asset cache.
 # A clean build needs no extracted Nintendo files.
-Copy-Item (Join-Path $PSScriptRoot "MarioTest\bin\Release\netstandard2.0\MarioTest.dll") $dist -Force
+Copy-Item (Join-Path $PSScriptRoot "MarioTest\bin\Release\netstandard2.1\MarioTest.dll") $dist -Force
 Copy-Item (Join-Path $LibSms "target\release\sms.dll") $dist -Force
 $assets = [System.IO.Path]::GetFullPath((Join-Path $LibSms "assets"))
 [System.IO.File]::WriteAllText((Join-Path $dist "assets_dir.txt"), $assets)

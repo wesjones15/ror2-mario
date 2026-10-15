@@ -37,7 +37,7 @@ namespace MarioTest
         void Awake()
         {
             Instance = this;
-            GlobalEventManager.onCharacterDeathGlobal += Killed;
+            GlobalEventManager.onDeathProcServer += Killed;
             SceneManager.activeSceneChanged += SceneChanged;
             Run.onRunDestroyGlobal += RunEnded;
         }
@@ -45,7 +45,7 @@ namespace MarioTest
         void OnDestroy()
         {
             if (Instance == this) Instance = null;
-            GlobalEventManager.onCharacterDeathGlobal -= Killed;
+            GlobalEventManager.onDeathProcServer -= Killed;
             SceneManager.activeSceneChanged -= SceneChanged;
             Run.onRunDestroyGlobal -= RunEnded;
             Clear();
@@ -161,7 +161,7 @@ namespace MarioTest
                     coins[i] = null;
                     body.healthComponent.Heal(body.healthComponent.fullCombinedHealth / 8f, default, true);
                     // And RoR2's own coin: the gold that the yellow counter shows.
-                    if (body.master && Plugin.CoinGold.Value > 0) body.master.GiveMoney((uint)Plugin.CoinGold.Value);
+                    if (body.master && Plugin.CoinGold.Value > 0) body.master.GiveMoney((uint)Plugin.CoinGold.Value, false);
                     MarioNet.CoinCollected(body, coin.pos);
                     MarioNet.SendCoinTaken(i, body, coin.pos);
                     break;

@@ -147,7 +147,7 @@ namespace MarioTest
             if (!valid || r.Failed) return;
             if (pulse) body.GetComponent<NativeBody>()?.PulsePrimary(Plugin.ShurikenInterval.Value);
             if (fall > 0f && fall <= 1f && GlobalEventManager.instance)
-                GlobalEventManager.instance.OnCharacterHitGroundServer(body, Vector3.down * (body.jumpPower + 20f + fall * 60f));
+                GlobalEventManager.instance.OnCharacterHitGroundServer(body, new CharacterMotor.HitGroundInfo { velocity = Vector3.down * (body.jumpPower + 20f + fall * 60f), position = body.footPosition, ownerBodyObject = body.gameObject, isValidForEffect = true });
         }
 
         /// The server tells a client's Mario a powerful hit knocked him over (his sim is on his machine).

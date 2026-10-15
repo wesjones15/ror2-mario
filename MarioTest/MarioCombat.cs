@@ -162,7 +162,7 @@ namespace MarioTest
                 // policy through that entry point so fall boots, armor, Frailty and
                 // Eclipse's lethal falls retain the game's normal behavior.
                 float speed = body.jumpPower + 20f + fallFraction * 60f;
-                GlobalEventManager.instance.OnCharacterHitGroundServer(body, Vector3.down * speed);
+                GlobalEventManager.instance.OnCharacterHitGroundServer(body, new CharacterMotor.HitGroundInfo { velocity = Vector3.down * speed, position = body.footPosition, ownerBodyObject = body.gameObject, isValidForEffect = true });
             }
             blows.Clear();
             water.Clear();

@@ -635,16 +635,14 @@ namespace MarioTest
             var lang = Language.currentLanguage;
             if (lang == null) return;
             lang.SetStringByToken("MARIOTEST_BODY_NAME", "Mario");
-            lang.SetStringByToken("MARIOTEST_BODY_SUBTITLE", "Super Mario Sunshine movement");
+            lang.SetStringByToken("MARIOTEST_BODY_SUBTITLE", "Hero of Isle Delfino");
             lang.SetStringByToken("MARIOTEST_BODY_DESCRIPTION",
-                "Super Mario Sunshine's Mario, moved by libsms.\n\n" +
-                "< ! > FLUDD is Mario's attack: every drop of water hits. Hold the lock-on and its head " +
-                "follows an enemy for you. Stomps, dives and ground pounds hit too.\n\n" +
-                "< ! > Pad: A jump, B dive, RT spray (a light pull sprays on the move, all the way in " +
-                "plants Mario), LT crouch and, in the air, ground pound, LB lock on (RB then cycles " +
-                "targets), RB switch nozzle, D-pad down refill the tank, RoR2's sprint to sprint.\n" +
-                "< ! > Keys: jump, primary spray, sprint plant and spray, secondary dive, utility " +
-                "ground pound and lock on, special switch nozzle (cycle targets while locked).");
+                "Mario came for a vacation, but trouble follows him everywhere. This time he has FLUDD, a high-pressure " +
+                "water pack that sprays, hovers, rockets and turbo-dashes him out of any jam.\n\n" +
+                "< ! > Blast enemies with FLUDD's four nozzles: Spray, Hover, Rocket and Turbo.\n" +
+                "< ! > Stomp, dive and ground pound for heavy hits, and bounce higher with every stomp in a row.\n" +
+                "< ! > Belly slide across wet ground to dodge danger or ram straight through it.\n" +
+                "< ! > Collect the coins enemies drop to heal.");
             MarioSkills.Tokens(lang);
             lang.SetStringByToken("MARIOTEST_BODY_OUTRO", "..and so he left, still wet.");
             lang.SetStringByToken("MARIOTEST_BODY_FAIL", "..and so he vanished, mid-triple-jump.");

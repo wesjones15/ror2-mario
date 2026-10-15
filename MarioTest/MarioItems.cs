@@ -463,27 +463,49 @@ namespace MarioTest
             NativeSkills.SetFamily(body, SkillSlot.Special, Slide, pack);
         }
 
+        // Sunshine's Spray, in units, for a SprayReach multiple (measured: 960, 1,480 and 2,040 at 1, 1.5 and 2).
+        static float SprayUnits(float reach) =>
+            reach <= 1.5f ? 960f + (reach - 1f) * 1040f : 1480f + (reach - 1.5f) * 1120f;
+
         public static void Tokens(Language lang)
         {
+            // What each skill does for the player: controls, how long, how far, how often. The
+            // numbers come from the config, so they stay true when it changes.
+            // Sunshine's Spray flies 960 units at SprayReach 1, 1,480 at 1.5 and 2,040 at 2; a
+            // standard survivor is 1.8 m tall against Mario's 160 units.
+            float reach = SprayUnits(Plugin.SprayReach.Value) * 1.8f / UnityHost.MarioHeight;
+            float perSecond = Plugin.WaterDamage.Value * 93f * 100f;
             lang.SetStringByToken("MARIOTEST_FLUDD_NAME", "FLUDD");
             lang.SetStringByToken("MARIOTEST_FLUDD_DESC",
-                "Spray, Hover, Rocket and Turbo, from one tank (RB switches nozzle). Pull RT to spray: a light pull " +
-                "sprays on the move, all the way in plants Mario. Hold LB to lock onto an enemy and FLUDD's head " +
-                "follows it. Every drop is an attack; items proc once a second per target. Attack speed sprays " +
-                "faster for the same water. Cooldown items hover and spray longer, rocket higher and turbo faster.");
+                "<style=cIsUtility>Hold RT</style> to spray: a light pull splashes just ahead, a deeper pull sprays on the move, " +
+                $"and all the way in plants Mario. Reaches about <style=cIsUtility>{reach:0} m</style> and deals " +
+                $"<style=cIsDamage>{perSecond:0}% damage per second</style> to one enemy. A full spray lasts " +
+                "<style=cIsUtility>5 seconds</style>, then tapers until you let go. <style=cIsUtility>RB</style> switches nozzle: " +
+                "<style=cIsUtility>Hover</style> floats Mario for 3 seconds, <style=cIsUtility>Rocket</style> charges for 1.5 seconds " +
+                "then launches him skyward, <style=cIsUtility>Turbo</style> dashes at 3 times running speed. " +
+                $"<style=cIsUtility>Hold LB</style> to lock onto an enemy up to {Plugin.LockRange.Value:0} m away. " +
+                "Cooldown reduction lengthens the spray and hover and raises the rocket and turbo.");
             lang.SetStringByToken("MARIOTEST_AIR_NAME", "Air Pump");
             lang.SetStringByToken("MARIOTEST_AIR_DESC",
-                "RT in mid-air. One FLUDD use per jump; each charge is one more in the air, recharging once " +
-                "you've landed.");
+                "<style=cIsUtility>Hold RT in mid-air</style> to start FLUDD. Mario gets one mid-air use per jump; each charge is " +
+                $"another, and one charge returns every <style=cIsUtility>{Plugin.AirUseRecharge.Value:0.#} seconds</style> " +
+                "once Mario is back on the ground.");
             lang.SetStringByToken("MARIOTEST_POUND_NAME", "Ground Pound");
             lang.SetStringByToken("MARIOTEST_POUND_DESC",
-                "LT in the air. Hits harder the further you fall, with a shock wave round the landing. " +
-                $"Each charge is a full-strength pound, spent when it lands (an interrupted pound costs nothing); without one it does {Plugin.WeakPound.Value * 100f:0}%.");
+                "<style=cIsUtility>Press LT in mid-air</style> to slam down. Hits the enemy underneath for " +
+                $"<style=cIsDamage>{Plugin.PoundDamage.Value * 100f:0}% damage</style> and sends a shock wave of " +
+                $"<style=cIsDamage>{Plugin.ShockDamage.Value * 100f:0}%</style> through everything within " +
+                $"<style=cIsUtility>{Plugin.PoundRadius.Value:0} m</style>, growing {Plugin.PoundPerMetre.Value * 100f:0}% for each " +
+                "metre fallen. A fall of about 7 m is a super pound, which also ignites. Landing on an enemy is a stomp for " +
+                $"<style=cIsDamage>{Plugin.StompDamage.Value * 100f:0}% damage</style> that bounces Mario higher each time in a row. " +
+                $"Each charge is one full-strength pound, spent on landing and back after <style=cIsUtility>{Plugin.PoundRecovery.Value:0.#} seconds</style>; " +
+                $"without one the pound does {Plugin.WeakPound.Value * 100f:0}%.");
             lang.SetStringByToken("MARIOTEST_SLIDE_NAME", "Wet Slide");
             lang.SetStringByToken("MARIOTEST_SLIDE_DESC",
-                "Dive with B, then belly slide over wet ground. A light RT burst wets a broad patch ahead. " +
-                $"Glide for {Plugin.WetSlideSeconds.Value:0.##} seconds, with no charges or cooldown. " +
-                "Cooldown items and Lysate Cell extend the glide instead.");
+                "<style=cIsUtility>Press B in mid-air</style> to dive, then belly slide. Diving or sliding into an enemy deals " +
+                $"<style=cIsDamage>{Plugin.DiveDamage.Value * 100f:0}% damage</style>. Over wet ground (a light RT splash ahead of you, " +
+                $"or shallow water) the slide glides for <style=cIsUtility>{Plugin.WetSlideSeconds.Value:0.##} seconds</style>. " +
+                "No charges, no cooldown. Cooldown reduction and Lysate Cell lengthen the glide.");
         }
     }
 }

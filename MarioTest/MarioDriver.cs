@@ -57,6 +57,10 @@ namespace MarioTest
         readonly MarioPad pad = new MarioPad();
         readonly MarioFlames flames = new MarioFlames();
         readonly Unstuck unstuck = new Unstuck();
+        // Where the feet were after the last step (for the wall sweep); unknown after a teleport.
+        Vector3 lastFeet;
+        bool haveLastFeet;
+        float sweepLogAt;
         readonly EnemyLock enemyLock = new EnemyLock();
         readonly MarioBrain brain = new MarioBrain();
         // L held last step, and a ground pound armed by a fresh L press in the air.
@@ -237,6 +241,27 @@ namespace MarioTest
                 status = NativeLib.Utf8(Native.sms_sim_status_name(sim));
                 Plugin.Log.LogInfo($"Mario unstuck after 3 seconds at {recovered}");
             }
+            // The sim's wall rings can miss (a thin pole between rays, a corner, a step so long it
+            // ends inside the wall, where a ray hits no back face), and Mario then walks out of the
+            // map. Sweep the step itself; a wall crossed puts him back where he stood.
+            var feetNow = UnityHost.ToUnity(st.pos);
+            if (haveLastFeet && !MarioUnstuck.Climbing(status) && (feetNow - lastFeet).sqrMagnitude < 9f
+                && WorldProbe.CrossedWall(lastFeet, feetNow, UnityHost.SweepHeights,
+                    UnityHost.SweepWallNormalY, out var through))
+            {
+                if (Time.time >= sweepLogAt)
+                {
+                    sweepLogAt = Time.time + 1f;
+                    Plugin.Log.LogInfo($"Mario stopped at a wall he was passing through: {through.collider.name} " +
+                        $"(layer {LayerMask.LayerToName(through.collider.gameObject.layer)}) at {through.point}");
+                }
+                transform.position = lastFeet + feetToOrigin;
+                Resync();
+                Native.sms_sim_state(sim, out st);
+                status = NativeLib.Utf8(Native.sms_sim_status_name(sim));
+            }
+            lastFeet = UnityHost.ToUnity(st.pos);
+            haveLastFeet = true;
             grounded = st.on_ground != 0;
             MarioCombat.Watch(st);
             pounding = st.pounding;
@@ -529,6 +554,7 @@ namespace MarioTest
         void Resync()
         {
             unstuck.Reset();
+            haveLastFeet = false;
             var feet = UnityHost.ToSim(transform.position - feetToOrigin);
             SimOps.Teleport(sim, ref feet);
             smoother.Reset();

@@ -21,6 +21,8 @@ namespace MarioTest
         // floors (y > 0) or ceilings.
         const float WallNormalY = 0.2f;
         const float GroundReach = 2000f;
+        // Where a floor is pretended over a pit: 500 m below the probe, in sim units.
+        const float VoidFloorDrop = 50000f;
         const float RoofReach = 200f;
 
         static readonly Native.GroundFn groundFn = Ground;
@@ -86,11 +88,25 @@ namespace MarioTest
         static byte Ground(IntPtr user, ref Native.Vec3 pos, out Native.GroundHit hit)
         {
             hit = default;
-            if (!WorldProbe.Ground(ToUnity(pos), GroundReach, out var h)) return 0;
+            if (!WorldProbe.Ground(ToUnity(pos), GroundReach, out var h))
+            {
+                // No floor at all. Sunshine's answer is a void, which turns Mario back (a gap
+                // in the map was an invisible wall). RoR2's characters walk off such an edge
+                // and fall to the kill zone, so Mario gets a floor out of reach below him, within
+                // the 100,000 units where libsms still takes the floor for real.
+                hit.height = pos.y - VoidFloorDrop;
+                hit.normal = new Native.Vec3(0f, 1f, 0f);
+                return 1;
+            }
             hit.height = h.point.y / Scale;
             hit.normal = new Native.Vec3(h.normal.x, h.normal.y, h.normal.z);
             return 1;
         }
+
+        /// Heights above Mario's feet, in metres, where a step is swept for walls (MarioDriver):
+        /// near the sim's own wall rings (30 and 150 units) and the middle of him.
+        public static readonly float[] SweepHeights = { 0.3f, 0.9f, 1.5f };
+        public const float SweepWallNormalY = WallNormalY;
 
         static byte Roof(IntPtr user, ref Native.Vec3 pos, out Native.RoofHit hit)
         {

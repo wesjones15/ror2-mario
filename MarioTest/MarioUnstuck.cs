@@ -4,6 +4,10 @@ namespace MarioTest
     // Status names follow libsms's MarioStatus mirror (spec: Player/MarioStatus.hpp).
     internal static class MarioUnstuck
     {
+        /// The statuses that move Mario along a ledge or up over it by the clip, not by the wall rings.
+        internal static bool Climbing(string status) =>
+            status == "Hanging" || status == "Ascend" || status == "Descend";
+
         internal static bool Fallen(string status, bool grounded, float verticalVelocity)
         {
             switch (status)

@@ -232,6 +232,11 @@ immediately. Old `WetSlideCharges`, `WetSlideAnywhere`, `WetSlideOnWater`, and
 The wet slide's spray is `Look.SlideSprayScale` (1.4) times Sunshine's size. The extra
 stand-in splashes remain off (`Look.SlideSplashes`).
 
+When Mario falls off the map, Sunshine's "TOO BAD!" letters (coloured, dropping in and bouncing) play as the screen opens from
+black (he is untouchable for those seconds); when he dies, its GAME OVER screen (black with the letters cut out of it, the scene
+showing through) plays with the song (`Hud.ScreenEffects`). They come from the disc's HUD and wipe pictures; a folder extracted
+before the wipe pictures existed gets them when the disc is found (`Paths.Disc`).
+
 Sunshine's coin counters (`Hud.CoinCounters`) replace RoR2's gold and lunar coin counters: the yellow coin shows
 RoR2's gold and the blue coin the lunar coins (once there is one), drawn from the disc's coin icon and digit
 pictures like the game's HUD (more digits than its three: up to seven). Each sits where the counter it replaces

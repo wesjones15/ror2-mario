@@ -252,7 +252,14 @@ namespace MarioTest
             {
                 Plugin.Log.LogInfo($"Mario fell off the map at {UnityHost.ToUnity(st.pos)}; back on the surface at {fellFrom}");
                 // Sunshine's "Too Bad!" (the miss jingle) for a fall, before he stands again.
-                if (Local) SpawnMusic.PlayMiss(body);
+                if (Local)
+                {
+                    SpawnMusic.PlayMiss(body);
+                    MarioScreenFx.TooBad();
+                    // Sunshine's miss is a pause: nothing hits him while the screen is black.
+                    if (NetworkServer.active && body)
+                        body.AddTimedBuff(RoR2Content.Buffs.HiddenInvincibility, 2.5f);
+                }
                 transform.position = fellFrom + feetToOrigin;
                 Resync();
                 var rest = new Native.Vec3(0f, 0f, 0f);
@@ -534,7 +541,11 @@ namespace MarioTest
         // rest, so the sim and the view go to MarioCorpse to play it out.
         void Died()
         {
-            if (Local) SpawnMusic.PlayDeath(body);
+            if (Local)
+            {
+                SpawnMusic.PlayDeath(body);
+                MarioScreenFx.GameOver();
+            }
             if (Local && sim != IntPtr.Zero && Plugin.DeathFall.Value && ownsView && MarioView.Player != null)
             {
                 SimOps.Down(sim);

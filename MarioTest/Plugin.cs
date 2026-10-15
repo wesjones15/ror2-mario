@@ -91,7 +91,7 @@ namespace MarioTest
         internal static ConfigEntry<bool> WetSlideGlide;
         internal static ConfigEntry<bool> ShallowWetSlide;
         internal static ConfigEntry<bool> ShowLife, HideHealthBar, LockMarker, LockMarkerHealth;
-        internal static ConfigEntry<bool> ShowCoins;
+        internal static ConfigEntry<bool> ShowCoins, ShowScreenEffects;
         internal static ConfigEntry<float> CoinX, CoinY, CoinScale;
         internal static ConfigEntry<int> CoinGold;
         internal static ConfigEntry<float> LockRange;
@@ -196,6 +196,9 @@ namespace MarioTest
                 "Show Sunshine's coin counters (from the disc) for RoR2's gold (the yellow coin) and lunar coins " +
                 "(the blue coin), and hide RoR2's own while they show. A lunar coin also plays Sunshine's " +
                 "blue coin jingle.");
+            ShowScreenEffects = Config.Bind("Hud", "ScreenEffects", true,
+                "Show Sunshine's \"TOO BAD!\" letters (the screen opening from black) when Mario falls off the " +
+                "map, and its GAME OVER screen when he dies. They come from the disc's HUD and wipe pictures.");
             CoinX = Config.Bind("Hud", "CoinX", -1f,
                 "Where the counters' left edge is across the screen, 0 left to 1 right. Negative: where " +
                 "RoR2's own gold and lunar coin counters are.");
@@ -397,6 +400,7 @@ namespace MarioTest
             ItemHooks.Install();
             GlobalEventManager.onServerDamageDealt += MarioDriver.OnServerDamage;
             gameObject.AddComponent<MarioCoins>();
+            gameObject.AddComponent<MarioScreenFx>();
             MarioNet.Register();
             // The HUD's skill icons name the buttons Mario's sim reads (MarioPad), not RoR2's binds.
             GlyphOverride.Install();
@@ -431,18 +435,30 @@ namespace MarioTest
         {
             assetsReady = Native.sms_assets_complete(NativeLib.CString(AssetsDir)) != 0;
             string stings = Path.Combine(AssetsDir, "ror2_audio");
-            if (assetsReady && File.Exists(Path.Combine(stings, "spawn.wav"))
+            // The disc's wipe pictures are an optional piece: a folder without them works, and gets
+            // them whenever the disc is found.
+            bool needExtras = !File.Exists(Path.Combine(AssetsDir, "wipe", "wipe_gameover.bti"))
+                || !File.Exists(Path.Combine(AssetsDir, "wipe", "wipe_m_mark.bti"));
+            bool needStings = !(File.Exists(Path.Combine(stings, "spawn.wav"))
                 && File.Exists(Path.Combine(stings, "death.wav"))
                 && File.Exists(Path.Combine(stings, "gameover.wav"))
-                && File.Exists(Path.Combine(stings, "bluecoin.wav")))
+                && File.Exists(Path.Combine(stings, "bluecoin.wav")));
+            if (assetsReady && !needStings && !needExtras)
                 return;
             string disc = configuredDisc?.Trim();
-            if (!assetsReady && string.IsNullOrEmpty(disc))
+            if ((!assetsReady || needExtras) && string.IsNullOrEmpty(disc))
             {
                 string parent = Path.GetDirectoryName(Path.GetFullPath(AssetsDir)) ?? here;
                 var found = new byte[32768];
                 if (Native.sms_find_disc(NativeLib.CString(here + ";" + parent), found, (uint)found.Length) != 0)
                     disc = Utf8(found);
+            }
+            if (assetsReady && !needStings && (string.IsNullOrEmpty(disc) || !File.Exists(disc)))
+            {
+                // Only the optional pictures are missing, and there is no disc to take them from.
+                Log.LogInfo("Sunshine's wipe pictures (the GAME OVER screen) aren't in the assets folder; " +
+                            "set Paths.Disc to your Sunshine disc image to fetch them.");
+                return;
             }
             if (!assetsReady && (string.IsNullOrEmpty(disc) || !File.Exists(disc)))
             {
@@ -473,6 +489,12 @@ namespace MarioTest
                         if (Native.sms_render_stings(NativeLib.CString(AssetsDir), msg, (uint)msg.Length) != 0)
                             Log.LogInfo($"Sunshine audio: {Utf8(msg)}");
                         else Log.LogWarning($"Sunshine stings unavailable: {Utf8(msg)}");
+                        if (needExtras && !string.IsNullOrEmpty(disc) && File.Exists(disc))
+                        {
+                            if (Native.sms_extract_extras(NativeLib.CString(disc), NativeLib.CString(AssetsDir), msg, (uint)msg.Length) != 0)
+                                Log.LogInfo($"Sunshine wipe pictures: {Utf8(msg)}");
+                            else Log.LogWarning($"Sunshine wipe pictures unavailable: {Utf8(msg)}");
+                        }
                     }
                 }
                 catch (Exception e)

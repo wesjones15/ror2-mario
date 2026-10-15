@@ -12,7 +12,7 @@ namespace MarioTest
     internal static class Native
     {
         public const string Dll = "sms";
-        public const uint AbiVersion = 22;
+        public const uint AbiVersion = 23;
         // ABI 20 refraction maps: R=1, G=4*Y, B=coverage, A=4*X. Separate the mask and
         // compensate material strength so RoR2's near-flat-normal discard keeps the crests.
         public const float RefractionNormalGain = 4f;
@@ -210,6 +210,26 @@ namespace MarioTest
             public byte shown, pad0, pad1, pad2;
         }
 
+        /// The losing screens' state (kind 0 none, 1 "TOO BAD!", 2 GAME OVER): black over the screen at
+        /// fill, the overlay (black pixels with alpha) over the middle 4:3 and black at edge past it, and
+        /// how many sprites to place on its screen_w x screen_h screen.
+        [StructLayout(LayoutKind.Sequential)]
+        public struct ScreenFx
+        {
+            public uint kind, finished, version;
+            public float fill, edge;
+            public uint sprites, overlay_w, overlay_h;
+            public float screen_w, screen_h;
+        }
+
+        [StructLayout(LayoutKind.Sequential)]
+        public struct ScreenSprite
+        {
+            public uint picture;
+            public float x, y, w, h, rotation;
+            public float r, g, b, a;
+        }
+
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
         public delegate byte GroundFn(IntPtr user, ref Vec3 pos, out GroundHit hit);
 
@@ -239,6 +259,7 @@ namespace MarioTest
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern byte sms_assets_complete(byte[] dirUtf8);
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern byte sms_find_disc(byte[] dirsUtf8, byte[] pathUtf8, uint pathLen);
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern byte sms_extract(byte[] discUtf8, byte[] outDirUtf8, byte[] msgUtf8, uint msgLen);
+        [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern byte sms_extract_extras(byte[] discUtf8, byte[] outDirUtf8, byte[] msgUtf8, uint msgLen);
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern byte sms_render_stings(byte[] dirUtf8, byte[] msgUtf8, uint msgLen);
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern uint sms_struct_sizes([Out] uint[] sizes, uint max);
 
@@ -300,6 +321,15 @@ namespace MarioTest
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern byte sms_view_life_info(IntPtr view, byte which, out HudInfo info);
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern byte sms_view_life_pixels(IntPtr view, byte which, [Out] byte[] rgba, uint len);
         /// The HUD's coin counters (0 yellow, 1 blue): the number to show, then place, size and pixels as the gauge's.
+        /// The losing screens ("TOO BAD!", GAME OVER): start one (0 or 1), step it in seconds, stop it, and
+        /// read what it shows: state, sprites (back to front), their pictures and the overlay's pixels.
+        [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern byte sms_view_screenfx_start(IntPtr view, byte which);
+        [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern void sms_view_screenfx_step(IntPtr view, float seconds);
+        [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern void sms_view_screenfx_stop(IntPtr view);
+        [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern byte sms_view_screenfx_info(IntPtr view, out ScreenFx info);
+        [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern uint sms_view_screenfx_sprites(IntPtr view, [Out] ScreenSprite[] sprites, uint max);
+        [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern byte sms_view_screenfx_picture(IntPtr view, uint which, out HudInfo info, [Out] byte[] rgba, uint len);
+        [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern byte sms_view_screenfx_overlay(IntPtr view, [Out] byte[] rgba, uint len);
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern byte sms_view_coins_set(IntPtr view, byte which, uint value);
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern byte sms_view_coins_info(IntPtr view, byte which, out HudInfo info);
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern byte sms_view_coins_pixels(IntPtr view, byte which, [Out] byte[] rgba, uint len);
@@ -331,6 +361,7 @@ namespace MarioTest
                 ("FxVertex", NativeLib.Size<FxVertex>()), ("FxBatch", NativeLib.Size<FxBatch>()),
                 ("FxInfo", NativeLib.Size<FxInfo>()), ("HudInfo", NativeLib.Size<HudInfo>()),
                 ("Limits", NativeLib.Size<Limits>()),
+                ("ScreenFx", NativeLib.Size<ScreenFx>()), ("ScreenSprite", NativeLib.Size<ScreenSprite>()),
             });
             if (diff != null)
             {

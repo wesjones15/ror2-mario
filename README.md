@@ -249,7 +249,7 @@ was, or where `Hud.CoinX`/`CoinY` say, `Hud.CoinScale` big. Each yellow coin Mar
 drop) is also worth `Coins.Gold` (1) RoR2 gold. The 3D lunar coins in the world are unchanged.
 
 A Shine Sprite is the teleporter's trigger (`Shine.*`, `MarioShine`). When a teleporter has charged (its boss dead) a
-Shine from the disc rises above its middle, `Shine.Height` (1.6 m) up, for the player who is Mario and nobody
+Shine from the disc rises above its middle, `Shine.Height` (1.6 m) up, humming (`MSD_SE_SHINE_EXIST`, from where it hangs, until it is taken), for the player who is Mario and nobody
 else (a local change like the coin counters: other players and non-Mario players see no difference). Touching
 it, by walking or jumping into it (no button; `Shine.TouchRadius`), is Sunshine's Shine Get: Mario lands
 (`MARIO_STATUS_WIN_DEMO`, libsms `shine.rs`) and holds it over his head, the camera flies the disc's own

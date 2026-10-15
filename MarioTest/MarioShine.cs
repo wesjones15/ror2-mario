@@ -199,6 +199,16 @@ namespace MarioTest
             Native.sms_view_sound(player.Handle, NativeLib.CString(name), ref p);
         }
 
+        // `TShine::control` asks for MSD_SE_SHINE_EXIST every frame while it waits (it stops once the
+        // Shine is taken): the hum of a Shine from where it hangs.
+        static void Hum(Vector3 at)
+        {
+            var player = MarioView.Player;
+            if (player == null || player.Handle == IntPtr.Zero) return;
+            var p = UnityHost.ToSim(at);
+            Native.sms_view_hold_sound(player.Handle, NativeLib.CString("MSD_SE_SHINE_EXIST"), ref p);
+        }
+
         // `TShine::touchPlayer`: his cylinder (feet to head, wall radius) against the Shine's.
         void Touch()
         {
@@ -440,6 +450,8 @@ namespace MarioTest
                 right = new Native.Vec3(right.x, right.y, right.z),
                 up = new Native.Vec3(camUp.x, camUp.y, camUp.z),
             };
+            // Humming from the moment it shows up until it is taken (the pose's own start).
+            if (phase != Phase.Demo && !PauseManager.isPaused) Hum(pos + Vector3.up * (0.71f));
             Native.sms_view_shine_update(view, ref frameArgs);
             var rot = Quaternion.Euler(0f, yawDegrees, 0f);
             source.draw = new ViewDraw

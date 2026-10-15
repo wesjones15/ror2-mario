@@ -368,6 +368,7 @@ namespace MarioTest
         /// The losing screens ("TOO BAD!", GAME OVER): start one (0 or 1), step it in seconds, stop it, and
         /// read what it shows: state, sprites (back to front), their pictures and the overlay's pixels.
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern byte sms_view_sound(IntPtr view, byte[] nameUtf8, ref Vec3 pos);
+        [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern byte sms_view_hold_sound(IntPtr view, byte[] nameUtf8, ref Vec3 pos);
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern void sms_view_shine_update(IntPtr view, ref ShineFrame frame);
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern byte sms_view_shine_info(IntPtr view, out ShineInfo info);
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern byte sms_view_camera_shot(IntPtr view, byte inside, float frame, out CameraShot shot);

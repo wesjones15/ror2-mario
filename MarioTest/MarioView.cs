@@ -98,7 +98,10 @@ namespace MarioTest
         {
             try
             {
-                return Native.sms_view_new_look(NativeLib.CString(Plugin.AssetsDir), (byte)(sound ? 1 : 0), look);
+                var opened = Native.sms_view_new_look(NativeLib.CString(Plugin.AssetsDir), (byte)(sound ? 1 : 0), look);
+                if (opened != IntPtr.Zero)
+                    Native.sms_view_set_audio_tone(opened, Plugin.SoundHighCut.Value, Plugin.FluddVolume.Value);
+                return opened;
             }
             catch (Exception e)
             {
@@ -122,6 +125,7 @@ namespace MarioTest
         public void Update(IntPtr sim, float lag)
         {
             if (view == IntPtr.Zero || sim == IntPtr.Zero) return;
+            Native.sms_view_set_audio_tone(view, Plugin.SoundHighCut.Value, Plugin.FluddVolume.Value);
             var frame = new Native.ViewFrame
             {
                 dt = Time.deltaTime,

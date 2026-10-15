@@ -34,7 +34,7 @@ namespace MarioTest
         internal static ConfigEntry<bool> TraceJumps;
         internal static ConfigEntry<bool> DrawModel;
         internal static ConfigEntry<bool> Sound;
-        internal static ConfigEntry<float> SoundVolume;
+        internal static ConfigEntry<float> SoundVolume, SoundHighCut, FluddVolume;
         internal static ConfigEntry<float> JumpHeight;
         internal static ConfigEntry<float> JumpBuffer;
         internal static ConfigEntry<float> ChainGrace;
@@ -401,6 +401,10 @@ namespace MarioTest
                 "Play Mario's sounds from the disc (voice, footsteps, FLUDD) on the default output device.");
             SoundVolume = Config.Bind("Sound", "Volume", 1f,
                 "Mario's sounds, on top of RoR2's master and SFX volume (0-2).");
+            SoundHighCut = Config.Bind("Sound", "HighCutHz", 4500f,
+                "Softens harsh treble in Mario's sound effects. Cutoff in Hz; 0 keeps the unfiltered sound.");
+            FluddVolume = Config.Bind("Sound", "FluddVolume", 0.35f,
+                "FLUDD sound level relative to Mario's other effects (0-1); does not turn down his voice.");
             AssetsDir = ResolveAssets(assets.Value, here);
 
             if (!Native.Load(Path.Combine(here, "sms.dll"), out string error))

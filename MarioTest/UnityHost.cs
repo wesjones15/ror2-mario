@@ -21,6 +21,8 @@ namespace MarioTest
         // floors (y > 0) or ceilings.
         const float WallNormalY = 0.2f;
         const float GroundReach = 2000f;
+        // How far above the probe point (metres) a floor still counts as the one he stands in.
+        const float EmbedReach = 0.6f;
         // Where a floor is pretended over a pit: 500 m below the probe, in sim units.
         const float VoidFloorDrop = 50000f;
         const float RoofReach = 200f;
@@ -70,7 +72,11 @@ namespace MarioTest
         static byte Ground(IntPtr user, ref Native.Vec3 pos, out Native.GroundHit hit)
         {
             hit = default;
-            if (!WorldProbe.Ground(ToUnity(pos), GroundReach, out var h))
+            var at = ToUnity(pos);
+            if (!WorldProbe.Ground(at, GroundReach, out var h)
+                // A floor just above the probe point is the one he is sunk into (a spawn, a pod's
+                // exit), not a pit: a ray from under a one-sided mesh never hits it.
+                && !WorldProbe.Ground(at + Vector3.up * EmbedReach, EmbedReach, out h))
             {
                 // No floor at all. Sunshine's answer is a void, which turns Mario back (a gap
                 // in the map was an invisible wall). RoR2's characters walk off such an edge

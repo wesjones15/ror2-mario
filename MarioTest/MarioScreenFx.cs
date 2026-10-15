@@ -11,6 +11,10 @@ namespace MarioTest
     // it, for Mario's death. libsms works out each frame (the game's 30 a second, stepped by real
     // time here) and this draws it over RoR2's own screen with IMGUI, on a view of its own so it
     // plays on after Mario's own view is gone (his death, a new stage).
+    //
+    // A miss with an extra life in hand (Dio's Best Friend, a Pluripotent Larva) also shows the
+    // lives banner, "MARIO x N" as Sunshine's HUD has it, sliding in and counting down as RoR2 uses
+    // the life up; with none, no banner is shown (and a death is GAME OVER, not TOO BAD).
     internal sealed class MarioScreenFx : MonoBehaviour
     {
         enum Kind : byte { TooBad = 0, GameOver = 1 }
@@ -22,6 +26,12 @@ namespace MarioTest
         Native.ScreenSprite[] sprites = new Native.ScreenSprite[16];
         Texture2D[] pictures = new Texture2D[0];
         Texture2D overlay, white;
+        readonly CoinImage lives = new CoinImage(2);
+        CharacterMaster livesMaster;
+        int livesStart, livesShown = -1;
+        float clock, pulse;
+        // TOO BAD's length: 215 game frames, 30 a second (libsms's screenfx).
+        const float TooBadSeconds = 215f / 30f;
         uint overlayVersion;
         byte[] pixels = new byte[0], flipped = new byte[0];
 
@@ -42,8 +52,28 @@ namespace MarioTest
 
         void RunEnded(Run run) => Clear();
 
-        /// "TOO BAD!" for the local player.
-        internal static void TooBad() => instance?.Start(Kind.TooBad);
+        /// The extra lives a master holds: Dio's Best Friend and Pluripotent Larva.
+        internal static int ExtraLives(CharacterMaster master)
+        {
+            var inventory = master ? master.inventory : null;
+            if (!inventory) return 0;
+            int n = 0;
+            foreach (var name in new[] { "ExtraLife", "ExtraLifeVoid" })
+            {
+                var item = ByName.Item(name);
+                if (item != ItemIndex.None) n += inventory.GetItemCount(item);
+            }
+            return n;
+        }
+
+        /// "TOO BAD!" for the local player, with the lives banner if `master` holds an extra life.
+        internal static void TooBad(CharacterMaster master)
+        {
+            if (!instance) return;
+            instance.livesMaster = master;
+            instance.livesStart = ExtraLives(master);
+            instance.Start(Kind.TooBad);
+        }
 
         /// GAME OVER for the local player.
         internal static void GameOver() => instance?.Start(Kind.GameOver);
@@ -67,7 +97,10 @@ namespace MarioTest
                     "(the disc's wipe pictures are fetched when your disc is found; set Paths.Disc)");
                 return;
             }
-            Plugin.Log.LogInfo($"{kind} screen");
+            clock = 0f;
+            pulse = 0f;
+            livesShown = -1;
+            Plugin.Log.LogInfo($"{kind} screen" + (kind == Kind.TooBad && livesStart > 0 ? $", {livesStart} extra life(s)" : ""));
         }
 
         void Clear()
@@ -79,6 +112,10 @@ namespace MarioTest
             if (overlay) Destroy(overlay);
             overlay = null;
             overlayVersion = 0;
+            livesMaster = null;
+            livesStart = 0;
+            livesShown = -1;
+            lives.Reset();
         }
 
         void Update()
@@ -86,6 +123,8 @@ namespace MarioTest
             if (view == IntPtr.Zero || PauseManager.isPaused) return;
             // Real time, so the game's own slowdowns (a death's) don't hold it.
             Native.sms_view_screenfx_step(view, Time.unscaledDeltaTime);
+            clock += Time.unscaledDeltaTime;
+            pulse = Mathf.Max(0f, pulse - Time.unscaledDeltaTime * 3f);
             if (Native.sms_view_screenfx_info(view, out info) == 0 || info.kind == 0) return;
             if (info.finished != 0 && info.fill <= 0f && info.edge <= 0f && info.sprites == 0) Clear();
         }
@@ -160,6 +199,35 @@ namespace MarioTest
             GUI.color = before;
         }
 
+        // "MARIO x N": Sunshine's lives counter, sliding down from the top while TOO BAD plays. It
+        // shows the lives he had, and what he has left when RoR2 has used one (a pulse as it changes).
+        void Banner(float x0, float scale)
+        {
+            if (info.kind != 1 || livesStart <= 0 || !Plugin.AssetsReady) return;
+            int now = Mathf.Min(livesStart, ExtraLives(livesMaster));
+            if (livesShown < 0) livesShown = livesStart;
+            else if (now != livesShown && clock > 0.25f)
+            {
+                livesShown = now;
+                pulse = 1f;
+            }
+            if (!lives.Update(view, (uint)Mathf.Max(0, livesShown)) || !lives.Texture) return;
+            var li = lives.Info;
+            float size = Screen.height / 480f * Mathf.Clamp(Plugin.LivesScale.Value, 0.1f, 5f);
+            float slide = 1f - Mathf.Clamp01(clock / 0.5f);
+            float grow = 1f + 0.25f * pulse;
+            float alpha = Mathf.Clamp01(TooBadSeconds - clock);
+            float w = li.width * size * grow, h = li.height * size * grow;
+            // Sunshine has it a little left of the screen's middle, at the top.
+            float middle = Screen.width * 0.5f;
+            float top = li.y * size - slide * (li.y + li.height) * size;
+            var before = GUI.color;
+            GUI.color = new Color(1f, 1f, 1f, alpha);
+            GUI.DrawTexture(new Rect(middle - w * 0.5f, top - (h - li.height * size) * 0.5f, w, h), lives.Texture,
+                ScaleMode.StretchToFill, true);
+            GUI.color = before;
+        }
+
         void OnGUI()
         {
             if (view == IntPtr.Zero || info.kind == 0 || Event.current.type != EventType.Repaint) return;
@@ -168,6 +236,14 @@ namespace MarioTest
             float h = Screen.height, scale = h / info.screen_h, w = info.screen_w * scale;
             float x0 = (Screen.width - w) * 0.5f;
             Cover(new Rect(0f, 0f, Screen.width, h), info.fill);
+            if (info.card_a > 0f)
+            {
+                var before = GUI.color;
+                GUI.color = new Color(info.card_r, info.card_g, info.card_b, info.card_a);
+                GUI.DrawTexture(new Rect(x0 + info.card_x * scale, info.card_y * scale,
+                    info.card_w * scale, info.card_h * scale), white ? white : Texture2D.whiteTexture);
+                GUI.color = before;
+            }
             if (info.overlay_w != 0)
             {
                 UpdateOverlay();
@@ -176,6 +252,7 @@ namespace MarioTest
                 Cover(new Rect(x0 + w, 0f, Screen.width - x0 - w, h), info.edge);
                 if (overlay) GUI.DrawTexture(new Rect(x0, 0f, w, h), overlay, ScaleMode.StretchToFill, true);
             }
+            Banner(x0, scale);
             int n = (int)info.sprites;
             if (n == 0) return;
             if (sprites.Length < n) sprites = new Native.ScreenSprite[n];

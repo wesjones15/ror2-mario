@@ -255,7 +255,7 @@ namespace MarioTest
                 if (Local)
                 {
                     SpawnMusic.PlayMiss(body);
-                    MarioScreenFx.TooBad();
+                    MarioScreenFx.TooBad(body.master);
                     // Sunshine's miss is a pause: nothing hits him while the screen is black.
                     if (NetworkServer.active && body)
                         body.AddTimedBuff(RoR2Content.Buffs.HiddenInvincibility, 2.5f);
@@ -543,8 +543,19 @@ namespace MarioTest
         {
             if (Local)
             {
-                SpawnMusic.PlayDeath(body);
-                MarioScreenFx.GameOver();
+                // Sunshine: a life in hand makes it a miss ("TOO BAD!", with the lives count going
+                // down); with none left, the game is over. Dio's Best Friend and the Pluripotent
+                // Larva are the lives (the body is dead, but they are used when he is revived).
+                if (MarioScreenFx.ExtraLives(body.master) > 0)
+                {
+                    SpawnMusic.PlayMiss(body);
+                    MarioScreenFx.TooBad(body.master);
+                }
+                else
+                {
+                    SpawnMusic.PlayDeath(body);
+                    MarioScreenFx.GameOver();
+                }
             }
             if (Local && sim != IntPtr.Zero && Plugin.DeathFall.Value && ownsView && MarioView.Player != null)
             {

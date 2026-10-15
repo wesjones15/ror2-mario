@@ -92,7 +92,7 @@ namespace MarioTest
         internal static ConfigEntry<bool> ShallowWetSlide;
         internal static ConfigEntry<bool> ShowLife, HideHealthBar, LockMarker, LockMarkerHealth;
         internal static ConfigEntry<bool> ShowCoins, ShowScreenEffects;
-        internal static ConfigEntry<float> CoinX, CoinY, CoinScale;
+        internal static ConfigEntry<float> CoinX, CoinY, CoinScale, LivesScale;
         internal static ConfigEntry<int> CoinGold;
         internal static ConfigEntry<float> LockRange;
         internal static ConfigEntry<float> LifeX, LifeY, LifeScale, LockMarkerSize, LockMarkerSpin;
@@ -199,6 +199,9 @@ namespace MarioTest
             ShowScreenEffects = Config.Bind("Hud", "ScreenEffects", true,
                 "Show Sunshine's \"TOO BAD!\" letters (the screen opening from black) when Mario falls off the " +
                 "map, and its GAME OVER screen when he dies. They come from the disc's HUD and wipe pictures.");
+            LivesScale = Config.Bind("Hud", "LivesScale", 0.7f,
+                "The size of the \"MARIO x N\" banner shown with TOO BAD when Mario has an extra life " +
+                "(Dio's Best Friend, a Pluripotent Larva); 1 is Sunshine's against the screen's height.");
             CoinX = Config.Bind("Hud", "CoinX", -1f,
                 "Where the counters' left edge is across the screen, 0 left to 1 right. Negative: where " +
                 "RoR2's own gold and lunar coin counters are.");

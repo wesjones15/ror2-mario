@@ -12,7 +12,7 @@ namespace MarioTest
     internal static class Native
     {
         public const string Dll = "sms";
-        public const uint AbiVersion = 23;
+        public const uint AbiVersion = 24;
         // ABI 20 refraction maps: R=1, G=4*Y, B=coverage, A=4*X. Separate the mask and
         // compensate material strength so RoR2's near-flat-normal discard keeps the crests.
         public const float RefractionNormalGain = 4f;
@@ -220,6 +220,8 @@ namespace MarioTest
             public float fill, edge;
             public uint sprites, overlay_w, overlay_h;
             public float screen_w, screen_h;
+            public float card_x, card_y, card_w, card_h;
+            public float card_r, card_g, card_b, card_a;
         }
 
         [StructLayout(LayoutKind.Sequential)]

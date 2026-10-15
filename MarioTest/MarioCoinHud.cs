@@ -54,7 +54,7 @@ namespace MarioTest
                 if (tex) UnityEngine.Object.Destroy(tex);
                 tex = new Texture2D((int)info.width, (int)info.height, TextureFormat.RGBA32, false)
                 {
-                    name = which == 0 ? "Mario yellow coin counter" : "Mario blue coin counter",
+                    name = which == 0 ? "Mario yellow coin counter" : which == 1 ? "Mario blue coin counter" : "Mario lives counter",
                     filterMode = FilterMode.Bilinear,
                     wrapMode = TextureWrapMode.Clamp,
                 };

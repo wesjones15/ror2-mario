@@ -233,8 +233,11 @@ The wet slide's spray is `Look.SlideSprayScale` (1.4) times Sunshine's size. The
 stand-in splashes remain off (`Look.SlideSplashes`).
 
 When Mario falls off the map, Sunshine's "TOO BAD!" letters (coloured, dropping in and bouncing) play as the screen opens from
-black (he is untouchable for those seconds); when he dies, its GAME OVER screen (black with the letters cut out of it, the scene
-showing through) plays with the song (`Hud.ScreenEffects`). They come from the disc's HUD and wipe pictures; a folder extracted
+black (he is untouchable for those seconds); when he dies with none left, its GAME OVER screen (black with the letters cut out of it, the scene
+showing through, and a red box coming in behind it at the end) plays with the song (`Hud.ScreenEffects`). With an extra life
+(Dio's Best Friend, a Pluripotent Larva) a death is a miss instead: the miss jingle and TOO BAD, with Sunshine's "MARIO x N" lives
+banner (`Hud.LivesScale`) sliding in and counting down as RoR2 uses the life. A fall off the map shows the banner too if he has
+extra lives, and never otherwise. They come from the disc's HUD and wipe pictures; a folder extracted
 before the wipe pictures existed gets them when the disc is found (`Paths.Disc`).
 
 Sunshine's coin counters (`Hud.CoinCounters`) replace RoR2's gold and lunar coin counters: the yellow coin shows

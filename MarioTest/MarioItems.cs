@@ -476,9 +476,13 @@ namespace MarioTest
             float reach = SprayUnits(Plugin.SprayReach.Value) * 1.8f / UnityHost.MarioHeight;
             float perSecond = Plugin.WaterDamage.Value * 93f * 100f;
             lang.SetStringByToken("MARIOTEST_FLUDD_NAME", "FLUDD");
+            // A burst is about 28 drops, each worth BurstMultiplier times a drop.
+            float burst = Plugin.BurstMultiplier.Value * 28f * Plugin.WaterDamage.Value * 100f;
             lang.SetStringByToken("MARIOTEST_FLUDD_DESC",
-                "<style=cIsUtility>Hold RT</style> to spray: a light pull splashes just ahead, a deeper pull sprays on the move, " +
-                $"and all the way in plants Mario. Reaches about <style=cIsUtility>{reach:0} m</style> and deals " +
+                "<style=cIsUtility>Tap RT</style> for a burst: a short splash just ahead for up to " +
+                $"<style=cIsDamage>{burst:0}% damage</style>, with no cooldown, that also wets the ground for a Wet Slide. " +
+                "<style=cIsUtility>Pull deeper</style> to spray on the move, and all the way in to plant Mario. A spray reaches about " +
+                $"<style=cIsUtility>{reach:0} m</style> and deals " +
                 $"<style=cIsDamage>{perSecond:0}% damage per second</style> to one enemy. A full spray lasts " +
                 "<style=cIsUtility>5 seconds</style>, then tapers until you let go. <style=cIsUtility>RB</style> switches nozzle: " +
                 "<style=cIsUtility>Hover</style> floats Mario for 3 seconds, <style=cIsUtility>Rocket</style> charges for 1.5 seconds " +

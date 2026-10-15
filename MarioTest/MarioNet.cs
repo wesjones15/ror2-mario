@@ -24,6 +24,8 @@ namespace MarioTest
         public const short WaterMsg = 0x4D04;
         /// A coin dropped, or was picked up: server to the clients.
         public const short CoinMsg = 0x4D05;
+        /// A client's Mario got a Shine at a charged teleporter: client to server.
+        public const short ShineMsg = 0x4D06;
 
         /// One hit a client's Mario made, for the server to land.
         public struct HitRecord
@@ -44,6 +46,7 @@ namespace MarioTest
             Mp.Register(KnockMsg, null, OnKnock);
             Mp.Register(WaterMsg, null, OnWater);
             Mp.Register(CoinMsg, null, OnCoin);
+            Mp.Register(ShineMsg, OnShine, null);
             Run.onRunDestroyGlobal += run => queues.Clear();
         }
 
@@ -251,6 +254,33 @@ namespace MarioTest
                 MarioCoins.Instance.Taken(index);
                 if (!r.Failed && go && Finite(pos)) CoinCollected(go.GetComponent<CharacterBody>(), pos);
             }
+        }
+
+        // ---- the Shine -----------------------------------------------------------------------------
+
+        /// A client's Mario's Shine ends the stage: ask the server to finish the teleporter.
+        public static void SendShine(TeleporterInteraction tele, CharacterBody by)
+        {
+            if (!tele || !by || tele.netId.Value == 0 || by.netId.Value == 0) return;
+            var w = new ByteWriter(12);
+            w.U8(FrameCodec.Protocol);
+            w.U32(tele.netId.Value);
+            w.U32(by.netId.Value);
+            Mp.SendToServer(ShineMsg, w.ToArray());
+        }
+
+        static void OnShine(NetworkConnection from, ByteReader r)
+        {
+            if (r.U8() != FrameCodec.Protocol) return;
+            var teleObject = Mp.Find(r.U32());
+            var bodyObject = Mp.Find(r.U32());
+            if (r.Failed || !teleObject || !bodyObject) return;
+            var tele = teleObject.GetComponent<TeleporterInteraction>();
+            var body = bodyObject.GetComponent<CharacterBody>();
+            // Only another player's living Mario: the host's own asks itself.
+            if (!tele || !body || !body.GetComponent<MarioDriver>() || body.hasEffectiveAuthority
+                || !body.healthComponent || !body.healthComponent.alive) return;
+            MarioShine.Trigger(tele, body);
         }
 
         /// Sends one body's recorded frames.

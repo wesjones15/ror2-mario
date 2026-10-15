@@ -16,7 +16,7 @@ namespace MarioTest
     internal enum Op : byte
     {
         Teleport = 1, Tuning = 2, Refill = 3, AddWater = 4, Limits = 5, BoostJump = 6, Launch = 7,
-        LaunchPad = 8, KnockDown = 9, SetAim = 10, Down = 11, Step = 12,
+        LaunchPad = 8, KnockDown = 9, SetAim = 10, Down = 11, Step = 12, ShineGet = 13, ShineEnd = 14,
     }
 
     /// What replaying a frame does to a sim; MarioPuppet's implementation calls libsms.
@@ -33,6 +33,8 @@ namespace MarioTest
         void KnockDown(Native.Vec3 from, byte kind);
         void SetAim(bool on, short yaw, float pitch);
         void Down();
+        void ShineGet(Native.Vec3 pos, short yaw);
+        void ShineEnd();
         void Step(in Native.Pad pad, short cameraYaw, float dt);
     }
 
@@ -47,7 +49,7 @@ namespace MarioTest
     internal static class FrameCodec
     {
         /// Bumped whenever the wire format changes; a batch with another number is ignored.
-        public const byte Protocol = 1;
+        public const byte Protocol = 2;
 
         static void Vec(ByteWriter w, Native.Vec3 v) { w.F32(v.x); w.F32(v.y); w.F32(v.z); }
         static Native.Vec3 Vec(ByteReader r) => new Native.Vec3(r.F32(), r.F32(), r.F32());
@@ -63,6 +65,8 @@ namespace MarioTest
         public static void WriteKnockDown(ByteWriter w, Native.Vec3 from, byte kind) { w.U8((byte)Op.KnockDown); Vec(w, from); w.U8(kind); }
         public static void WriteSetAim(ByteWriter w, bool on, short yaw, float pitch) { w.U8((byte)Op.SetAim); w.Bool(on); w.I16(yaw); w.F32(pitch); }
         public static void WriteDown(ByteWriter w) => w.U8((byte)Op.Down);
+        public static void WriteShineGet(ByteWriter w, Native.Vec3 pos, short yaw) { w.U8((byte)Op.ShineGet); Vec(w, pos); w.I16(yaw); }
+        public static void WriteShineEnd(ByteWriter w) => w.U8((byte)Op.ShineEnd);
 
         public static void WriteStep(ByteWriter w, in Native.Pad pad, short cameraYaw, float dt)
         {
@@ -91,6 +95,8 @@ namespace MarioTest
                     case Op.KnockDown: { var v = Vec(r); sink.KnockDown(v, r.U8()); break; }
                     case Op.SetAim: { bool on = r.Bool(); short yaw = r.I16(); sink.SetAim(on, yaw, r.F32()); break; }
                     case Op.Down: sink.Down(); break;
+                    case Op.ShineGet: { var v = Vec(r); sink.ShineGet(v, r.I16()); break; }
+                    case Op.ShineEnd: sink.ShineEnd(); break;
                     case Op.Step:
                     {
                         var pad = r.Struct<Native.Pad>();
@@ -188,6 +194,8 @@ namespace MarioTest
         public void LaunchPad(Native.Vec3 v, float g) => FrameCodec.WriteLaunchPad(ops, v, g);
         public void KnockDown(Native.Vec3 from, byte kind) => FrameCodec.WriteKnockDown(ops, from, kind);
         public void Down() => FrameCodec.WriteDown(ops);
+        public void ShineGet(Native.Vec3 pos, short yaw) => FrameCodec.WriteShineGet(ops, pos, yaw);
+        public void ShineEnd() => FrameCodec.WriteShineEnd(ops);
         public void Step(in Native.Pad pad, short cameraYaw, float dt) => FrameCodec.WriteStep(ops, pad, cameraYaw, dt);
 
         public void Limits(in Native.Limits l)

@@ -102,6 +102,45 @@ namespace MarioTest
         MarioView cloneView;
         bool cloneTried;
 
+        /// The Mario a local player is playing, or null.
+        internal static MarioDriver Player
+        {
+            get
+            {
+                foreach (var d in all)
+                    if (d && d.Local && d.driving) return d;
+                return null;
+            }
+        }
+
+        internal CharacterBody Body => body;
+        internal LocalUser LocalUser => localUser;
+        internal bool Alive => !health || health.alive;
+        /// Where his feet are now.
+        internal Vector3 Feet => body.footPosition;
+        // The Shine Get pose as of the last step (Native.State.win_demo), and a touch or an end
+        // waiting for the next one.
+        byte winDemo;
+        Vector3? shineAt;
+        short shineYaw;
+        bool shineEnd;
+
+        /// He is in the Shine Get pose (falling into it, or holding the Shine up).
+        internal bool WinPose => winDemo != 0 || shineAt.HasValue;
+
+        /// He touches a Shine at `at` (world), turned to `yaw`: he takes the pose on his next step.
+        /// False if he can't (not driven by his player, or already posing).
+        internal bool TouchShine(Vector3 at, short yaw)
+        {
+            if (!driving || sim == IntPtr.Zero || WinPose) return false;
+            shineAt = at;
+            shineYaw = yaw;
+            return true;
+        }
+
+        /// The Shine Get demo ends without the stage: he stands again.
+        internal void EndShine() => shineEnd = true;
+
         /// The view this Mario draws with: the player's, or his own.
         MarioView View => Local ? MarioView.Player : cloneView;
 
@@ -227,12 +266,25 @@ namespace MarioTest
             bool cycle = pad.TakeCycle(out var cycleDirection);
             Aim(lHeld && Local && !(pad.LockSharesL && locking), locking, lockTarget, cycle, cycleDirection);
             Items.Begin(sim, sprinting, grounded);
+            // The Shine Get pose, inside the step so the other players' puppets get it too.
+            if (shineAt.HasValue)
+            {
+                var at = UnityHost.ToSim(shineAt.Value);
+                shineAt = null;
+                SimOps.ShineGet(sim, ref at, shineYaw);
+            }
+            if (shineEnd)
+            {
+                shineEnd = false;
+                SimOps.ShineEnd(sim);
+            }
             MarioCombat.Begin(body, Items);
             var view = View;
             SimOps.Step(sim, ref host, ref step, cameraYaw, Time.fixedDeltaTime,
                 view != null ? view.Handle : IntPtr.Zero);
             MarioCombat.End();
             Native.sms_sim_state(sim, out var st);
+            winDemo = st.win_demo;
             Items.End(sim, st);
             string status = NativeLib.Utf8(Native.sms_sim_status_name(sim));
             // "TOO BAD!" starts as soon as he is plainly lost, well below where he last stood with no

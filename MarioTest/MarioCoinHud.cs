@@ -13,7 +13,8 @@ namespace MarioTest
     //  - the yellow coin shows RoR2's gold (CharacterMaster.money; each yellow coin Mario picks
     //    up is worth Coins.Gold of it, MarioCoins);
     //  - the blue coin shows the player's lunar coins, only once there is one (RoR2 does the
-    //    same), and a lunar coin picked up plays Sunshine's blue coin jingle.
+    //    same), and a lunar coin picked up plays Sunshine's "puzzle solved" chime (or, by
+    //    Hud.LunarCoinSecret, the blue coin's own jingle).
     // RoR2's own counters hide while ours show (Hud.CoinCounters), and each of ours sits where
     // the one it replaces is unless Hud.CoinX / CoinY say otherwise.
     internal sealed class CoinImage
@@ -124,7 +125,9 @@ namespace MarioTest
             uint gold = body.master ? body.master.money : 0u;
             uint lunar = LunarCoins(user);
             // A lunar coin picked up (not spent, and not the first reading): the jingle.
-            if (lunarSeen >= 0 && lunar > lunarSeen) SpawnMusic.PlayCue("bluecoin");
+            if (lunarSeen >= 0 && lunar > lunarSeen
+                && !(Plugin.LunarCoinSecret.Value && SpawnMusic.PlayCue("secret")))
+                SpawnMusic.PlayCue("bluecoin");
             lunarSeen = lunar;
 
             yellowShown = yellow.Update(view, gold);

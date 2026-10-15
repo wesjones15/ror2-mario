@@ -248,6 +248,22 @@ pictures like the game's HUD (more digits than its three: up to seven). Each sit
 was, or where `Hud.CoinX`/`CoinY` say, `Hud.CoinScale` big. Each yellow coin Mario picks up (the ones his kills
 drop) is also worth `Coins.Gold` (1) RoR2 gold. The 3D lunar coins in the world are unchanged.
 
+A Shine Sprite is the teleporter's trigger (`Shine.*`, `MarioShine`). When a teleporter has charged (its boss dead) a
+Shine from the disc rises above its middle, `Shine.Height` (1.6 m) up, for the player who is Mario and nobody
+else (a local change like the coin counters: other players and non-Mario players see no difference). Touching
+it, by walking or jumping into it (no button; `Shine.TouchRadius`), is Sunshine's Shine Get: Mario lands
+(`MARIO_STATUS_WIN_DEMO`, libsms `shine.rs`) and holds it over his head, the camera flies the disc's own
+`camera_demo_shine_get_*` path, the Shine plays `shine_demo_shine_get` and glows, the Shine Get fanfare
+(`MSD_BGM_GET_SHINE`) plays, and "SHINE!" flies in (`Hud.ScreenEffects`). `Shine.Seconds` (6.3) from the pose
+the stage ends, for everyone: the teleporter is finished as if Mario had interacted with it, so the stage is
+the one the run was going to. Two exceptions, both the teleporter's own rules: a Lunar Seer's choice made
+before the boss fight is kept (the exit controller already has its destination), and on the last stage before
+the moon, where the Celestial Portal stands beside the teleporter, the Shine takes the moon, not the loop.
+The other portals are never taken. A client's Mario asks the server to finish the teleporter
+(`MarioNet.ShineMsg`); the other players' puppets show him in the pose. The Shine and the camera path are extra
+files fetched from the disc with the wipe pictures (`Paths.Disc`). A lunar coin plays Sunshine's "puzzle solved" chime
+(`Hud.LunarCoinSecret`; off for the blue coin's own jingle).
+
 Sunshine's life meter (`Hud.LifeMeter`) shows Mario's health in place of RoR2's health bar: the
 Shine Sprite sun from the disc, a hub and rays in a ring of eight, lit in whole rays by his health as
 a share of his full health and shield (RoR2's own values are untouched), the shield's rays after them

@@ -78,6 +78,20 @@ namespace MarioTest
             Rec?.Down();
         }
 
+        /// He touches a Shine (the win pose); false if he was already in it or is down.
+        public static bool ShineGet(IntPtr sim, ref Native.Vec3 pos, short yaw)
+        {
+            bool took = Native.sms_sim_shine_get(sim, ref pos, yaw) != 0;
+            if (took) Rec?.ShineGet(pos, yaw);
+            return took;
+        }
+
+        public static void ShineEnd(IntPtr sim)
+        {
+            Native.sms_sim_shine_end(sim);
+            Rec?.ShineEnd();
+        }
+
         public static uint Step(IntPtr sim, ref Native.Host host, ref Native.Pad pad, short cameraYaw, float dt, IntPtr view)
         {
             Rec?.Step(pad, cameraYaw, dt);

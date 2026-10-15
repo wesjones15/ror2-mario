@@ -4,7 +4,7 @@ using Ror2Common;
 
 namespace MarioTest
 {
-    // The libsms C ABI (libsms/crates/libsms-ffi, SMS_ABI_VERSION 21). Layouts mirror the
+    // The libsms C ABI (libsms/crates/libsms-ffi, SMS_ABI_VERSION 25). Layouts mirror the
     // #[repr(C)] structs there field for field; Load checks them with sms_struct_sizes. Sim
     // units: about 1 cm, Y up, a facing angle a (i16, 0x10000 per turn) points along
     // (sin a, 0, cos a). The view's structs are ror2-common's (ViewModelInfo...), which
@@ -12,7 +12,7 @@ namespace MarioTest
     internal static class Native
     {
         public const string Dll = "sms";
-        public const uint AbiVersion = 24;
+        public const uint AbiVersion = 25;
         // ABI 20 refraction maps: R=1, G=4*Y, B=coverage, A=4*X. Separate the mask and
         // compensate material strength so RoR2's near-flat-normal discard keeps the crests.
         public const float RefractionNormalGain = 4f;
@@ -76,6 +76,11 @@ namespace MarioTest
             BurstHit = 18,
             /// value: fall in sim units; arg bits 1 dive, 2 ground pound, 4 cushioned.
             FallImpact = 19,
+            /// He touched a Shine at `pos`; arg is the yaw it turned him to.
+            ShineTouch = 20,
+            /// He has landed with the Shine over his head: the Shine Get demo begins (pos: where he
+            /// stands, arg: his yaw).
+            ShineDemo = 21,
         }
 
         /// Jump kinds (Event.arg of Jump).
@@ -113,7 +118,9 @@ namespace MarioTest
             /// 1 falling in a ground pound, 2 in a super pound (Sunshine's flames), else 0.
             public byte pounding;
             /// 1 standing in shallow water (UnityHost's water callback).
-            public byte in_water, pad1, pad2;
+            public byte in_water;
+            /// 1 in the Shine Get pose and still falling, 2 holding the Shine up, else 0.
+            public byte win_demo, pad2;
         }
 
         [StructLayout(LayoutKind.Sequential)]
@@ -224,6 +231,38 @@ namespace MarioTest
             public float card_r, card_g, card_b, card_a;
         }
 
+        /// One call of sms_view_shine_update: where the Shine is and which of its animations.
+        [StructLayout(LayoutKind.Sequential)]
+        public struct ShineFrame
+        {
+            public float dt;
+            public Vec3 pos;
+            public short yaw;
+            /// 0 waiting, 1 shine_float, 2 shine_demo_shine_get.
+            public byte clip;
+            /// 1: the host draws the Shine mirrored across X (ModelView does), so the glow follows.
+            public byte mirror;
+            /// Frame of that clip, 60 a second.
+            public float frame, scale;
+            /// The camera's right and up, for the glow's billboards.
+            public Vec3 right, up;
+        }
+
+        /// The Shine's animations' and the demo camera's lengths in clip frames.
+        [StructLayout(LayoutKind.Sequential)]
+        public struct ShineInfo
+        {
+            public float float_frames, demo_frames, camera_outside_frames, camera_inside_frames;
+        }
+
+        /// The Shine Get camera at one moment (Mario's feet at the origin, facing +Z).
+        [StructLayout(LayoutKind.Sequential)]
+        public struct CameraShot
+        {
+            public Vec3 eye, at, up;
+            public float fov;
+        }
+
         [StructLayout(LayoutKind.Sequential)]
         public struct ScreenSprite
         {
@@ -283,9 +322,12 @@ namespace MarioTest
         /// A hit from `from` knocks Mario down (damage kind 0: the common enemy's) without touching the sim's health.
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern byte sms_sim_knock_down(IntPtr sim, ref Vec3 from, byte kind);
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern void sms_sim_boost_jump(IntPtr sim, float factor);
+        /// Mario touches a Shine at `pos`, turned `yaw`: the win pose. 1 if he took it.
+        [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern byte sms_sim_shine_get(IntPtr sim, ref Vec3 pos, short yaw);
+        [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern void sms_sim_shine_end(IntPtr sim);
 
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern IntPtr sms_view_new(byte[] assetsDirUtf8, byte sound);
-        /// look: 0 Mario, 1 Shadow Mario's colours (unused by the host now).
+        /// look: 0 Mario, 1 Shadow Mario's colours (unused by the host now), 2 the yellow coin, 3 the Shine.
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern IntPtr sms_view_new_look(byte[] assetsDirUtf8, byte sound, byte look);
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern void sms_view_free(IntPtr view);
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern IntPtr sms_view_status(IntPtr view);
@@ -325,6 +367,10 @@ namespace MarioTest
         /// The HUD's coin counters (0 yellow, 1 blue): the number to show, then place, size and pixels as the gauge's.
         /// The losing screens ("TOO BAD!", GAME OVER): start one (0 or 1), step it in seconds, stop it, and
         /// read what it shows: state, sprites (back to front), their pictures and the overlay's pixels.
+        [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern byte sms_view_sound(IntPtr view, byte[] nameUtf8, ref Vec3 pos);
+        [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern void sms_view_shine_update(IntPtr view, ref ShineFrame frame);
+        [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern byte sms_view_shine_info(IntPtr view, out ShineInfo info);
+        [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern byte sms_view_camera_shot(IntPtr view, byte inside, float frame, out CameraShot shot);
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern byte sms_view_screenfx_start(IntPtr view, byte which);
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern void sms_view_screenfx_step(IntPtr view, float seconds);
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern void sms_view_screenfx_stop(IntPtr view);
@@ -364,6 +410,8 @@ namespace MarioTest
                 ("FxInfo", NativeLib.Size<FxInfo>()), ("HudInfo", NativeLib.Size<HudInfo>()),
                 ("Limits", NativeLib.Size<Limits>()),
                 ("ScreenFx", NativeLib.Size<ScreenFx>()), ("ScreenSprite", NativeLib.Size<ScreenSprite>()),
+                ("ShineFrame", NativeLib.Size<ShineFrame>()), ("ShineInfo", NativeLib.Size<ShineInfo>()),
+                ("CameraShot", NativeLib.Size<CameraShot>()),
             });
             if (diff != null)
             {

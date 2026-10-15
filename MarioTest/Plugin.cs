@@ -93,7 +93,9 @@ namespace MarioTest
         internal static ConfigEntry<bool> WetSlideGlide;
         internal static ConfigEntry<bool> ShallowWetSlide;
         internal static ConfigEntry<bool> ShowLife, HideHealthBar, LockMarker, LockMarkerHealth;
-        internal static ConfigEntry<bool> ShowCoins, ShowScreenEffects;
+        internal static ConfigEntry<bool> ShowCoins, ShowScreenEffects, LunarCoinSecret;
+        internal static ConfigEntry<bool> ShineEnabled, ShineCameraOn;
+        internal static ConfigEntry<float> ShineHeight, ShineTouchRadius, ShineSeconds;
         internal static ConfigEntry<float> CoinX, CoinY, CoinScale, LivesScale, ScreenSpeed, TooBadDrop;
         internal static ConfigEntry<int> CoinGold;
         internal static ConfigEntry<float> LockRange;
@@ -198,6 +200,25 @@ namespace MarioTest
                 "Show Sunshine's coin counters (from the disc) for RoR2's gold (the yellow coin) and lunar coins " +
                 "(the blue coin), and hide RoR2's own while they show. A lunar coin also plays Sunshine's " +
                 "blue coin jingle.");
+            LunarCoinSecret = Config.Bind("Hud", "LunarCoinSecret", true,
+                "A lunar coin plays Sunshine's \"puzzle solved\" chime (MSD_SE_SY_PROBLEM_SOLVED). Off: the blue " +
+                "coin's own jingle (MSD_SE_SY_BLUE_COIN_GET), which sounds like a save.");
+            ShineEnabled = Config.Bind("Shine", "Enabled", true,
+                "When a teleporter has charged (its boss dead), a Shine Sprite from your Sunshine disc appears above " +
+                "its middle, for you alone. Touching it (walking or jumping into it) is Sunshine's Shine Get: Mario's " +
+                "pose, the camera, the fanfare and \"SHINE!\", and the teleporter finishes as if you had used it: " +
+                "to the stage the run was going to, to a Lunar Seer's choice, or on the stage before the moon, to the moon.");
+            ShineHeight = Config.Bind("Shine", "Height", 1.6f,
+                new ConfigDescription("Metres above the teleporter's middle that the Shine hangs.",
+                    new AcceptableValueRange<float>(0.2f, 6f)));
+            ShineTouchRadius = Config.Bind("Shine", "TouchRadius", 1.5f,
+                new ConfigDescription("Metres around the Shine, across the ground, that Mario touches it from. " +
+                    "Sunshine's own is about 1.2.", new AcceptableValueRange<float>(0.3f, 6f)));
+            ShineSeconds = Config.Bind("Shine", "Seconds", 6.3f,
+                new ConfigDescription("Seconds from Mario's pose to the stage ending (Sunshine's demo fades out in about " +
+                    "that). The teleporter's own send-off is part of it.", new AcceptableValueRange<float>(3f, 15f)));
+            ShineCameraOn = Config.Bind("Shine", "Camera", true,
+                "Fly the camera along Sunshine's Shine Get path during the pose.");
             ShowScreenEffects = Config.Bind("Hud", "ScreenEffects", true,
                 "Show Sunshine's \"TOO BAD!\" letters (the screen opening from black) when Mario falls off the " +
                 "map, and its GAME OVER screen when he dies. They come from the disc's HUD and wipe pictures.");
@@ -415,6 +436,7 @@ namespace MarioTest
             GlobalEventManager.onServerDamageDealt += MarioDriver.OnServerDamage;
             gameObject.AddComponent<MarioCoins>();
             gameObject.AddComponent<MarioScreenFx>();
+            gameObject.AddComponent<MarioShine>();
             MarioNet.Register();
             // The HUD's skill icons name the buttons Mario's sim reads (MarioPad), not RoR2's binds.
             GlyphOverride.Install();
@@ -452,11 +474,15 @@ namespace MarioTest
             // The disc's wipe pictures are an optional piece: a folder without them works, and gets
             // them whenever the disc is found.
             bool needExtras = !File.Exists(Path.Combine(AssetsDir, "wipe", "wipe_gameover.bti"))
-                || !File.Exists(Path.Combine(AssetsDir, "wipe", "wipe_m_mark.bti"));
+                || !File.Exists(Path.Combine(AssetsDir, "wipe", "wipe_m_mark.bti"))
+                || !File.Exists(Path.Combine(AssetsDir, "scene", "mapobj", "shine.bmd"))
+                || !File.Exists(Path.Combine(AssetsDir, "camera", "camera_demo_shine_get_outside.bck"));
             bool needStings = !(File.Exists(Path.Combine(stings, "spawn.wav"))
                 && File.Exists(Path.Combine(stings, "death.wav"))
                 && File.Exists(Path.Combine(stings, "gameover.wav"))
-                && File.Exists(Path.Combine(stings, "bluecoin.wav")));
+                && File.Exists(Path.Combine(stings, "bluecoin.wav"))
+                && File.Exists(Path.Combine(stings, "shineget.wav"))
+                && File.Exists(Path.Combine(stings, "secret.wav")));
             if (assetsReady && !needStings && !needExtras)
                 return;
             string disc = configuredDisc?.Trim();
@@ -470,8 +496,8 @@ namespace MarioTest
             if (assetsReady && !needStings && (string.IsNullOrEmpty(disc) || !File.Exists(disc)))
             {
                 // Only the optional pictures are missing, and there is no disc to take them from.
-                Log.LogInfo("Sunshine's wipe pictures (the GAME OVER screen) aren't in the assets folder; " +
-                            "set Paths.Disc to your Sunshine disc image to fetch them.");
+                Log.LogInfo("Sunshine's wipe pictures (the GAME OVER screen), Shine Sprite and Shine Get camera aren't " +
+                            "all in the assets folder; set Paths.Disc to your Sunshine disc image to fetch them.");
                 return;
             }
             if (!assetsReady && (string.IsNullOrEmpty(disc) || !File.Exists(disc)))
@@ -506,8 +532,8 @@ namespace MarioTest
                         if (needExtras && !string.IsNullOrEmpty(disc) && File.Exists(disc))
                         {
                             if (Native.sms_extract_extras(NativeLib.CString(disc), NativeLib.CString(AssetsDir), msg, (uint)msg.Length) != 0)
-                                Log.LogInfo($"Sunshine wipe pictures: {Utf8(msg)}");
-                            else Log.LogWarning($"Sunshine wipe pictures unavailable: {Utf8(msg)}");
+                                Log.LogInfo($"Sunshine wipe pictures, Shine Sprite and camera: {Utf8(msg)}");
+                            else Log.LogWarning($"Sunshine wipe pictures, Shine Sprite and camera unavailable: {Utf8(msg)}");
                         }
                     }
                 }

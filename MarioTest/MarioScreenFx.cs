@@ -17,7 +17,7 @@ namespace MarioTest
     // the life up; with none, no banner is shown (and a death is GAME OVER, not TOO BAD).
     internal sealed class MarioScreenFx : MonoBehaviour
     {
-        enum Kind : byte { TooBad = 0, GameOver = 1 }
+        enum Kind : byte { TooBad = 0, GameOver = 1, ShineGet = 2 }
 
         static MarioScreenFx instance;
         IntPtr view;
@@ -77,6 +77,9 @@ namespace MarioTest
 
         /// GAME OVER for the local player.
         internal static void GameOver() => instance?.Start(Kind.GameOver);
+
+        /// The "SHINE!" letters of a Shine Get, over the scene.
+        internal static void ShineGet() => instance?.Start(Kind.ShineGet);
 
         /// Whichever is playing stops (leaving a run, quitting).
         internal static void Stop() => instance?.Clear();

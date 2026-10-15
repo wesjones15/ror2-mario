@@ -244,6 +244,9 @@ namespace MarioTest
                         water[wet] = (w.drops + n, w.weight + n * k, w.sum + UnityHost.ToUnity(e.pos));
                     }
                     break;
+                case Native.EventKind.ShineDemo:
+                    MarioShine.Instance?.DemoStarted(attacker, e.pos, (short)e.arg);
+                    break;
                 case Native.EventKind.GroundPound:
                     pounded = true;
                     superPound = e.arg != 0;

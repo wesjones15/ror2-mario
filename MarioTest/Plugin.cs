@@ -17,7 +17,7 @@ namespace MarioTest
     // the body moved by the sim instead of RoR2's character controller, and drawn and heard
     // as the disc's Mario. No R2API: content goes in through RoR2's own content-pack hook
     // (ror2-common's ContentProvider).
-    [BepInPlugin(Guid, "Mario", "0.2.0")]
+    [BepInPlugin(Guid, "Mario", "0.1.0")]
     public class Plugin : BaseUnityPlugin
     {
         public const string Guid = "com.libsms.mariotest";

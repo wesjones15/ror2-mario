@@ -84,7 +84,6 @@ namespace MarioTest
 
         public void Step(float dt, Transform display)
         {
-            Native.sms_view_set_audio_tone(view, Plugin.SoundHighCut.Value, Plugin.FluddVolume.Value);
             time += dt;
             var pad = default(Native.Pad);
             // A on the spot, held a moment so the sim's 30 Hz step sees it.

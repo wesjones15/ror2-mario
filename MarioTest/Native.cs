@@ -297,7 +297,6 @@ namespace MarioTest
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern uint sms_view_vertex_alphas(IntPtr view, uint model, [Out] float[] output, uint max);
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern byte sms_view_texture(IntPtr view, uint id, out ViewTexture info, [Out] byte[] rgba, uint len);
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern void sms_view_update(IntPtr view, IntPtr sim, ref ViewFrame frame);
-        [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern void sms_view_set_audio_tone(IntPtr view, float cutoff, float fluddGain);
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern uint sms_view_draws(IntPtr view, [Out] ViewDraw[] output, uint max);
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern IntPtr sms_view_positions(IntPtr view, out uint count);
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern IntPtr sms_view_normals(IntPtr view, out uint count);

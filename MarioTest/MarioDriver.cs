@@ -57,9 +57,11 @@ namespace MarioTest
         readonly MarioPad pad = new MarioPad();
         readonly MarioFlames flames = new MarioFlames();
         readonly Unstuck unstuck = new Unstuck();
-        // Where the feet were after the last step (for the wall sweep); unknown after a teleport.
-        Vector3 lastFeet;
-        bool haveLastFeet;
+        // Keeps Mario out of walls the sim let him into (ror2-common's WallGuard); strict for a
+        // while after a hit or a launch, when he is thrown fast and the wall rings are likeliest
+        // to miss.
+        readonly WallGuard guard = new WallGuard();
+        float strictUntil;
         float sweepLogAt;
         readonly EnemyLock enemyLock = new EnemyLock();
         readonly MarioBrain brain = new MarioBrain();
@@ -165,11 +167,13 @@ namespace MarioTest
                 if (native.JumpPadLaunch)
                     SimOps.LaunchPad(sim, ref v, Mathf.Abs(Physics.gravity.y) / (UnityHost.Scale * 30f * 120f));
                 else SimOps.Launch(sim, ref v);
+                strictUntil = Time.time + 2f;
             }
             if (knockFrom.HasValue)
             {
                 var from = UnityHost.ToSim(knockFrom.Value);
                 knockFrom = null;
+                strictUntil = Time.time + 3f;
                 if ((pounding == 0 || Plugin.KnockdownInterruptsPound.Value) && SimOps.KnockDown(sim, ref from, 0) != 0)
                     Plugin.Log.LogInfo("Mario is knocked down by a powerful hit");
             }
@@ -257,24 +261,24 @@ namespace MarioTest
             // The sim's wall rings can miss (a thin pole between rays, a corner, a step so long it
             // ends inside the wall, where a ray hits no back face), and Mario then walks out of the
             // map. Sweep the step itself; a wall crossed puts him back where he stood.
-            var feetNow = UnityHost.ToUnity(st.pos);
-            if (haveLastFeet && !MarioUnstuck.Climbing(status) && (feetNow - lastFeet).sqrMagnitude < 9f
-                && WorldProbe.CrossedWall(lastFeet, feetNow, UnityHost.SweepHeights,
-                    UnityHost.SweepWallNormalY, out var through))
+            // The guard also undoes a step that leaves him inside a wall (a hit's knock-back or a
+            // launch against one), which the sweep alone can't see; a hit is swept more closely.
+            // Being hurt (any of the knock-down statuses) counts as a hit too.
+            bool strict = Time.time < strictUntil || status.EndsWith("Down") || status.StartsWith("Damage");
+            if (guard.Step(UnityHost.ToUnity(st.pos), UnityHost.MarioHeight * UnityHost.Scale,
+                UnityHost.SweepHeights, UnityHost.SweepWallNormalY, strict, MarioUnstuck.Climbing(status),
+                out var back, out var through))
             {
                 if (Time.time >= sweepLogAt)
                 {
                     sweepLogAt = Time.time + 1f;
-                    Plugin.Log.LogInfo($"Mario stopped at a wall he was passing through: {through.collider.name} " +
-                        $"(layer {LayerMask.LayerToName(through.collider.gameObject.layer)}) at {through.point}");
+                    Plugin.Log.LogInfo($"Mario put back at {back}: {through} (status {status}{(strict ? ", struck" : "")})");
                 }
-                transform.position = lastFeet + feetToOrigin;
+                transform.position = back + feetToOrigin;
                 Resync();
                 Native.sms_sim_state(sim, out st);
                 status = NativeLib.Utf8(Native.sms_sim_status_name(sim));
             }
-            lastFeet = UnityHost.ToUnity(st.pos);
-            haveLastFeet = true;
             grounded = st.on_ground != 0;
             MarioCombat.Watch(st);
             pounding = st.pounding;
@@ -455,6 +459,7 @@ namespace MarioTest
         void StopDriving()
         {
             unstuck.Reset();
+            guard.Reset();
             if (driving)
             {
                 pivot?.Use(false);
@@ -569,7 +574,7 @@ namespace MarioTest
         void Resync()
         {
             unstuck.Reset();
-            haveLastFeet = false;
+            guard.Placed(transform.position - feetToOrigin);
             var feet = UnityHost.ToSim(transform.position - feetToOrigin);
             SimOps.Teleport(sim, ref feet);
             smoother.Reset();

@@ -241,6 +241,19 @@ namespace MarioTest
                 status = NativeLib.Utf8(Native.sms_sim_status_name(sim));
                 Plugin.Log.LogInfo($"Mario unstuck after 3 seconds at {recovered}");
             }
+            // Off the map: RoR2's kill zones never see him (his motor is off), so he would fall for
+            // ever. Back to where he last stood, unhurt (ror2-common's Unstuck.Fell).
+            else if (unstuck.Fell(UnityHost.ToUnity(st.pos), UnityHost.MarioHeight * UnityHost.Scale,
+                UnityHost.RecoveryGround, out var fellFrom))
+            {
+                Plugin.Log.LogInfo($"Mario fell off the map at {UnityHost.ToUnity(st.pos)}; back on the surface at {fellFrom}");
+                transform.position = fellFrom + feetToOrigin;
+                Resync();
+                var rest = new Native.Vec3(0f, 0f, 0f);
+                SimOps.Launch(sim, ref rest);
+                Native.sms_sim_state(sim, out st);
+                status = NativeLib.Utf8(Native.sms_sim_status_name(sim));
+            }
             // The sim's wall rings can miss (a thin pole between rays, a corner, a step so long it
             // ends inside the wall, where a ray hits no back face), and Mario then walks out of the
             // map. Sweep the step itself; a wall crossed puts him back where he stood.

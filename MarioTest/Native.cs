@@ -4,7 +4,7 @@ using Ror2Common;
 
 namespace MarioTest
 {
-    // The libsms C ABI (libsms/crates/libsms-ffi, SMS_ABI_VERSION 20). Layouts mirror the
+    // The libsms C ABI (libsms/crates/libsms-ffi, SMS_ABI_VERSION 21). Layouts mirror the
     // #[repr(C)] structs there field for field; Load checks them with sms_struct_sizes. Sim
     // units: about 1 cm, Y up, a facing angle a (i16, 0x10000 per turn) points along
     // (sin a, 0, cos a). The view's structs are ror2-common's (ViewModelInfo...), which
@@ -12,7 +12,7 @@ namespace MarioTest
     internal static class Native
     {
         public const string Dll = "sms";
-        public const uint AbiVersion = 20;
+        public const uint AbiVersion = 21;
         // ABI 20 refraction maps: R=1, G=4*Y, B=coverage, A=4*X. Separate the mask and
         // compensate material strength so RoR2's near-flat-normal discard keeps the crests.
         public const float RefractionNormalGain = 4f;
@@ -271,6 +271,7 @@ namespace MarioTest
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern uint sms_view_batches(IntPtr view, uint model, [Out] ViewBatch[] output, uint max);
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern uint sms_view_indices(IntPtr view, uint model, [Out] int[] output, uint max);
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern uint sms_view_uvs(IntPtr view, uint model, [Out] float[] output, uint max);
+        [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern uint sms_view_vertex_alphas(IntPtr view, uint model, [Out] float[] output, uint max);
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern byte sms_view_texture(IntPtr view, uint id, out ViewTexture info, [Out] byte[] rgba, uint len);
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern void sms_view_update(IntPtr view, IntPtr sim, ref ViewFrame frame);
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern uint sms_view_draws(IntPtr view, [Out] ViewDraw[] output, uint max);
@@ -337,7 +338,7 @@ namespace MarioTest
     }
 
     // sms_view_* as ror2-common's IViewSource.
-    internal sealed class SmsViewSource : IViewSource
+    internal sealed class SmsViewSource : IViewSource, IVertexAlphaSource
     {
         public readonly IntPtr Handle;
 
@@ -348,6 +349,7 @@ namespace MarioTest
         public uint Batches(uint model, ViewBatch[] output, uint max) => Native.sms_view_batches(Handle, model, output, max);
         public uint Indices(uint model, int[] output, uint max) => Native.sms_view_indices(Handle, model, output, max);
         public uint Uvs(uint model, float[] output, uint max) => Native.sms_view_uvs(Handle, model, output, max);
+        public uint VertexAlphas(uint model, float[] output, uint max) => Native.sms_view_vertex_alphas(Handle, model, output, max);
         public bool Texture(uint id, out ViewTexture info, byte[] rgba, uint len) => Native.sms_view_texture(Handle, id, out info, rgba, len) != 0;
         public uint Draws(ViewDraw[] output, uint max) => Native.sms_view_draws(Handle, output, max);
         public IntPtr Positions(out uint count) => Native.sms_view_positions(Handle, out count);

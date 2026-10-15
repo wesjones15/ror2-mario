@@ -144,7 +144,7 @@ that does not exist yet; first run creates it. The install copies only these thr
 and stings load from the cache. Use `-RoR2Dir` for another install and `-NoInstall` to
 only build into `dist/`.
 
-The log, `BepInEx/LogOutput.log`, should show `libsms ABI 20`, `Mario is 1.xx m tall`, then
+The log, `BepInEx/LogOutput.log`, should show `libsms ABI 21`, `Mario is 1.xx m tall`, then
 `Mario registered`.
 In a run it should show `Mario's sim started`, `Mario's view: 12 models, 26 textures; sound
 ...`, and one line per status change (turn that off with `Debug.LogStatus`).

@@ -57,6 +57,9 @@ namespace MarioTest
         readonly MarioPad pad = new MarioPad();
         readonly MarioFlames flames = new MarioFlames();
         readonly Unstuck unstuck = new Unstuck();
+        // How far below him ground still means he is not over a void (a vertical stage's floor can
+        // be hundreds of metres down).
+        const float VoidReach = 2000f;
         // "TOO BAD!" has started for a fall (it ends with him standing again).
         bool lostShown;
         // Keeps Mario out of walls the sim let him into (ror2-common's WallGuard); strict for a
@@ -240,6 +243,12 @@ namespace MarioTest
                 TooBad();
             }
             if (st.on_ground != 0) lostShown = false;
+            // A long drop onto lower ground (a vertical stage's top to its bottom) is not a fall off
+            // the map: only a void, or the stage's own kill zone, sends him back.
+            float anyDrop = Unstuck.AnyDrop;
+            if (unstuck.TryGetSafe(out var lastSafe) && lastSafe.y - UnityHost.ToUnity(st.pos).y >= Unstuck.AnyDrop
+                && WorldProbe.Ground(UnityHost.ToUnity(st.pos), VoidReach, out _))
+                anyDrop = float.PositiveInfinity;
             if (unstuck.Step(UnityHost.ToUnity(st.pos),
                 MarioUnstuck.Fallen(status, st.on_ground != 0, st.vel.y), st.on_ground != 0,
                 native && native.Control() != NativeBody.Hold.None, Time.fixedDeltaTime,
@@ -258,7 +267,7 @@ namespace MarioTest
             // Off the map: RoR2's kill zones never see him (his motor is off), so he would fall for
             // ever. Back to where he last stood, unhurt (ror2-common's Unstuck.Fell).
             else if (unstuck.Fell(UnityHost.ToUnity(st.pos), UnityHost.MarioHeight * UnityHost.Scale,
-                UnityHost.RecoveryGround, out var fellFrom))
+                UnityHost.RecoveryGround, out var fellFrom, anyDrop))
             {
                 Plugin.Log.LogInfo($"Mario fell off the map at {UnityHost.ToUnity(st.pos)}; back on the surface at {fellFrom}");
                 // Sunshine's "Too Bad!" (the miss jingle) for a fall: already playing, if he fell far
@@ -559,7 +568,7 @@ namespace MarioTest
         bool Lost(Vector3 feet)
         {
             if (!unstuck.TryGetSafe(out var safe)) return false;
-            return safe.y - feet.y > Plugin.TooBadDrop.Value && !WorldProbe.Ground(feet, 100f, out _);
+            return safe.y - feet.y > Plugin.TooBadDrop.Value && !WorldProbe.Ground(feet, VoidReach, out _);
         }
 
         // RoR2 killed the body: Sunshine's fall for good (DOWN_LOSER: the "die" clip and the

@@ -558,6 +558,8 @@ namespace MarioTest
             }
             tuning = default;
             Tune();
+            // Probe what RoR2's own bodies collide with, not just the world layer.
+            WorldProbe.UseBodyCollision(motor, gameObject);
             Plugin.Log.LogInfo($"Mario's sim started at {body.footPosition}");
             UnityHost.LogStageWater();
             if (Local) MarioView.Ensure();

@@ -78,11 +78,27 @@ namespace MarioTest
                 // the 100,000 units where libsms still takes the floor for real.
                 hit.height = pos.y - VoidFloorDrop;
                 hit.normal = new Native.Vec3(0f, 1f, 0f);
+                LogVoid(ToUnity(pos));
                 return 1;
             }
             hit.height = h.point.y / Scale;
             hit.normal = new Native.Vec3(h.normal.x, h.normal.y, h.normal.z);
             return 1;
+        }
+
+        static float voidLogAt;
+
+        // Once every few seconds, what is under a point with no floor on the probed layers (every
+        // layer, triggers too): a floor on a layer the probes miss shows up here by name.
+        static void LogVoid(Vector3 at)
+        {
+            if (Time.unscaledTime < voidLogAt) return;
+            voidLogAt = Time.unscaledTime + 5f;
+            string under = Physics.Raycast(at + Vector3.up * 0.5f, Vector3.down, out var h, GroundReach, ~0,
+                QueryTriggerInteraction.Collide)
+                ? $"{h.collider.name} (layer {LayerMask.LayerToName(h.collider.gameObject.layer)}, trigger {h.collider.isTrigger}) {h.distance:F1} m down"
+                : "nothing on any layer";
+            Plugin.Log.LogInfo($"No floor under Mario at {at}: {under}");
         }
 
         /// Heights above Mario's feet, in metres, where a step is swept for walls (MarioDriver):

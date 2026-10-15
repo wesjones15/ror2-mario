@@ -57,6 +57,8 @@ namespace MarioTest
         readonly MarioPad pad = new MarioPad();
         readonly MarioFlames flames = new MarioFlames();
         readonly Unstuck unstuck = new Unstuck();
+        // "TOO BAD!" has started for a fall (it ends with him standing again).
+        bool lostShown;
         // Keeps Mario out of walls the sim let him into (ror2-common's WallGuard); strict for a
         // while after a hit or a launch, when he is thrown fast and the wall rings are likeliest
         // to miss.
@@ -230,6 +232,14 @@ namespace MarioTest
             Native.sms_sim_state(sim, out var st);
             Items.End(sim, st);
             string status = NativeLib.Utf8(Native.sms_sim_status_name(sim));
+            // "TOO BAD!" starts as soon as he is plainly lost, well below where he last stood with no
+            // ground under him for a long way, a good while before the stage would send him back.
+            if (Local && !lostShown && Lost(UnityHost.ToUnity(st.pos)))
+            {
+                lostShown = true;
+                TooBad();
+            }
+            if (st.on_ground != 0) lostShown = false;
             if (unstuck.Step(UnityHost.ToUnity(st.pos),
                 MarioUnstuck.Fallen(status, st.on_ground != 0, st.vel.y), st.on_ground != 0,
                 native && native.Control() != NativeBody.Hold.None, Time.fixedDeltaTime,
@@ -251,14 +261,14 @@ namespace MarioTest
                 UnityHost.RecoveryGround, out var fellFrom))
             {
                 Plugin.Log.LogInfo($"Mario fell off the map at {UnityHost.ToUnity(st.pos)}; back on the surface at {fellFrom}");
-                // Sunshine's "Too Bad!" (the miss jingle) for a fall, before he stands again.
+                // Sunshine's "Too Bad!" (the miss jingle) for a fall: already playing, if he fell far
+                // enough for it to start early. He is safe from hits as he stands again.
                 if (Local)
                 {
-                    SpawnMusic.PlayMiss(body);
-                    MarioScreenFx.TooBad(body.master);
-                    // Sunshine's miss is a pause: nothing hits him while the screen is black.
+                    if (!lostShown) TooBad();
+                    lostShown = false;
                     if (NetworkServer.active && body)
-                        body.AddTimedBuff(RoR2Content.Buffs.HiddenInvincibility, 2.5f);
+                        body.AddTimedBuff(RoR2Content.Buffs.HiddenInvincibility, 1.5f);
                 }
                 transform.position = fellFrom + feetToOrigin;
                 Resync();
@@ -534,6 +544,22 @@ namespace MarioTest
             foreach (var d in all.ToArray())
                 if (d && d.driving && d.health && !d.health.alive)
                     d.StopDriving();
+        }
+
+        // The jingle and the screen of a miss, and a pause: nothing hits him while the screen is black.
+        void TooBad()
+        {
+            SpawnMusic.PlayMiss(body);
+            MarioScreenFx.TooBad(body.master);
+            if (NetworkServer.active && body)
+                body.AddTimedBuff(RoR2Content.Buffs.HiddenInvincibility, 2.5f);
+        }
+
+        // Far enough below where he last stood, with nothing to land on for a long way: a void.
+        bool Lost(Vector3 feet)
+        {
+            if (!unstuck.TryGetSafe(out var safe)) return false;
+            return safe.y - feet.y > Plugin.TooBadDrop.Value && !WorldProbe.Ground(feet, 100f, out _);
         }
 
         // RoR2 killed the body: Sunshine's fall for good (DOWN_LOSER: the "die" clip and the

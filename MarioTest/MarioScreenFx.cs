@@ -122,11 +122,15 @@ namespace MarioTest
         {
             if (view == IntPtr.Zero || PauseManager.isPaused) return;
             // Real time, so the game's own slowdowns (a death's) don't hold it.
-            Native.sms_view_screenfx_step(view, Time.unscaledDeltaTime);
-            clock += Time.unscaledDeltaTime;
-            pulse = Mathf.Max(0f, pulse - Time.unscaledDeltaTime * 3f);
+            // Real time (a death slows the game's own), at the pace Hud.ScreenSpeed sets, and drawn
+            // in between the game's 30 frames a second.
+            float dt = Time.unscaledDeltaTime * Mathf.Clamp(Plugin.ScreenSpeed.Value, 0.25f, 3f);
+            Native.sms_view_screenfx_step(view, dt);
+            clock += dt;
+            pulse = Mathf.Max(0f, pulse - dt * 3f);
             if (Native.sms_view_screenfx_info(view, out info) == 0 || info.kind == 0) return;
-            if (info.finished != 0 && info.fill <= 0f && info.edge <= 0f && info.sprites == 0) Clear();
+            // Played out, with everything faded: nothing left to draw.
+            if (info.finished != 0 && info.fill <= 0f && info.edge <= 0f && info.card_a <= 0f) Clear();
         }
 
         Texture2D Picture(uint which)
@@ -235,7 +239,12 @@ namespace MarioTest
             GUI.depth = -1000;
             float h = Screen.height, scale = h / info.screen_h, w = info.screen_w * scale;
             float x0 = (Screen.width - w) * 0.5f;
+            // Back to front, as libsms lists them: the black a miss opens from, the letters and
+            // banner (GAME OVER's black comes over them), GAME OVER's red box, its black with the
+            // letters cut out.
             Cover(new Rect(0f, 0f, Screen.width, h), info.fill);
+            Banner(x0, scale);
+            Letters(x0, scale);
             if (info.card_a > 0f)
             {
                 var before = GUI.color;
@@ -252,7 +261,10 @@ namespace MarioTest
                 Cover(new Rect(x0 + w, 0f, Screen.width - x0 - w, h), info.edge);
                 if (overlay) GUI.DrawTexture(new Rect(x0, 0f, w, h), overlay, ScaleMode.StretchToFill, true);
             }
-            Banner(x0, scale);
+        }
+
+        void Letters(float x0, float scale)
+        {
             int n = (int)info.sprites;
             if (n == 0) return;
             if (sprites.Length < n) sprites = new Native.ScreenSprite[n];

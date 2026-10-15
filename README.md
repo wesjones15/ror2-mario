@@ -236,7 +236,7 @@ When Mario falls off the map, Sunshine's "TOO BAD!" letters (coloured, dropping 
 black (he is untouchable for those seconds); when he dies with none left, its GAME OVER screen (black with the letters cut out of it, the scene
 showing through, and a red box coming in behind it at the end) plays with the song (`Hud.ScreenEffects`). With an extra life
 (Dio's Best Friend, a Pluripotent Larva) a death is a miss instead: the miss jingle and TOO BAD, with Sunshine's "MARIO x N" lives
-banner (`Hud.LivesScale`) sliding in and counting down as RoR2 uses the life. A fall off the map shows the banner too if he has
+banner (`Hud.LivesScale`) sliding in and counting down as RoR2 uses the life. A fall off the map starts TOO BAD (and its jingle) as soon as he is `Hud.TooBadDrop` (20 m) below where he last stood with no ground under him for a long way, and he is put back later, when the stage's kill zone or 150 m takes him. A real game over plays TOO BAD's letters under the wipe as the game does. Both are drawn smoothly between the game's 30 frames a second, at `Hud.ScreenSpeed` (1.25) times its pace. A fall off the map shows the banner too if he has
 extra lives, and never otherwise. They come from the disc's HUD and wipe pictures; a folder extracted
 before the wipe pictures existed gets them when the disc is found (`Paths.Disc`).
 

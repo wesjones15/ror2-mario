@@ -92,7 +92,7 @@ namespace MarioTest
         internal static ConfigEntry<bool> ShallowWetSlide;
         internal static ConfigEntry<bool> ShowLife, HideHealthBar, LockMarker, LockMarkerHealth;
         internal static ConfigEntry<bool> ShowCoins, ShowScreenEffects;
-        internal static ConfigEntry<float> CoinX, CoinY, CoinScale, LivesScale;
+        internal static ConfigEntry<float> CoinX, CoinY, CoinScale, LivesScale, ScreenSpeed, TooBadDrop;
         internal static ConfigEntry<int> CoinGold;
         internal static ConfigEntry<float> LockRange;
         internal static ConfigEntry<float> LifeX, LifeY, LifeScale, LockMarkerSize, LockMarkerSpin;
@@ -199,6 +199,15 @@ namespace MarioTest
             ShowScreenEffects = Config.Bind("Hud", "ScreenEffects", true,
                 "Show Sunshine's \"TOO BAD!\" letters (the screen opening from black) when Mario falls off the " +
                 "map, and its GAME OVER screen when he dies. They come from the disc's HUD and wipe pictures.");
+            ScreenSpeed = Config.Bind("Hud", "ScreenSpeed", 1.25f,
+                new ConfigDescription("How fast the TOO BAD / GAME OVER screens play against Sunshine's own " +
+                    "timing (1 is the game's; they are drawn smoothly between its 30 frames a second).",
+                    new AcceptableValueRange<float>(0.25f, 3f)));
+            TooBadDrop = Config.Bind("Hud", "TooBadDrop", 20f,
+                new ConfigDescription("Metres below where Mario last stood, with no ground under him for a " +
+                    "long way, at which TOO BAD starts and its jingle plays on a fall off the map. He is put " +
+                    "back later, when the stage's kill zone (or 150 m) takes him.",
+                    new AcceptableValueRange<float>(5f, 140f)));
             LivesScale = Config.Bind("Hud", "LivesScale", 0.7f,
                 "The size of the \"MARIO x N\" banner shown with TOO BAD when Mario has an extra life " +
                 "(Dio's Best Friend, a Pluripotent Larva); 1 is Sunshine's against the screen's height.");

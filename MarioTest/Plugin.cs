@@ -482,7 +482,11 @@ namespace MarioTest
                 && File.Exists(Path.Combine(stings, "gameover.wav"))
                 && File.Exists(Path.Combine(stings, "bluecoin.wav"))
                 && File.Exists(Path.Combine(stings, "shineget.wav"))
-                && File.Exists(Path.Combine(stings, "secret.wav")));
+                && File.Exists(Path.Combine(stings, "secret.wav")))
+                // Stings cached before the left ear was connected are right-ear only: render them
+                // again (libsms's STINGS_VERSION).
+                || !File.Exists(Path.Combine(stings, "stings.version"))
+                || File.ReadAllText(Path.Combine(stings, "stings.version")).Trim() != "2";
             if (assetsReady && !needStings && !needExtras)
                 return;
             string disc = configuredDisc?.Trim();

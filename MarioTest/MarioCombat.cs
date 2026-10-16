@@ -242,12 +242,16 @@ namespace MarioTest
                     break;
                 case Native.EventKind.WaterHit:
                 case Native.EventKind.BurstHit:
+                case Native.EventKind.SpinHit:
                     if (byId.TryGetValue((uint)e.arg, out var wet))
                     {
                         water.TryGetValue(wet, out var w);
                         int n = Math.Max(1, (int)e.value);
+                        // A drop from a light press's burst or a spin jump's spray counts for more (its own
+                        // multiple of WaterPerDrop).
                         float k = e.kind == (uint)Native.EventKind.BurstHit
-                            ? Mathf.Max(0f, Plugin.BurstMultiplier.Value) : 1f;
+                            ? Mathf.Max(0f, Plugin.BurstMultiplier.Value)
+                            : e.kind == (uint)Native.EventKind.SpinHit ? Mathf.Max(0f, Plugin.SpinSprayMultiplier.Value) : 1f;
                         water[wet] = (w.drops + n, w.weight + n * k, w.sum + UnityHost.ToUnity(e.pos));
                     }
                     break;

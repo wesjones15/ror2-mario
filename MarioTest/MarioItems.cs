@@ -488,7 +488,8 @@ namespace MarioTest
                 (Plugin.AimAtCrosshair.Value ? "The spray goes where your crosshair points. " : "") +
                 "A spray reaches about " +
                 $"<style=cIsUtility>{reach:0} m</style> and deals " +
-                $"<style=cIsDamage>{perSecond:0}% damage per second</style> to one enemy. A full spray lasts " +
+                $"<style=cIsDamage>{perSecond:0}% damage per second</style> to one enemy, and a spray from a spin jump flies in every " +
+                $"direction for <style=cIsDamage>{perSecond * Plugin.SpinSprayMultiplier.Value:0}%</style>. A full spray lasts " +
                 "<style=cIsUtility>5 seconds</style>, then tapers until you let go. <style=cIsUtility>RB</style> switches nozzle: " +
                 "<style=cIsUtility>Hover</style> floats Mario for 3 seconds, <style=cIsUtility>Rocket</style> charges for 1.5 seconds " +
                 "then launches him skyward, <style=cIsUtility>Turbo</style> dashes at 3 times running speed. " +

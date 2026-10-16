@@ -81,6 +81,8 @@ namespace MarioTest
             /// He has landed with the Shine over his head: the Shine Get demo begins (pos: where he
             /// stands, arg: his yaw).
             ShineDemo = 21,
+            /// A water drop from a spin jump's spray hit.
+            SpinHit = 22,
         }
 
         /// Jump kinds (Event.arg of Jump).

@@ -61,7 +61,7 @@ namespace MarioTest
         internal static ConfigEntry<float> WaterDamage;
         internal static ConfigEntry<bool> FallDamageEnabled;
         internal static ConfigEntry<float> FallSafeHeight, DiveSafeHeight, FallPerHeight, DiveFallMultiplier;
-        internal static ConfigEntry<float> BurstMultiplier;
+        internal static ConfigEntry<float> BurstMultiplier, SpinSprayMultiplier;
         internal static ConfigEntry<float> WaterProc;
         internal static ConfigEntry<bool> UnlimitedWater;
         internal static ConfigEntry<bool> DpadRefill;
@@ -278,13 +278,15 @@ namespace MarioTest
                 "sets what it hits on fire.");
             DiveDamage = Config.Bind("Damage", "Dive", 2.5f,
                 "Diving or belly sliding into an enemy.");
-            WaterDamage = Config.Bind("Damage", "WaterPerDrop", 0.0717f,
+            WaterDamage = Config.Bind("Damage", "WaterPerDrop", 0.0484f,
                 "Each FLUDD drop that hits (not Sunshine's: its water mostly only stuns). The Spray " +
-                "fires about 93 a second, so 0.0717 is about 667% a second on one enemy: Commando's Double Tap " +
+                "fires about 93 a second, so 0.0484 is about 450% a second on one enemy. A burst and a spin " +
+                "jump's spray count for more (BurstMultiplier, SpinSprayMultiplier): 667% is Commando's Double Tap " +
                 "(100% a bullet, one every 0.15 s).");
-            // 0.035 (about 330% a second) was the default before 0.2.4, and config files keep the default
-            // they were written with: a player who never changed it gets the new one.
-            if (Mathf.Approximately(WaterDamage.Value, 0.035f)) WaterDamage.Value = 0.0717f;
+            // Older defaults (0.035, about 330% a second; 0.0717, a build in between), and a config file
+            // keeps the default it was written with: a player who never changed it gets the new one.
+            if (Mathf.Approximately(WaterDamage.Value, 0.035f) || Mathf.Approximately(WaterDamage.Value, 0.0717f))
+                WaterDamage.Value = 0.0484f;
             FallDamageEnabled = Config.Bind("FallDamage", "Enabled", true,
                 "Take RoR2 fall damage after very long drops. Ground pounds are always safe.");
             FallSafeHeight = Config.Bind("FallDamage", "SafeHeight", 40f,
@@ -295,10 +297,14 @@ namespace MarioTest
                 "Fraction of maximum health per height beyond the safe drop, capped at 0.9 before dive reduction.");
             DiveFallMultiplier = Config.Bind("FallDamage", "DiveMultiplier", 0.5f,
                 "Damage multiplier beyond the dive's safe height (0 to 1).");
-            BurstMultiplier = Config.Bind("Damage", "BurstMultiplier", 3f,
+            BurstMultiplier = Config.Bind("Damage", "BurstMultiplier", 4.92f,
                 "A light press's short burst of the Spray (Fludd.SprayBursts) doesn't last, so each " +
-                "of its drops does this many times WaterPerDrop. A burst is about 28 drops, so 3 is " +
-                "about 290% a burst if it all hits.");
+                "of its drops does this many times WaterPerDrop. A burst is about 28 drops, so 4.92 is " +
+                "about 667% a burst if it all hits (Commando's Double Tap rate).");
+            if (Mathf.Approximately(BurstMultiplier.Value, 3f)) BurstMultiplier.Value = 4.92f;
+            SpinSprayMultiplier = Config.Bind("Damage", "SpinSprayMultiplier", 1.48f,
+                "A spin jump's spray (it flies in every direction, so each enemy gets only part of it) does this " +
+                "many times WaterPerDrop a drop: 1.48 makes it about 667% a second on one enemy.");
             WaterProc = Config.Bind("Items", "WaterProcCoefficient", 0.5f,
                 "FLUDD's water procs on-hit items at most once a second on each enemy (every nozzle " +
                 "shares it), at this proc coefficient; the drops in between do damage only.");

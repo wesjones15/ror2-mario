@@ -49,7 +49,11 @@ How it works:
 - ror2-common's `NativeBody` does what RoR2's motor would for the items: jump pads, knockback
   and Milky Chrysalis throw Mario, stuns and roots hold him, RoR2's sprint button sprints.
   Jump pads preserve RoR2's complete ballistic trajectory and gravity until collision,
-  bypassing Sunshine's air braking and speed caps so elevated targets remain reachable.
+  bypassing Sunshine's air braking and speed caps so elevated targets remain reachable. A move
+  breaks the flight once it has got going (about a tenth of a second): a dive, a ground pound, the
+  Rocket or Hover, the Turbo held, a spin jump or a mid-air jump. Normal air control and gravity
+  come back, and the pad's sideways speed carries on beside the move, bleeding off over a couple
+  of seconds (`pad_carry` in libsms).
 - `MarioMain` replaces Commando's main state, so RoR2's own movement, jumping and skills stay
   off.
 - `MarioView` loads libsms's view (`sms_view_*`) the first time the player's Mario starts.

@@ -142,7 +142,9 @@ which runs on the server. A client playing Mario in multiplayer doesn't get it y
 | Fuel Cell, Soulbound Catalyst, Executive Card, every equipment | RoR2's own equipment slot |
 
 **World**:
-- Jump pads, geysers and knockback over 2 m/s throw Mario.
+- Jump pads, geysers and knockback over 2 m/s throw Mario. A jump pad's flight can be broken by a
+  dive, ground pound, Rocket or Hover, the Turbo held, or a spin jump; the pad's sideways speed
+  carries on with the move.
 - Stuns, freezes and shocks stop his controls; roots (Tar, void jailers, Hooks of Heresy) stop
   him moving.
 - `Sim.ExternalForces` and `Sim.CrowdControl` turn these off.

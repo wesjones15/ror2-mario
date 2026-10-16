@@ -494,7 +494,8 @@ namespace MarioTest
                 "Cooldown reduction lengthens the spray and hover and raises the rocket and turbo.");
             lang.SetStringByToken("MARIOTEST_AIR_NAME", "Air Pump");
             lang.SetStringByToken("MARIOTEST_AIR_DESC",
-                "<style=cIsUtility>Hold RT in mid-air</style> to start FLUDD. Mario gets one mid-air use per jump; each charge is " +
+                "<style=cIsUtility>Hold RT in mid-air</style> to start FLUDD. The <style=cIsUtility>Spray</style> can start as often as " +
+                "you like. Hover, Rocket and Turbo each take a use: Mario gets one per jump, each charge is " +
                 $"another, and one charge returns every <style=cIsUtility>{Plugin.AirUseRecharge.Value:0.#} seconds</style> " +
                 "once Mario is back on the ground.");
             lang.SetStringByToken("MARIOTEST_POUND_NAME", "Ground Pound");

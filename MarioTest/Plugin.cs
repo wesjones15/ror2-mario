@@ -354,10 +354,10 @@ namespace MarioTest
                 "A wet slide keeps its speed as if the stick were held forward (pull back to brake). " +
                 "Off: Sunshine's, where it only carries on while you hold forward.");
             WetSlideSeconds = Config.Bind("Items", "WetSlideSeconds", 2f,
-                "Seconds a slide that starts over wet ground glides before turning plain, unless it is " +
-                "still over wet ground or water then: it glides on for as long as that lasts. No charges " +
-                "or cooldown; cooldown reduction stretches this time and each Lysate Cell adds another " +
-                "base duration. 0: as long as the slide lasts.");
+                "A wet slide (one that starts over wet ground or water) glides for as long as the ground under " +
+                "it stays wet or it is in water, and this many seconds past the last wet contact before turning " +
+                "plain. No charges or cooldown; cooldown reduction stretches this time and each Lysate Cell adds " +
+                "another base duration. 0: as long as the slide lasts.");
             // 1.5 was the default before 0.2.4, and a config keeps the default it was written with.
             if (Mathf.Approximately(WetSlideSeconds.Value, 1.5f)) WetSlideSeconds.Value = 2f;
             SpraySeconds = Config.Bind("Items", "SpraySeconds", 0f,

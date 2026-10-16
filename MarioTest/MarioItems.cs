@@ -516,8 +516,8 @@ namespace MarioTest
             lang.SetStringByToken("MARIOTEST_SLIDE_DESC",
                 "<style=cIsUtility>Press B in mid-air</style> to dive, then belly slide. Diving or sliding into an enemy deals " +
                 $"<style=cIsDamage>{Plugin.DiveDamage.Value * 100f:0}% damage</style>. Over wet ground (a light RT splash ahead of you, " +
-                $"or shallow water) the slide glides for <style=cIsUtility>{Plugin.WetSlideSeconds.Value:0.##} seconds</style>, and on for " +
-                "as long as the ground under it stays wet or it is in water. " +
+                "or shallow water) the slide glides for as long as the ground under it stays wet or it is in water, and for " +
+                $"<style=cIsUtility>{Plugin.WetSlideSeconds.Value:0.##} seconds</style> after the last wet contact. " +
                 "No charges, no cooldown. Cooldown reduction and Lysate Cell lengthen the glide.");
         }
     }

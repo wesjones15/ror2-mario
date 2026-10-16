@@ -302,9 +302,11 @@ namespace MarioTest
                 "of its drops does this many times WaterPerDrop. A burst is about 28 drops, so 4.92 is " +
                 "about 667% a burst if it all hits (Commando's Double Tap rate).");
             if (Mathf.Approximately(BurstMultiplier.Value, 3f)) BurstMultiplier.Value = 4.92f;
-            SpinSprayMultiplier = Config.Bind("Damage", "SpinSprayMultiplier", 1.48f,
-                "A spin jump's spray (it flies in every direction, so each enemy gets only part of it) does this " +
-                "many times WaterPerDrop a drop: 1.48 makes it about 667% a second on one enemy.");
+            SpinSprayMultiplier = Config.Bind("Damage", "SpinSprayMultiplier", 1.78f,
+                "A spin's spray (a spin jump, or spinning on the ground with a stick circle while spraying; it flies " +
+                "in every direction, so each enemy gets only part of it) does this many times WaterPerDrop a drop: " +
+                "1.78 makes it about 800% a second on one enemy.");
+            if (Mathf.Approximately(SpinSprayMultiplier.Value, 1.48f)) SpinSprayMultiplier.Value = 1.78f;
             WaterProc = Config.Bind("Items", "WaterProcCoefficient", 0.5f,
                 "FLUDD's water procs on-hit items at most once a second on each enemy (every nozzle " +
                 "shares it), at this proc coefficient; the drops in between do damage only.");

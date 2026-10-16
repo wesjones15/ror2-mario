@@ -248,6 +248,8 @@ namespace MarioTest
                 case Native.EventKind.AirJump:
                     airJumpSeen = true;
                     Feather();
+                    // RoR2's jump event (Faraday Spur, Earthbound Vessel, Hex of Leaping).
+                    native?.Jumped();
                     break;
                 case Native.EventKind.Jump:
                     var kind = (Native.JumpKind)e.arg;
@@ -258,6 +260,7 @@ namespace MarioTest
                         quailOwed = true;
                     airJumpSeen = false;
                     if (body && body.characterMotor) body.characterMotor.jumpCount++;
+                    native?.Jumped();
                     break;
                 case Native.EventKind.Land:
                     if (body && body.characterMotor) body.characterMotor.jumpCount = 0;

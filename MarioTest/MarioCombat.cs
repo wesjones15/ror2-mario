@@ -114,7 +114,10 @@ namespace MarioTest
                 var at = victim.body ? victim.body.corePosition : victim.transform.position;
                 var push = kind == 2 ? Flat(at - mario).normalized * 1200f : Vector3.down * 1500f;
                 var type = kind == 1 && fallingSuper && ignite ? DamageType.IgniteOnHit : DamageType.Generic;
-                Hit(body, victim, coefficient, at, push, 1f, type);
+                // Stomps are his basic attack (the primary), pounds the utility, the dive and the
+                // belly slide the special.
+                var source = kind == 0 ? DamageSource.Primary : kind == 1 ? DamageSource.Utility : DamageSource.Special;
+                Hit(body, victim, coefficient, at, push, 1f, type, source);
             }
             if (pounded && Plugin.PoundRadius.Value > 0f)
             {
@@ -127,7 +130,7 @@ namespace MarioTest
                 {
                     var at = victim.body ? victim.body.corePosition : victim.transform.position;
                     var push = Flat(at - poundAt).normalized * 1000f + Vector3.up * 1000f;
-                    Hit(body, victim, coefficient, at, push, 1f, type);
+                    Hit(body, victim, coefficient, at, push, 1f, type, DamageSource.Utility);
                 }
                 if (superPound && Plugin.PoundFlames.Value)
                 {
@@ -143,7 +146,7 @@ namespace MarioTest
                 var at = sum / drops;
                 Hit(body, kv.Key, weight * Plugin.WaterDamage.Value, at,
                     Flat(at - mario).normalized * (40f * drops),
-                    waterProcs.Coefficient(kv.Key, Plugin.WaterProc.Value));
+                    waterProcs.Coefficient(kv.Key, Plugin.WaterProc.Value), DamageType.Generic, DamageSource.Primary);
             }
             // Water hitting counts as the primary in use, for Shuriken: a throw at most every
             // half second while it keeps hitting.
@@ -176,7 +179,7 @@ namespace MarioTest
         internal static void DealFromClient(CharacterBody body, HealthComponent victim, in MarioNet.HitRecord hit)
         {
             Hit(body, victim, hit.coefficient, hit.at, hit.force, hit.proc,
-                hit.ignite ? DamageType.IgniteOnHit : DamageType.Generic);
+                hit.ignite ? DamageType.IgniteOnHit : DamageType.Generic, (DamageSource)hit.source);
         }
 
         /// The super pound's landing (Sunshine's MS_M_SPHIPD_HIT_*): RoR2's ignite burst.
@@ -188,8 +191,10 @@ namespace MarioTest
                 UnityEngine.Networking.NetworkServer.active);
         }
 
+        /// `source`: the skill it came from, for the items that only answer skill hits (Breaching
+        /// Fin, Luminous Shot, Infernal Mark, Nightmare Demon, Vile Censer).
         static void Hit(CharacterBody body, HealthComponent victim, float coefficient, Vector3 at, Vector3 force,
-            float proc, DamageType type = DamageType.Generic)
+            float proc, DamageType type = DamageType.Generic, DamageSource source = DamageSource.Primary)
         {
             if (!victim || !victim.alive || coefficient <= 0f) return;
             if (!NetworkServer.active)
@@ -199,17 +204,19 @@ namespace MarioTest
                     outHits.Add(new MarioNet.HitRecord
                     {
                         victim = victim.body.netId.Value, coefficient = coefficient, at = at, force = force,
-                        proc = proc, ignite = (type & DamageType.IgniteOnHit) != 0,
+                        proc = proc, ignite = (type & DamageType.IgniteOnHit) != 0, source = (byte)source,
                     });
                 return;
             }
+            DamageTypeCombo combo = type;
+            combo.damageSource = source;
             var spec = new NativeHitSpec
             {
                 coefficient = coefficient,
                 position = at,
                 force = force,
                 procCoefficient = proc,
-                damageType = type,
+                damageType = combo,
                 color = DamageColorIndex.Default,
             };
             MarioItems.Dealing = true;

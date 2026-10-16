@@ -82,6 +82,8 @@ namespace MarioTest
         byte inWater;
         // On the ground as of the last step.
         bool grounded = true;
+        // His velocity on the last step in the air, for RoR2's landing event.
+        Vector3 airVelocity;
         NativeBody native;
         // The frames sent to the other players' puppets (MarioNet), when there are any.
         FrameRecorder recorder;
@@ -359,6 +361,7 @@ namespace MarioTest
                 Native.sms_sim_state(sim, out st);
                 status = NativeLib.Utf8(Native.sms_sim_status_name(sim));
             }
+            bool wasGrounded = grounded;
             grounded = st.on_ground != 0;
             MarioCombat.Watch(st);
             pounding = st.pounding;
@@ -375,7 +378,11 @@ namespace MarioTest
             if (native)
             {
                 native.WroteVelocity(UnityHost.ToUnity(st.vel) * 30f);
-                if (grounded) native.Landed();
+                // Touching down raises RoR2's landing event with the speed he came down at
+                // (Mycelium Cap's spores); standing, it just ends a jump pad's hold.
+                if (grounded && !wasGrounded) native.Landed(airVelocity);
+                else if (grounded) native.Landed();
+                else airVelocity = UnityHost.ToUnity(st.vel) * 30f;
             }
             else motor.velocity = UnityHost.ToUnity(st.vel) * 30f;
             motor.Motor.GroundingStatus.IsStableOnGround = st.on_ground != 0;
@@ -702,7 +709,11 @@ namespace MarioTest
         {
             var t = new Native.Tuning
             {
-                jump_height = Plugin.JumpHeight.Value,
+                // Jump power items (Faraday Spur, Hex of Leaping) scale takeoff speed, so height
+                // goes with its square.
+                jump_height = Plugin.JumpHeight.Value * Mathf.Pow(NativeBody.JumpScale(body), 2f),
+                // Hex of Acceleration's slippery ground.
+                traction = NativeBody.AccelerationScale(body),
                 jump_buffer = Plugin.JumpBuffer.Value,
                 chain_grace = Plugin.ChainGrace.Value,
                 move_speed = Plugin.SpeedFromItems.Value ? Mathf.Clamp(MinionStats.Of(body).moveSpeed, 0.1f, 10f) : 1f,

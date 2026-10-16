@@ -34,6 +34,8 @@ namespace MarioTest
             public float coefficient, proc;
             public Vector3 at, force;
             public bool ignite;
+            /// The skill it came from (RoR2's DamageSource).
+            public byte source;
         }
 
         static readonly Dictionary<uint, FrameQueue> queues = new Dictionary<uint, FrameQueue>();
@@ -105,7 +107,7 @@ namespace MarioTest
             for (int i = 0; i < hits.Count && i < 255; i++)
             {
                 var h = hits[i];
-                w.U32(h.victim); w.F32(h.coefficient); w.F32(h.proc); Vec(w, h.at); Vec(w, h.force); w.Bool(h.ignite);
+                w.U32(h.victim); w.F32(h.coefficient); w.F32(h.proc); Vec(w, h.at); Vec(w, h.force); w.Bool(h.ignite); w.U8(h.source);
             }
             w.U8((byte)Mathf.Min(blasts.Count, 8));
             for (int i = 0; i < blasts.Count && i < 8; i++) { Vec(w, blasts[i].at); w.F32(blasts[i].radius); }
@@ -129,7 +131,7 @@ namespace MarioTest
             {
                 var hit = new HitRecord
                 {
-                    victim = r.U32(), coefficient = r.F32(), proc = r.F32(), at = Vec(r), force = Vec(r), ignite = r.Bool(),
+                    victim = r.U32(), coefficient = r.F32(), proc = r.F32(), at = Vec(r), force = Vec(r), ignite = r.Bool(), source = r.U8(),
                 };
                 if (r.Failed) return;
                 if (!valid || !Finite(hit.at) || !Finite(hit.force) || !(hit.coefficient > 0f) || !(hit.proc >= 0f)) continue;

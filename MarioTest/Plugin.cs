@@ -278,9 +278,13 @@ namespace MarioTest
                 "sets what it hits on fire.");
             DiveDamage = Config.Bind("Damage", "Dive", 2.5f,
                 "Diving or belly sliding into an enemy.");
-            WaterDamage = Config.Bind("Damage", "WaterPerDrop", 0.035f,
+            WaterDamage = Config.Bind("Damage", "WaterPerDrop", 0.0717f,
                 "Each FLUDD drop that hits (not Sunshine's: its water mostly only stuns). The Spray " +
-                "fires about 93 a second, so 0.035 is about 330% a second on one enemy.");
+                "fires about 93 a second, so 0.0717 is about 667% a second on one enemy: Commando's Double Tap " +
+                "(100% a bullet, one every 0.15 s).");
+            // 0.035 (about 330% a second) was the default before 0.2.4, and config files keep the default
+            // they were written with: a player who never changed it gets the new one.
+            if (Mathf.Approximately(WaterDamage.Value, 0.035f)) WaterDamage.Value = 0.0717f;
             FallDamageEnabled = Config.Bind("FallDamage", "Enabled", true,
                 "Take RoR2 fall damage after very long drops. Ground pounds are always safe.");
             FallSafeHeight = Config.Bind("FallDamage", "SafeHeight", 40f,

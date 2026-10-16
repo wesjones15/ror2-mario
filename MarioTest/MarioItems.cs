@@ -484,7 +484,9 @@ namespace MarioTest
             lang.SetStringByToken("MARIOTEST_FLUDD_DESC",
                 "<style=cIsUtility>Tap RT</style> for a burst: a short splash just ahead for up to " +
                 $"<style=cIsDamage>{burst:0}% damage</style>, with no cooldown, that also wets the ground for a Wet Slide. " +
-                "<style=cIsUtility>Pull deeper</style> to spray on the move, and all the way in to plant Mario. A spray reaches about " +
+                "<style=cIsUtility>Pull deeper</style> to spray on the move, and all the way in to plant Mario. " +
+                (Plugin.AimAtCrosshair.Value ? "The spray goes where your crosshair points. " : "") +
+                "A spray reaches about " +
                 $"<style=cIsUtility>{reach:0} m</style> and deals " +
                 $"<style=cIsDamage>{perSecond:0}% damage per second</style> to one enemy. A full spray lasts " +
                 "<style=cIsUtility>5 seconds</style>, then tapers until you let go. <style=cIsUtility>RB</style> switches nozzle: " +

@@ -275,7 +275,15 @@ namespace MarioTest
             else poundArmed = false;
             lWasHeld = lHeld;
             bool cycle = pad.TakeCycle(out var cycleDirection);
-            Aim(lHeld && Local && !(pad.LockSharesL && locking), locking, lockTarget, cycle, cycleDirection);
+            // The Spray follows the crosshair while RT is down (AimAtCrosshair); the sim's last state says
+            // which nozzle is fitted.
+            bool crosshair = false;
+            if (Local && Plugin.AimAtCrosshair.Value && step.r_analog > 0)
+            {
+                Native.sms_sim_state(sim, out var fitted);
+                crosshair = fitted.nozzle == 1;
+            }
+            Aim(lHeld && Local && !(pad.LockSharesL && locking), locking, lockTarget, cycle, cycleDirection, crosshair);
             Items.Begin(sim, sprinting, grounded);
             // The Shine Get pose, inside the step so the other players' puppets get it too.
             if (shineAt.HasValue)
@@ -525,10 +533,10 @@ namespace MarioTest
         // ror2-common's EnemyLock picks the enemy nearest where the camera points (Olimar's RT
         // does the same), `cycle` steps to the next toward `direction` on screen, and FLUDD
         // points at it, so the spray trigger sprays it; with none in reach it's the crosshair.
-        void Aim(bool camera, bool lockHeld, CharacterBody ai, bool cycle, Vector2 direction)
+        void Aim(bool camera, bool lockHeld, CharacterBody ai, bool cycle, Vector2 direction, bool crosshair = false)
         {
             // An AI's Mario aims at the enemy his brain locked onto.
-            camera &= Plugin.CameraAim.Value && input;
+            camera = ((camera && Plugin.CameraAim.Value) || crosshair) && input;
             enemyLock.Range = Plugin.LockRange.Value;
             var locked = ai ? ai : enemyLock.Update(body, lockHeld && input, cycle, direction);
             lockShown = lockHeld && Local ? locked : null;

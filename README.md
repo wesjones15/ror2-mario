@@ -101,6 +101,11 @@ trigger's travel is curved so the light zone is easier to hold (`Controls.Trigge
 keyboard a tap of the primary is a light press and holding it sprays at full
 (`Controls.LightTapSeconds`).
 
+The Spray goes where the crosshair points while RT is down (`Controls.AimAtCrosshair`, on), as every RoR2
+survivor's gun does: Mario runs where you steer and the nozzle follows the camera, and a full pull plants
+him facing it. Only the Spray; Hover, Rocket and Turbo are unchanged. A lock-on (LB) still aims at its
+target, and turning the setting off gives Sunshine's: the way Mario faces.
+
 The HUD's skill icons show the pad buttons Mario actually uses (ror2-common `GlyphOverride`): RT for FLUDD
 and the Air Pump, LT for the Ground Pound, B for the Wet Slide. On keyboard they are RoR2's binds, as
 before. The skills' names and descriptions on the character select screen give the same buttons.

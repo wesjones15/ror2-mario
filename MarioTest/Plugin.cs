@@ -86,7 +86,7 @@ namespace MarioTest
         internal static ConfigEntry<float> QuailScale;
         internal static ConfigEntry<bool> ExternalForces;
         internal static ConfigEntry<bool> CrowdControl;
-        internal static ConfigEntry<bool> CameraAim, LockOn;
+        internal static ConfigEntry<bool> CameraAim, LockOn, AimAtCrosshair;
         internal static ConfigEntry<bool> SprayBursts;
         internal static ConfigEntry<float> TriggerCurve;
         internal static ConfigEntry<float> LightTapSeconds;
@@ -384,6 +384,11 @@ namespace MarioTest
                 "Sunshine's L-button camera: while L (the left trigger; the utility key on " +
                 "keyboard) is held, FLUDD points where the camera looks, and Mario crouching turns " +
                 "with the camera (the stick side-steps).");
+            AimAtCrosshair = Config.Bind("Controls", "AimAtCrosshair", true,
+                "The Spray goes where the crosshair points, like every RoR2 survivor's gun, not the way Mario faces: " +
+                "he keeps running where you steer and the nozzle follows the camera while RT is down (a full pull " +
+                "plants him facing it). The other nozzles are unchanged, and a lock-on (LB) still aims at its target. " +
+                "False: the Spray goes the way Mario faces (Sunshine's), or at the camera while L is held.");
             LockOn = Config.Bind("Controls", "LockOn", true,
                 "While the left bumper (the utility key on keyboard) is held, lock onto the enemy " +
                 "nearest where the camera points (within Controls.LockRange, 60 m, in line of sight) and aim FLUDD " +

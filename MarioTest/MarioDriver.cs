@@ -171,6 +171,42 @@ namespace MarioTest
             all.Add(this);
         }
 
+        // A stage's colliders can come after the body does (a client's first moments on a new stage):
+        // the sim would take the missing floor for a void and fall for ever, with no safe place yet to
+        // be put back to. So the sim waits, in place, until there is ground under him (or a while has
+        // passed, and it carries on as before).
+        const float GroundWaitSeconds = 10f;
+        bool groundSeen, groundWaitLogged;
+        float groundWaited;
+
+        bool GroundArrived()
+        {
+            if (groundSeen) return true;
+            groundWaited += Time.fixedDeltaTime;
+            if (WorldProbe.Ground(body.footPosition, VoidReach, out _))
+            {
+                groundSeen = true;
+                if (groundWaitLogged)
+                    Plugin.Log.LogInfo($"The stage's ground arrived after {groundWaited:F1} s; Mario starts at {body.footPosition}");
+                return true;
+            }
+            if (groundWaited >= GroundWaitSeconds)
+            {
+                groundSeen = true;
+                Plugin.Log.LogWarning($"No ground under Mario at {body.footPosition} after {GroundWaitSeconds:0} s; starting anyway");
+                return true;
+            }
+            if (!groundWaitLogged)
+            {
+                groundWaitLogged = true;
+                Plugin.Log.LogInfo($"No ground under Mario at {body.footPosition} yet; waiting up to {GroundWaitSeconds:0} s for the stage");
+            }
+            // RoR2's own motor would fall too: keep it off, and him where he is.
+            if (motor.Motor.enabled)
+                motor.Motor.enabled = false;
+            return false;
+        }
+
         bool CanDrive =>
             Plugin.AssetsReady && !RunAudio.Ended && !failed && body && motor && input
             && body.hasEffectiveAuthority
@@ -188,6 +224,8 @@ namespace MarioTest
                 return;
             }
             if (sim == IntPtr.Zero && !Create())
+                return;
+            if (!GroundArrived())
                 return;
             // Wait through pod setup; CanDrive stays false while Mario occupies it.
             if (spawnAge > 1f && Local) SpawnMusic.PlayOnce(body);

@@ -513,6 +513,7 @@ namespace MarioTest
                 // as seen from Mario's chest.
                 MarioLife.Update(view.Handle, health);
                 MarioCoinHud.Update(view.Handle, body, localUser);
+                MarioHudLayout.Update(true, localUser);
                 lockMarker.Update(view.Handle, lockShown,
                     feet + Vector3.up * (height * 0.55f));
             }
@@ -577,6 +578,7 @@ namespace MarioTest
                 {
                     MarioLife.Update(IntPtr.Zero, null);
                     MarioCoinHud.Update(IntPtr.Zero, null, null);
+                    MarioHudLayout.Restore();
                 }
                 if (health && !health.alive)
                     Died();

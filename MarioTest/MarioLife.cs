@@ -11,8 +11,9 @@ namespace MarioTest
     // rays change and uploaded here then.
     //  - The HUD's (which 0, with the red splash and "LIFE") stands in for RoR2's health bar:
     //    health is the rays, whole slices, as a share of the body's full health and shield; the
-    //    shield takes the rays after the health's, in the cyan of the air meter. RoR2's numbers
-    //    stay (they're the real values), and its bars hide (Hud.HideHealthBar).
+    //    shield takes the rays after the health's, in the cyan of the air meter. RoR2's health bar
+    //    hides (Hud.HideHealthBar), and its numbers are drawn at the meter's lower right instead; the
+    //    meter is in the top right (Hud.SunshineLayout), as Sunshine's is.
     //  - The lock-on marker's (which 1, the sun alone with ten rays) is MarioLockMarker's.
     internal sealed class LifeImage
     {
@@ -85,6 +86,8 @@ namespace MarioTest
     {
         static readonly LifeImage image = new LifeImage(0);
         static bool shown;
+        static HealthComponent shownHealth;
+        static GUIStyle numbers;
         // The health bar's own bars, hidden by a CanvasGroup of ours (alpha 0), and whether we
         // added that group, so it can go back.
         static readonly System.Collections.Generic.List<CanvasGroup> hidden = new System.Collections.Generic.List<CanvasGroup>();
@@ -117,24 +120,26 @@ namespace MarioTest
                 ShowRor2Bars();
                 return;
             }
+            shownHealth = health;
             Shares(health, out var life, out var shield);
             shown = image.Update(view, life, shield);
             if (shown && Plugin.HideHealthBar.Value) HideRor2Bars();
             else ShowRor2Bars();
         }
 
-        // RoR2's health bar keeps its numbers; only the bars go (the meter takes their place).
+        // RoR2's health bar goes whole, its numbers too (the meter takes its place, and its numbers are
+        // drawn beside the meter).
         static void HideRor2Bars()
         {
             foreach (var hud in HUD.readOnlyInstanceList)
             {
-                var container = hud && hud.healthBar ? hud.healthBar.barContainer : null;
+                var container = hud && hud.healthBar ? hud.healthBar.gameObject : null;
                 if (!container) continue;
                 var group = container.GetComponent<CanvasGroup>();
                 bool made = false;
                 if (!group)
                 {
-                    group = container.gameObject.AddComponent<CanvasGroup>();
+                    group = container.AddComponent<CanvasGroup>();
                     made = true;
                 }
                 if (!hidden.Contains(group))
@@ -185,17 +190,51 @@ namespace MarioTest
             var info = image.Info;
             float scale = Screen.height / (float)info.screen_h * Mathf.Clamp(Plugin.LifeScale.Value, 0.1f, 5f);
             float w = info.width * scale, h = info.height * scale;
-            // Where Hud.LifeX and LifeY say, or (negative) at RoR2's health bar, over its left end.
+            // Where Hud.LifeX and LifeY say, or (negative) the top right, as Sunshine has it, or with
+            // Hud.SunshineLayout off, RoR2's health bar, over its left end.
             float cx = Plugin.LifeX.Value * Screen.width;
             float cy = Plugin.LifeY.Value * Screen.height;
             if (Plugin.LifeX.Value < 0f || Plugin.LifeY.Value < 0f)
             {
-                if (BarLeft(out var bar)) { cx = bar.x + w * 0.4f; cy = bar.y; }
+                if (Plugin.SunshineLayout.Value)
+                {
+                    float edge = 0.02f * Screen.height;
+                    cx = Screen.width - w * 0.5f - edge;
+                    cy = h * 0.5f + edge;
+                }
+                else if (BarLeft(out var bar)) { cx = bar.x + w * 0.4f; cy = bar.y; }
                 else { cx = 0.4f * Screen.width; cy = 0.9f * Screen.height; }
             }
             cx = Mathf.Clamp(cx, w * 0.5f, Screen.width - w * 0.5f);
             cy = Mathf.Clamp(cy, h * 0.5f, Screen.height - h * 0.5f);
             GUI.DrawTexture(new Rect(cx - w * 0.5f, cy - h * 0.5f, w, h), image.Texture, ScaleMode.StretchToFill, true);
+            if (Plugin.HideHealthBar.Value) Numbers(cx + w * 0.5f, cy + h * 0.5f);
+        }
+
+        // RoR2's health numbers (current/full, shield included, as its bar shows them), at the meter's
+        // lower right, where its bar's would be missed.
+        static void Numbers(float right, float bottom)
+        {
+            var health = shownHealth;
+            if (!health) return;
+            if (numbers == null)
+            {
+                numbers = new GUIStyle(GUI.skin.label) { wordWrap = false };
+                numbers.normal.textColor = Color.white;
+            }
+            numbers.fontSize = Mathf.Max(10, Mathf.RoundToInt(Screen.height * 0.032f));
+            string text = $"{Mathf.CeilToInt(health.combinedHealth)}/{Mathf.CeilToInt(health.fullCombinedHealth)}";
+            // Right-aligned by hand, its lower edge a little over the meter's.
+            var size = numbers.CalcSize(new GUIContent(text));
+            var rect = new Rect(Mathf.Min(right, Screen.width) - size.x, Mathf.Min(bottom, Screen.height) - size.y * 0.85f, size.x, size.y);
+            var before = GUI.color;
+            // A dark edge, so it reads over anything.
+            GUI.color = new Color(0f, 0f, 0f, 0.85f);
+            foreach (var d in new[] { new Vector2(-1.5f, 0f), new Vector2(1.5f, 0f), new Vector2(0f, -1.5f), new Vector2(0f, 1.5f) })
+                GUI.Label(new Rect(rect.x + d.x, rect.y + d.y, rect.width, rect.height), text, numbers);
+            GUI.color = Color.white;
+            GUI.Label(rect, text, numbers);
+            GUI.color = before;
         }
     }
 

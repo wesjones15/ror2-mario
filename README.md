@@ -106,6 +106,14 @@ survivor's gun does: Mario runs where you steer and the nozzle follows the camer
 him facing it. Only the Spray; Hover, Rocket and Turbo are unchanged. A lock-on (LB) still aims at its
 target, and turning the setting off gives Sunshine's: the way Mario faces.
 
+With `Hud.SunshineLayout` (on) the HUD is arranged like Sunshine's while you play Mario, without hiding
+anything RoR2 needs: the life meter (the Shine Sprite sun) is in the top right, RoR2's health bar is gone and
+its numbers (n/m) sit at the meter's lower right, FLUDD's tank is in the bottom right, RoR2's cooldowns
+move to the bottom middle, and what RoR2 keeps in the top right (your items) moves to the bottom left above
+the buffs, level and experience bar. RoR2's gold and lunar coin counters stay in the top left, with Sunshine's
+coin counters on them. The moves are measured on the screen and put back when Mario isn't your body
+(`MarioHudLayout`); the log says what was measured. Off: RoR2's places, the meter over the health bar's left end.
+
 The HUD's skill icons show the pad buttons Mario actually uses (ror2-common `GlyphOverride`): RT for FLUDD
 and the Air Pump, LT for the Ground Pound, B for the Wet Slide. On keyboard they are RoR2's binds, as
 before. The skills' names and descriptions on the character select screen give the same buttons.

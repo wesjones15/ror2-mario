@@ -77,8 +77,9 @@ namespace MarioTest
             if (PauseManager.isPaused || !RoR2.UI.HUD.cvHudEnable.value) return;
             float scale = Screen.height / (float)info.screen_h * Mathf.Clamp(Plugin.TankScale.Value, 0.1f, 5f);
             float w = info.width * scale, h = info.height * scale;
-            float cx = Mathf.Clamp01(Plugin.TankX.Value) * Screen.width;
-            float cy = Mathf.Clamp01(Plugin.TankY.Value) * Screen.height;
+            // Kept whole on the screen, wherever Hud.TankX/TankY put its middle.
+            float cx = Mathf.Clamp(Mathf.Clamp01(Plugin.TankX.Value) * Screen.width, w * 0.5f, Mathf.Max(w * 0.5f, Screen.width - w * 0.5f));
+            float cy = Mathf.Clamp(Mathf.Clamp01(Plugin.TankY.Value) * Screen.height, h * 0.5f, Mathf.Max(h * 0.5f, Screen.height - h * 0.5f));
             GUI.DrawTexture(new Rect(cx - w * 0.5f, cy - h * 0.5f, w, h), tex, ScaleMode.StretchToFill, true);
         }
     }

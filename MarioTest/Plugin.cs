@@ -93,7 +93,7 @@ namespace MarioTest
         internal static ConfigEntry<bool> WetSlideGlide;
         internal static ConfigEntry<bool> ShallowWetSlide;
         internal static ConfigEntry<bool> ShowLife, HideHealthBar, LockMarker, LockMarkerHealth;
-        internal static ConfigEntry<bool> ShowCoins, ShowScreenEffects, LunarCoinSecret;
+        internal static ConfigEntry<bool> ShowCoins, ShowScreenEffects, LunarCoinSecret, LunarCoinBlue;
         internal static ConfigEntry<bool> ShineEnabled, ShineCameraOn;
         internal static ConfigEntry<float> ShineHeight, ShineTouchRadius, ShineSeconds;
         internal static ConfigEntry<float> CoinX, CoinY, CoinScale, LivesScale, ScreenSpeed, TooBadDrop;
@@ -203,6 +203,9 @@ namespace MarioTest
             LunarCoinSecret = Config.Bind("Hud", "LunarCoinSecret", true,
                 "A lunar coin plays Sunshine's \"puzzle solved\" chime (MSD_SE_SY_PROBLEM_SOLVED). Off: the blue " +
                 "coin's own jingle (MSD_SE_SY_BLUE_COIN_GET), which sounds like a save.");
+            LunarCoinBlue = Config.Bind("Hud", "LunarCoinBlueCoin", true,
+                "Lunar coins lying in the world show as Sunshine's spinning blue coin (for you alone) instead of RoR2's " +
+                "lunar coin model.");
             ShineEnabled = Config.Bind("Shine", "Enabled", true,
                 "When a teleporter has charged (its boss dead), a Shine Sprite from your Sunshine disc appears above " +
                 "its middle, for you alone. Touching it (walking or jumping into it) is Sunshine's Shine Get: Mario's " +
@@ -437,6 +440,7 @@ namespace MarioTest
             gameObject.AddComponent<MarioCoins>();
             gameObject.AddComponent<MarioScreenFx>();
             gameObject.AddComponent<MarioShine>();
+            gameObject.AddComponent<MarioLunarCoin>();
             MarioNet.Register();
             // The HUD's skill icons name the buttons Mario's sim reads (MarioPad), not RoR2's binds.
             GlyphOverride.Install();

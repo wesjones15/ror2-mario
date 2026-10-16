@@ -13,7 +13,7 @@ namespace MarioTest
     // so it goes through HealthComponent.Heal and normal healing-item rules.
     internal sealed class MarioCoins : MonoBehaviour
     {
-        const int Capacity = 128;
+        internal const int Capacity = 128;
         const float Lifetime = 60f, PickupDelay = 0.3f;
         sealed class Coin
         {
@@ -190,7 +190,7 @@ namespace MarioTest
         }
 
         // One shared native bind pose and material cache, many host-owned instances.
-        sealed class CoinSource : IViewSource
+        internal sealed class CoinSource : IViewSource
         {
             readonly SmsViewSource native;
             public readonly ViewDraw[] draws = new ViewDraw[Capacity];

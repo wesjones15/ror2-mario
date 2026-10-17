@@ -59,7 +59,7 @@ namespace MarioTest
         readonly Unstuck unstuck = new Unstuck();
         // How far below him ground still means he is not over a void (a vertical stage's floor can
         // be hundreds of metres down).
-        const float VoidReach = 2000f;
+        const float VoidReach = Unstuck.VoidReach;
         // "TOO BAD!" has started for a fall (it ends with him standing again).
         bool lostShown;
         // Keeps Mario out of walls the sim let him into (ror2-common's WallGuard); strict for a
@@ -646,8 +646,7 @@ namespace MarioTest
         // Far enough below where he last stood, with nothing to land on for a long way: a void.
         bool Lost(Vector3 feet)
         {
-            if (!unstuck.TryGetSafe(out var safe)) return false;
-            return safe.y - feet.y > Plugin.TooBadDrop.Value && !WorldProbe.Ground(feet, VoidReach, out _);
+            return unstuck.Lost(feet, Plugin.TooBadDrop.Value);
         }
 
         // RoR2 killed the body: Sunshine's fall for good (DOWN_LOSER: the "die" clip and the

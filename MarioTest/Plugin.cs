@@ -240,7 +240,7 @@ namespace MarioTest
                 new ConfigDescription("How fast the TOO BAD / GAME OVER screens play against Sunshine's own " +
                     "timing (1 is the game's; they are drawn smoothly between its 30 frames a second).",
                     new AcceptableValueRange<float>(0.25f, 3f)));
-            TooBadDrop = Config.Bind("Hud", "TooBadDrop", 20f,
+            TooBadDrop = Config.Bind("Hud", "TooBadDrop", Unstuck.VoidDrop,
                 new ConfigDescription("Metres below where Mario last stood, with no ground under him for a " +
                     "long way, at which TOO BAD starts and its jingle plays on a fall off the map. He is put " +
                     "back later, when the stage's kill zone (or 150 m) takes him.",

@@ -33,6 +33,10 @@ namespace MarioTest
         static TeamIndex team;
         static readonly Collider[] overlap = new Collider[128];
         static readonly List<HealthComponent> found = new List<HealthComponent>();
+        static readonly HashSet<HealthComponent> seen = new HashSet<HealthComponent>();
+        // Host callbacks within one sms_sim_step see the same Unity collider poses. Movement
+        // and damage run outside that call; invalidate before every owner's step.
+        static readonly Dictionary<HealthComponent, Bounds> cylinders = new Dictionary<HealthComponent, Bounds>();
         // The sim's ids for this step's enemies.
         static readonly Dictionary<uint, HealthComponent> byId = new Dictionary<uint, HealthComponent>();
         // Hits reported during the step, landed after it.
@@ -76,6 +80,7 @@ namespace MarioTest
             items = with;
             team = body && body.teamComponent ? body.teamComponent.teamIndex : TeamIndex.Player;
             byId.Clear();
+            cylinders.Clear();
             blows.Clear();
             water.Clear();
             pounded = false;
@@ -271,6 +276,7 @@ namespace MarioTest
         static List<HealthComponent> Near(Vector3 at, float radius)
         {
             found.Clear();
+            seen.Clear();
             int n = Physics.OverlapSphereNonAlloc(at, radius, overlap, LayerIndex.entityPrecise.mask,
                 QueryTriggerInteraction.Collide);
             for (int i = 0; i < n; i++)
@@ -278,9 +284,10 @@ namespace MarioTest
                 var hb = overlap[i] ? overlap[i].GetComponent<HurtBox>() : null;
                 if (!hb) continue;
                 var hc = hb.healthComponent;
-                if (!hc || !hc.alive || found.Contains(hc)) continue;
+                if (!hc || !hc.alive) continue;
                 if (attacker && hc.body == attacker) continue;
                 if (!TeamManager.IsTeamEnemy(team, hb.teamIndex)) continue;
+                if (!seen.Add(hc)) continue;
                 found.Add(hc);
             }
             return found;
@@ -310,6 +317,7 @@ namespace MarioTest
         /// The box around all of a character's active hurt boxes.
         static bool Cylinder(HealthComponent hc, out Bounds bounds)
         {
+            if (cylinders.TryGetValue(hc, out bounds)) return true;
             bounds = default;
             bool any = false;
             var group = hc.body ? hc.body.hurtBoxGroup : null;
@@ -323,6 +331,7 @@ namespace MarioTest
                     any = true;
                 }
             }
+            if (any) cylinders[hc] = bounds;
             return any;
         }
     }

@@ -59,8 +59,8 @@ namespace MarioTest
 
         static void OnClient(NetworkConnection from, ByteReader reader)
         {
-            var frames = new List<Frame>();
-            var status = FrameCodec.ReadBatch(reader, out uint netId, out bool clone, frames, out byte theirs);
+            using var timing = MarioPerformance.Measure(MarioPerformance.Part.Receive);
+            var status = FrameCodec.ReadHeader(reader, out uint netId, out bool clone, out int count, out byte theirs);
             if (status != FrameCodec.BatchStatus.Ok)
             {
                 if (status != FrameCodec.BatchStatus.Corrupt && !warned)
@@ -76,6 +76,8 @@ namespace MarioTest
             var go = Mp.Find(netId);
             var body = go ? go.GetComponent<CharacterBody>() : null;
             if (body && body.hasEffectiveAuthority) return;
+            var frames = new List<Frame>(count);
+            if (FrameCodec.ReadFrames(reader, count, frames) != FrameCodec.BatchStatus.Ok) return;
             if (!queues.TryGetValue(netId, out var queue))
                 queues[netId] = queue = new FrameQueue();
             queue.Clone = clone;
@@ -289,7 +291,11 @@ namespace MarioTest
         public static void Send(FrameRecorder recorder, uint netId, bool clone)
         {
             var payload = recorder.Take(netId, clone);
-            if (payload != null) Mp.SendToServer(FramesMsg, payload);
+            if (payload != null)
+            {
+                MarioPerformance.Sent(payload.Length);
+                Mp.SendToServer(FramesMsg, payload);
+            }
         }
     }
 }

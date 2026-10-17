@@ -200,6 +200,7 @@ namespace MarioTest
             }
             // Wait through pod setup; CanDrive stays false while Mario occupies it.
             if (spawnAge > 1f && Local) SpawnMusic.PlayOnce(body);
+            using var timing = MarioPerformance.Measure(MarioPerformance.Part.Driver);
             BeginRecording();
             if (motor.Motor.enabled)
                 motor.Motor.enabled = false;

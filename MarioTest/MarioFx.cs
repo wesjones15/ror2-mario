@@ -21,6 +21,7 @@ namespace MarioTest
         readonly List<Color> colors = new List<Color>();
         readonly List<int> tris = new List<int>();
         readonly List<Material> shown = new List<Material>();
+        Material[] assigned = Array.Empty<Material>();
         readonly Dictionary<long, Material> materials = new Dictionary<long, Material>();
         Texture2D[] textures = new Texture2D[0];
         Texture2D[] refractionMasks = new Texture2D[0];
@@ -232,7 +233,14 @@ namespace MarioTest
             mesh.subMeshCount = shown.Count;
             if (shown.Count == 0) { Hide(); return; }
             mesh.RecalculateBounds();
-            renderer.sharedMaterials = shown.ToArray();
+            bool changed = assigned.Length != shown.Count;
+            if (changed) assigned = new Material[shown.Count];
+            for (int i = 0; i < shown.Count; i++)
+            {
+                changed |= assigned[i] != shown[i];
+                assigned[i] = shown[i];
+            }
+            if (changed) renderer.sharedMaterials = assigned;
             if (!go.activeSelf) go.SetActive(true);
         }
 

@@ -24,6 +24,7 @@ namespace MarioTest
         }
 
         readonly Coin[] coins = new Coin[Capacity];
+        readonly System.Collections.Generic.List<CharacterBody> collectors = new System.Collections.Generic.List<CharacterBody>();
         readonly System.Collections.Generic.HashSet<int> rewarded = new System.Collections.Generic.HashSet<int>();
         CoinSource source;
         ModelView models;
@@ -61,6 +62,7 @@ namespace MarioTest
             Array.Clear(coins, 0, coins.Length);
             rewarded.Clear();
             next = 0;
+            collectors.Clear();
             models?.Dispose();
             models = null;
             if (source != null) source.count = 0;
@@ -121,8 +123,10 @@ namespace MarioTest
         void FixedUpdate()
         {
             if (!Run.instance || PauseManager.isPaused) return;
+            using var timing = MarioPerformance.Measure(MarioPerformance.Part.Coins);
             float dt = Time.fixedDeltaTime;
             float unit = UnityHost.Scale;
+            bool gathered = false;
             for (int i = 0; i < coins.Length; i++)
             {
                 var coin = coins[i];
@@ -146,12 +150,19 @@ namespace MarioTest
                 }
                 // Only the server picks coins up; the others just let them fall and spin.
                 if (coin.age < PickupDelay || !NetworkServer.active) continue;
-                foreach (var body in CharacterBody.readOnlyInstancesList)
+                if (!gathered)
+                {
+                    gathered = true;
+                    collectors.Clear();
+                    // Preserve CharacterBody order (including AI/cloned Marios), but scan the
+                    // stage once, instead of once per coin. No scan on clients or without coins.
+                    foreach (var candidate in CharacterBody.readOnlyInstancesList)
+                        if (candidate && candidate.GetComponent<MarioDriver>()) collectors.Add(candidate);
+                }
+                foreach (var body in collectors)
                 {
                     if (!body || !body.healthComponent || !body.healthComponent.alive || !body.teamComponent
-                        || body.teamComponent.teamIndex != coin.team) continue;
-                    var mario = body.GetComponent<MarioDriver>();
-                    if (!mario) continue;
+                        || body.teamComponent.teamIndex != coin.team || !body.GetComponent<MarioDriver>()) continue;
                     var feet = body.footPosition;
                     var delta = coin.pos - feet;
                     // coin_hit_data_table: radius 70, height 100; Mario's cylinder adds 50/160.
@@ -190,7 +201,8 @@ namespace MarioTest
         }
 
         // One shared native bind pose and material cache, many host-owned instances.
-        internal sealed class CoinSource : IViewSource
+        // The native coin view is never stepped: every coin reuses its bind geometry.
+        internal sealed class CoinSource : IViewSource, IStaticGeometrySource
         {
             readonly SmsViewSource native;
             public readonly ViewDraw[] draws = new ViewDraw[Capacity];

@@ -278,8 +278,8 @@ before the boss fight is kept (the exit controller already has its destination),
 the moon, where the Celestial Portal stands beside the teleporter, the Shine takes the moon, not the loop.
 The other portals are never taken. A client's Mario asks the server to finish the teleporter
 (`MarioNet.ShineMsg`); the other players' puppets show him in the pose. The Shine and the camera path are extra
-files fetched from the disc with the wipe pictures (`Paths.Disc`). A lunar coin plays Sunshine's "puzzle solved" chime
-(`Hud.LunarCoinSecret`; off for the blue coin's own jingle).
+files fetched from the disc with the wipe pictures (`Paths.Disc`). A lunar coin plays Sunshine's actual blue-coin
+pickup sound (`MSD_SE_SY_BLUE_COIN_GET`; `SpawnMusic.Cues` controls playback).
 
 Sunshine's life meter (`Hud.LifeMeter`) shows Mario's health in place of RoR2's health bar: the
 Shine Sprite sun from the disc, a hub and rays in a ring of eight, lit in whole rays by his health as

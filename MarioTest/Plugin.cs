@@ -32,6 +32,7 @@ namespace MarioTest
         internal static bool AssetsReady => !assetsBusy && assetsReady;
         internal static ConfigEntry<bool> LogStatus;
         internal static ConfigEntry<bool> TraceJumps;
+        internal static ConfigEntry<bool> PerformanceLog;
         internal static ConfigEntry<bool> DrawModel;
         internal static ConfigEntry<bool> Sound;
         internal static ConfigEntry<float> SoundVolume;
@@ -93,7 +94,7 @@ namespace MarioTest
         internal static ConfigEntry<bool> WetSlideGlide;
         internal static ConfigEntry<bool> ShallowWetSlide;
         internal static ConfigEntry<bool> ShowLife, HideHealthBar, LockMarker, LockMarkerHealth, SunshineLayout;
-        internal static ConfigEntry<bool> ShowCoins, ShowScreenEffects, LunarCoinSecret, LunarCoinBlue;
+        internal static ConfigEntry<bool> ShowCoins, ShowScreenEffects, LunarCoinBlue;
         internal static ConfigEntry<bool> ShineEnabled, ShineCameraOn;
         internal static ConfigEntry<float> ShineHeight, ShineTouchRadius, ShineSeconds;
         internal static ConfigEntry<float> CoinX, CoinY, CoinScale, LivesScale, ScreenSpeed, TooBadDrop;
@@ -213,9 +214,6 @@ namespace MarioTest
                 "Show Sunshine's coin counters (from the disc) for RoR2's gold (the yellow coin) and lunar coins " +
                 "(the blue coin), and hide RoR2's own while they show. A lunar coin also plays Sunshine's " +
                 "blue coin jingle.");
-            LunarCoinSecret = Config.Bind("Hud", "LunarCoinSecret", true,
-                "A lunar coin plays Sunshine's \"puzzle solved\" chime (MSD_SE_SY_PROBLEM_SOLVED). Off: the blue " +
-                "coin's own jingle (MSD_SE_SY_BLUE_COIN_GET), which sounds like a save.");
             LunarCoinBlue = Config.Bind("Hud", "LunarCoinBlueCoin", true,
                 "Lunar coins lying in the world show as Sunshine's spinning blue coin (for you alone) instead of RoR2's " +
                 "lunar coin model.");
@@ -438,6 +436,9 @@ namespace MarioTest
                 "RoR2 can throw Mario: jump pads, geysers, knockback, Milky Chrysalis.");
             CrowdControl = Config.Bind("Sim", "CrowdControl", true,
                 "Stuns, freezes and shocks stop Mario's controls; roots stop him moving.");
+            PerformanceLog = Config.Bind("Debug", "PerformanceLog", false,
+                "Every ten seconds during a run, log frame times and Mario's CPU timings, movement packet volume, " +
+                "replay backlog and drift corrections. For comparing host/client performance; does not measure GPU time.");
             TraceJumps = Config.Bind("Debug", "TraceJumps", false,
                 "For a moment after each jump, log every rendered frame: frame time, physics steps, " +
                 "where Mario and the camera are, and Mario's height on screen.");
@@ -592,6 +593,7 @@ namespace MarioTest
 
         void Update()
         {
+            MarioPerformance.Report();
             if (musicInitialized || !AssetsSettled) return;
             musicInitialized = true;
             // Main thread: bind config and load the worker's finished PCM for RoR2 playback.

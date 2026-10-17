@@ -75,6 +75,18 @@ static class Program
         Check(status == FrameCodec.BatchStatus.Ok && id == 77 && clone && frames.Count == 4, "batch header");
         Check(frames[0].seq == 0 && frames[3].seq == 3 && frames[2].pos.x == 12f, "seq and position");
 
+        // The owner can reject an echo after the fixed-size header, without decoding any ops.
+        var header = new ByteReader(bytes);
+        Check(FrameCodec.ReadHeader(header, out uint headerId, out bool headerClone, out int count, out _) == FrameCodec.BatchStatus.Ok
+            && headerId == 77 && headerClone && count == 4 && header.Remaining == bytes.Length - 8, "header only");
+        var splitFrames = new List<Frame>();
+        Check(FrameCodec.ReadFrames(header, count, splitFrames) == FrameCodec.BatchStatus.Ok && header.Done
+            && splitFrames.Count == frames.Count, "split decoding consumes the same packet");
+        for (int i = 0; i < frames.Count; i++)
+            Check(splitFrames[i].seq == frames[i].seq && Convert.ToBase64String(splitFrames[i].ops) == Convert.ToBase64String(frames[i].ops), "split ops preserved");
+        for (int cut = 0; cut < 8; cut++)
+            Check(FrameCodec.ReadHeader(new ByteReader(bytes, 0, cut), out _, out _, out _, out _) == FrameCodec.BatchStatus.Corrupt, "short header");
+
         var log = new Log();
         Check(FrameCodec.Replay(frames[0], log), "replay frame 0");
         string[] expect0 =
@@ -127,6 +139,30 @@ static class Program
         Check(gap.TryTake(out _), "first");
         for (uint s = 2; s < 40; s++) gap.Add(new Frame { seq = s, ops = new byte[0] });
         Check(gap.TryTake(out var after) && after.seq == 2, "a gap that stays is skipped");
+
+        // A stalled spectator must retain every ordered op, while bounding work per update.
+        Check(FrameQueue.PlaybackSteps(3) == 1 && FrameQueue.PlaybackSteps(8) == 1
+            && FrameQueue.PlaybackSteps(9) == 2 && FrameQueue.PlaybackSteps(30) == 2, "normal playback unchanged");
+        var stalled = new FrameQueue();
+        for (uint s = 0; s < 600; s++) stalled.Add(new Frame { seq = s, ops = frames[0].ops });
+        uint expected = 0;
+        int updates = 0;
+        while (stalled.Count > 0)
+        {
+            int budget = FrameQueue.PlaybackSteps(stalled.Count);
+            Check(budget > 0 && budget <= FrameQueue.MaxStepsPerUpdate, "bounded catch-up");
+            for (int i = 0; i < budget && stalled.TryTake(out var next); i++)
+            {
+                Check(next.seq == expected++, "catch-up keeps every frame in order");
+                log.calls.Clear();
+                Check(FrameCodec.Replay(next, log) && log.calls.Count == expect0.Length, "catch-up keeps every op");
+            }
+            updates++;
+        }
+        Check(expected == 600 && updates >= 150, "600-step burst spread over updates");
+        stalled.Clear();
+        stalled.Add(new Frame { seq = 0, ops = Array.Empty<byte>() });
+        Check(stalled.TryTake(out var restarted) && restarted.seq == 0, "cleared queue can restart sequence");
         Console.WriteLine("NetCheck: ok");
     }
 }

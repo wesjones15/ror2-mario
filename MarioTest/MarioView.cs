@@ -122,6 +122,7 @@ namespace MarioTest
         public void Update(IntPtr sim, float lag)
         {
             if (view == IntPtr.Zero || sim == IntPtr.Zero) return;
+            using var timing = MarioPerformance.Measure(MarioPerformance.Part.View);
             var frame = new Native.ViewFrame
             {
                 dt = Time.deltaTime,
@@ -150,6 +151,7 @@ namespace MarioTest
         public void Effects(Vector3 feet)
         {
             if (fx == null || view == IntPtr.Zero) return;
+            using var timing = MarioPerformance.Measure(MarioPerformance.Part.Effects);
             var offset = Vector3.zero;
             if (Native.sms_view_draws(view, firstDraw, 1) > 0)
             {
@@ -162,6 +164,7 @@ namespace MarioTest
         /// Poses the models at `feet` (after Update).
         public void Draw(Vector3 feet)
         {
+            using var timing = MarioPerformance.Measure(MarioPerformance.Part.Models);
             models?.Update(UnityHost.Scale, d => (feet, new Quaternion(d.rot_x, d.rot_y, d.rot_z, d.rot_w)));
         }
 

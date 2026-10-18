@@ -19,7 +19,7 @@ namespace MarioTest
     internal sealed class MarioPuppet : MonoBehaviour, IFrameSink
     {
         // Frames to hold before starting, and the backlog that makes playback hurry.
-        const int Prebuffer = 3, Hurry = 8, Skip = 30;
+        const int Prebuffer = FrameQueue.Prebuffer;
         // How far (sim units, about 1 cm) the shadow sim may drift before it is put back.
         const float Drift = 30f;
 
@@ -99,7 +99,9 @@ namespace MarioTest
                 playing = false;
                 return;
             }
-            int steps = waiting > Skip ? waiting - Prebuffer : waiting > Hurry ? 2 : 1;
+            using var timing = MarioPerformance.Measure(MarioPerformance.Part.Replay);
+            MarioPerformance.Backlog(waiting);
+            int steps = FrameQueue.PlaybackSteps(waiting);
             for (int i = 0; i < steps && queue.TryTake(out var frame); i++)
                 Play(frame);
         }
@@ -139,11 +141,12 @@ namespace MarioTest
             var d = new Vector3(state.pos.x - frame.pos.x, state.pos.y - frame.pos.y, state.pos.z - frame.pos.z);
             if (d.sqrMagnitude > Drift * Drift)
             {
+                MarioPerformance.Corrected();
                 var at = frame.pos;
                 Native.sms_sim_teleport(sim, ref at);
                 Native.sms_sim_state(sim, out state);
-                smoother.Reset();
                 if (anchor) anchor.transform.position = UnityHost.ToUnity(state.pos);
+                smoother.Reset();
             }
             smoother.Stepped(UnityHost.ToUnity(state.pos));
         }

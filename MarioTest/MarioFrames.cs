@@ -136,8 +136,17 @@ namespace MarioTest
 
         public static BatchStatus ReadBatch(ByteReader r, out uint netId, out bool clone, List<Frame> frames, out byte theirs)
         {
+            var status = ReadHeader(r, out netId, out clone, out int count, out theirs);
+            return status == BatchStatus.Ok ? ReadFrames(r, count, frames) : status;
+        }
+
+        // Inspect the owner before allocating frames: the relay echoes our own movement too.
+        // Kept separate from the body decoder without changing the wire format.
+        public static BatchStatus ReadHeader(ByteReader r, out uint netId, out bool clone, out int count, out byte theirs)
+        {
             netId = 0;
             clone = false;
+            count = 0;
             theirs = r.U8();
             byte abi = r.U8();
             if (r.Failed) return BatchStatus.Corrupt;
@@ -145,8 +154,13 @@ namespace MarioTest
             if (abi != (byte)Native.AbiVersion) { theirs = abi; return BatchStatus.WrongAbi; }
             netId = r.U32();
             clone = (r.U8() & 1) != 0;
-            int count = r.U8();
+            count = r.U8();
             if (r.Failed) return BatchStatus.Corrupt;
+            return BatchStatus.Ok;
+        }
+
+        public static BatchStatus ReadFrames(ByteReader r, int count, List<Frame> frames)
+        {
             for (int i = 0; i < count; i++)
             {
                 var f = new Frame { seq = r.U32() };
@@ -238,6 +252,14 @@ namespace MarioTest
     /// The other side: frames in sequence order, however they arrived.
     internal sealed class FrameQueue
     {
+        internal const int Prebuffer = 3;
+        internal const int MaxStepsPerUpdate = 4;
+
+        // Replay every op, but bound catch-up work after a network/render stall. Previously
+        // a full queue could execute 597 physics steps in one FixedUpdate.
+        internal static int PlaybackSteps(int waiting) => waiting > 30
+            ? Math.Min(waiting - Prebuffer, MaxStepsPerUpdate) : waiting > 8 ? 2 : 1;
+
         readonly SortedDictionary<uint, Frame> waiting = new SortedDictionary<uint, Frame>();
         uint next;
         bool started;
@@ -284,6 +306,11 @@ namespace MarioTest
             return false;
         }
 
-        public void Clear() => waiting.Clear();
+        public void Clear()
+        {
+            waiting.Clear();
+            started = false;
+            next = 0;
+        }
     }
 }

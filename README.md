@@ -108,9 +108,10 @@ target, and turning the setting off gives Sunshine's: the way Mario faces.
 
 With `Hud.SunshineLayout` (on) the HUD is arranged like Sunshine's while you play Mario, without hiding
 anything RoR2 needs: the life meter (the Shine Sprite sun) is in the top right, RoR2's health bar is gone and
-its numbers (n/m) sit at the meter's lower right, FLUDD's tank is in the bottom right, RoR2's cooldowns
-move to the bottom middle, and what RoR2 keeps in the top right (your items) moves to the bottom left above
-the buffs, level and experience bar. RoR2's gold and lunar coin counters stay in the top left, with Sunshine's
+its numbers (n/m) use RoR2's damage font at half their former size beneath the doubled life meter.
+Difficulty, timer and stage sit below health. FLUDD's tank hugs the bottom-right corner with a small
+margin, RoR2's cooldowns move to the bottom middle, and items remain at top middle.
+RoR2's gold and lunar coin counters stay in the top left, with Sunshine's
 coin counters on them. The moves are measured on the screen and put back when Mario isn't your body
 (`MarioHudLayout`); the log says what was measured. Off: RoR2's places, the meter over the health bar's left end.
 
@@ -261,7 +262,7 @@ before the wipe pictures existed gets them when the disc is found (`Paths.Disc`)
 
 Sunshine's coin counters (`Hud.CoinCounters`) replace RoR2's gold and lunar coin counters: the yellow coin shows
 RoR2's gold and the blue coin the lunar coins (once there is one), drawn from the disc's coin icon and digit
-pictures like the game's HUD (more digits than its three: up to seven). Each sits where the counter it replaces
+pictures and green paint backplates like the game's HUD (more digits than its three: up to seven). Each sits where the counter it replaces
 was, or where `Hud.CoinX`/`CoinY` say, `Hud.CoinScale` big. Each yellow coin Mario picks up (the ones his kills
 drop) is also worth `Coins.Gold` (1) RoR2 gold. The 3D lunar coins in the world are unchanged.
 
@@ -285,8 +286,8 @@ Sunshine's life meter (`Hud.LifeMeter`) shows Mario's health in place of RoR2's 
 Shine Sprite sun from the disc, a hub and rays in a ring of eight, lit in whole rays by his health as
 a share of his full health and shield (RoR2's own values are untouched), the shield's rays after them
 in the cyan of Sunshine's air meter. The hub dims to grey under half, as in the game. RoR2's bars
-hide, its numbers stay (`Hud.HideHealthBar`); the meter sits over the left of RoR2's health bar,
-or where `Hud.LifeX`/`LifeY` say, `Hud.LifeScale` big.
+hide, with smaller damage-font numbers below the sun (`Hud.HideHealthBar`); the meter sits at top right
+with `Hud.SunshineLayout`, or where `Hud.LifeX`/`LifeY` say, `Hud.LifeScale` big.
 
 While locked on (`Controls.LockOn`), the same sun, alone and with its empty top filled to ten rays,
 turns on the enemy (`Look.LockMarker`): ror2-common's `LockMarker` puts it where Olimar's cursor

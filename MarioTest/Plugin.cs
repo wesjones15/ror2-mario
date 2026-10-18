@@ -178,22 +178,23 @@ namespace MarioTest
                 "D-pad down fills FLUDD's tank, for stages without water to stand in.");
             SunshineLayout = Config.Bind("Hud", "SunshineLayout", true,
                 "Arrange the HUD like Sunshine's while you play Mario: the life meter in the top right (RoR2's " +
-                "health bar gone, its numbers beside the meter), FLUDD's tank in the bottom right, RoR2's cooldowns " +
-                "moved to the bottom middle, and what RoR2 keeps in the top right (your items) in the bottom left, " +
-                "above the buffs and experience bar. Nothing RoR2 needs is hidden. False: RoR2's own places, and " +
+                "health bar gone, smaller damage-font numbers below the meter), difficulty below health, " +
+                "FLUDD's tank in the bottom right, RoR2's cooldowns moved to the bottom middle, " +
+                "and items kept at top middle. Nothing RoR2 needs is hidden. False: RoR2's own places, and " +
                 "the meter and tank where LifeX/LifeY and TankX/TankY put them.");
             ShowTank = Config.Bind("Hud", "WaterTank", true,
                 "Show Sunshine's water tank gauge (from the disc) while Mario has FLUDD.");
-            TankX = Config.Bind("Hud", "TankX", 0.93f,
-                "Where the tank's middle is across the screen, 0 left to 1 right.");
-            TankY = Config.Bind("Hud", "TankY", 0.78f,
+            TankX = Config.Bind("Hud", "TankX", -1f,
+                "Where the tank's middle is across the screen, 0 left to 1 right. Negative: right edge with a small margin.");
+            TankY = Config.Bind("Hud", "TankY", -1f,
                 "Where the tank's middle is down the screen, 0 top to 1 bottom (Sunshine has it in " +
-                "the bottom right, where RoR2 puts its cooldowns unless Hud.SunshineLayout moves them).");
-            // The tank's old default (0.95, 0.6, up the right side); configs keep what they were written with.
-            if (Mathf.Approximately(TankX.Value, 0.95f) && Mathf.Approximately(TankY.Value, 0.6f))
+                "the bottom right). Negative: bottom edge with a small margin.");
+            // Upgrade the two former default positions to the lower-right corner; retain custom positions.
+            if ((Mathf.Approximately(TankX.Value, 0.95f) && Mathf.Approximately(TankY.Value, 0.6f))
+                || (Mathf.Approximately(TankX.Value, 0.93f) && Mathf.Approximately(TankY.Value, 0.78f)))
             {
-                TankX.Value = 0.93f;
-                TankY.Value = 0.78f;
+                TankX.Value = -1f;
+                TankY.Value = -1f;
             }
             TankScale = Config.Bind("Hud", "TankScale", 0.8f,
                 "The tank's size; 1 is Sunshine's against the screen's height.");
@@ -201,7 +202,7 @@ namespace MarioTest
                 "Show Sunshine's life meter (the Shine Sprite sun, from the disc) for Mario's health: " +
                 "whole rays of eight, the shield's after them in cyan. RoR2's own values are unchanged.");
             HideHealthBar = Config.Bind("Hud", "HideHealthBar", true,
-                "Hide RoR2's health bar while the life meter shows (its numbers are drawn beside the meter instead).");
+                "Hide RoR2's health bar while the life meter shows (its numbers are drawn below the meter instead).");
             LifeX = Config.Bind("Hud", "LifeX", -1f,
                 "Where the life meter's middle is across the screen, 0 left to 1 right. Negative: the top right " +
                 "(Sunshine's), or over the left end of RoR2's health bar with Hud.SunshineLayout off.");
@@ -209,7 +210,7 @@ namespace MarioTest
                 "Where the life meter's middle is down the screen, 0 top to 1 bottom. Negative: the top right " +
                 "(Sunshine's), or at RoR2's health bar with Hud.SunshineLayout off.");
             LifeScale = Config.Bind("Hud", "LifeScale", 0.45f,
-                "The life meter's size; 1 is Sunshine's against the screen's height.");
+                "The life meter's size multiplier (drawn twice as large as the previous HUD).");
             ShowCoins = Config.Bind("Hud", "CoinCounters", true,
                 "Show Sunshine's coin counters (from the disc) for RoR2's gold (the yellow coin) and lunar coins " +
                 "(the blue coin), and hide RoR2's own while they show. A lunar coin also plays Sunshine's " +

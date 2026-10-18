@@ -8,9 +8,8 @@ namespace MarioTest
     // Sunshine's HUD, with RoR2's own pieces moved to make room (Hud.SunshineLayout), while Mario is
     // the local player's body:
     //  - the life meter (the Shine Sprite sun) is in the top right, and RoR2's health bar is gone, its
-    //    numbers drawn beside the meter (MarioLife);
-    //  - what RoR2 keeps in the top right (the item inventory) moves to the bottom left, above the buffs,
-    //    level and experience bar, which stay where they are;
+    //    numbers drawn beneath the meter (MarioLife);
+    //  - items keep RoR2's top-middle position; difficulty, timer and stage move beneath health;
     //  - the skill and equipment icons (the cooldowns) move from the bottom right to the bottom middle;
     //  - FLUDD's tank gauge takes the bottom right (MarioHud).
     // RoR2's coin counters (top left) keep their place, and Sunshine's coin counters follow them. Nothing
@@ -143,26 +142,28 @@ namespace MarioTest
                     Plugin.Log.LogInfo($"Sunshine HUD layout: cooldowns measured at {bar}");
             }
 
-            // The top right's items: bottom left, above the buffs, level and experience bar.
-            var items = ClusterOf(hud.itemInventoryDisplay);
-            var lowerLeft = new List<Component>();
-            if (hud.buffDisplay) lowerLeft.Add(hud.buffDisplay);
-            if (hud.expBar) lowerLeft.Add(hud.expBar);
-            if (hud.levelText) lowerLeft.Add(hud.levelText);
-            if (items && Measure(hud, new Component[] { hud.itemInventoryDisplay }, out var inventory)
-                && Measure(hud, lowerLeft, out var ground))
+            // The game-mode panel owns the difficulty bar, timer, stage and objectives. Move its
+            // visible header as one unit; do not move TopCenterCluster (items and the boss bar).
+            var difficulty = hud.GetComponentInChildren<DifficultyBarController>(true);
+            var panel = difficulty ? difficulty.transform.parent as RectTransform : null;
+            if (panel && MarioLife.TryBounds(out var life))
             {
-                // Its left edge on theirs, its bottom edge a little above their top.
-                Shift(hud, items, ground.xMin - inventory.xMin, ground.yMax + margin * 0.25f - inventory.yMin);
-                if (!logged)
-                    Plugin.Log.LogInfo($"Sunshine HUD layout: inventory measured at {inventory}, buffs/level/experience at {ground}");
+                var header = new List<Component>();
+                // Measuring the direct children avoids the scrolling bar's offscreen segments,
+                // and avoids the panel's own stretched rect, which includes empty space.
+                foreach (Transform child in panel)
+                    if (child.gameObject.activeInHierarchy && child.name != "RightInfoBar"
+                        && child.name != "DifficultyTutorial") header.Add(child);
+                if (Measure(hud, header, out var bounds))
+                    Shift(hud, panel, w - margin - bounds.xMax,
+                        h - life.yMax - margin * 0.5f - bounds.yMax);
             }
 
-            if (!logged && (skills || items))
+            if (!logged && skills)
             {
                 logged = true;
                 Plugin.Log.LogInfo($"Sunshine HUD layout: cooldowns {(skills ? skills.name : "not found")} to the middle, " +
-                    $"items {(items ? items.name : "not found")} to the bottom left");
+                    "items at top middle, difficulty beneath life");
             }
         }
     }

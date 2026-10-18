@@ -62,7 +62,7 @@ namespace MarioTest
         internal static ConfigEntry<float> WaterDamage;
         internal static ConfigEntry<bool> FallDamageEnabled;
         internal static ConfigEntry<float> FallSafeHeight, DiveSafeHeight, FallPerHeight, DiveFallMultiplier;
-        internal static ConfigEntry<float> BurstMultiplier;
+        internal static ConfigEntry<float> BurstMultiplier, SpinSprayMultiplier;
         internal static ConfigEntry<float> WaterProc;
         internal static ConfigEntry<bool> UnlimitedWater;
         internal static ConfigEntry<bool> DpadRefill;
@@ -87,13 +87,13 @@ namespace MarioTest
         internal static ConfigEntry<float> QuailScale;
         internal static ConfigEntry<bool> ExternalForces;
         internal static ConfigEntry<bool> CrowdControl;
-        internal static ConfigEntry<bool> CameraAim, LockOn;
+        internal static ConfigEntry<bool> CameraAim, LockOn, AimAtCrosshair;
         internal static ConfigEntry<bool> SprayBursts;
         internal static ConfigEntry<float> TriggerCurve;
         internal static ConfigEntry<float> LightTapSeconds;
         internal static ConfigEntry<bool> WetSlideGlide;
         internal static ConfigEntry<bool> ShallowWetSlide;
-        internal static ConfigEntry<bool> ShowLife, HideHealthBar, LockMarker, LockMarkerHealth;
+        internal static ConfigEntry<bool> ShowLife, HideHealthBar, LockMarker, LockMarkerHealth, SunshineLayout;
         internal static ConfigEntry<bool> ShowCoins, ShowScreenEffects, LunarCoinBlue;
         internal static ConfigEntry<bool> ShineEnabled, ShineCameraOn;
         internal static ConfigEntry<float> ShineHeight, ShineTouchRadius, ShineSeconds;
@@ -176,27 +176,41 @@ namespace MarioTest
                 "back up when you hold spray standing in water, and on each new stage.");
             DpadRefill = Config.Bind("Fludd", "DpadRefill", true,
                 "D-pad down fills FLUDD's tank, for stages without water to stand in.");
+            SunshineLayout = Config.Bind("Hud", "SunshineLayout", true,
+                "Arrange the HUD like Sunshine's while you play Mario: the life meter in the top right (RoR2's " +
+                "health bar gone, smaller damage-font numbers below the meter), difficulty below health, " +
+                "FLUDD's tank in the bottom right, RoR2's cooldowns moved to the bottom middle, " +
+                "and items kept at top middle. Nothing RoR2 needs is hidden. False: RoR2's own places, and " +
+                "the meter and tank where LifeX/LifeY and TankX/TankY put them.");
             ShowTank = Config.Bind("Hud", "WaterTank", true,
                 "Show Sunshine's water tank gauge (from the disc) while Mario has FLUDD.");
-            TankX = Config.Bind("Hud", "TankX", 0.95f,
-                "Where the tank's middle is across the screen, 0 left to 1 right.");
-            TankY = Config.Bind("Hud", "TankY", 0.6f,
+            TankX = Config.Bind("Hud", "TankX", -1f,
+                "Where the tank's middle is across the screen, 0 left to 1 right. Negative: right edge with a small margin.");
+            TankY = Config.Bind("Hud", "TankY", -1f,
                 "Where the tank's middle is down the screen, 0 top to 1 bottom (Sunshine has it in " +
-                "the bottom right, where RoR2 puts its skills).");
+                "the bottom right). Negative: bottom edge with a small margin.");
+            // Upgrade the two former default positions to the lower-right corner; retain custom positions.
+            if ((Mathf.Approximately(TankX.Value, 0.95f) && Mathf.Approximately(TankY.Value, 0.6f))
+                || (Mathf.Approximately(TankX.Value, 0.93f) && Mathf.Approximately(TankY.Value, 0.78f)))
+            {
+                TankX.Value = -1f;
+                TankY.Value = -1f;
+            }
             TankScale = Config.Bind("Hud", "TankScale", 0.8f,
                 "The tank's size; 1 is Sunshine's against the screen's height.");
             ShowLife = Config.Bind("Hud", "LifeMeter", true,
                 "Show Sunshine's life meter (the Shine Sprite sun, from the disc) for Mario's health: " +
                 "whole rays of eight, the shield's after them in cyan. RoR2's own values are unchanged.");
             HideHealthBar = Config.Bind("Hud", "HideHealthBar", true,
-                "Hide RoR2's health bar (its numbers stay) while the life meter shows.");
+                "Hide RoR2's health bar while the life meter shows (its numbers are drawn below the meter instead).");
             LifeX = Config.Bind("Hud", "LifeX", -1f,
-                "Where the life meter's middle is across the screen, 0 left to 1 right. Negative: over the " +
-                "left end of RoR2's health bar.");
+                "Where the life meter's middle is across the screen, 0 left to 1 right. Negative: the top right " +
+                "(Sunshine's), or over the left end of RoR2's health bar with Hud.SunshineLayout off.");
             LifeY = Config.Bind("Hud", "LifeY", -1f,
-                "Where the life meter's middle is down the screen, 0 top to 1 bottom. Negative: at RoR2's health bar.");
+                "Where the life meter's middle is down the screen, 0 top to 1 bottom. Negative: the top right " +
+                "(Sunshine's), or at RoR2's health bar with Hud.SunshineLayout off.");
             LifeScale = Config.Bind("Hud", "LifeScale", 0.45f,
-                "The life meter's size; 1 is Sunshine's against the screen's height.");
+                "The life meter's size multiplier (drawn twice as large as the previous HUD).");
             ShowCoins = Config.Bind("Hud", "CoinCounters", true,
                 "Show Sunshine's coin counters (from the disc) for RoR2's gold (the yellow coin) and lunar coins " +
                 "(the blue coin), and hide RoR2's own while they show. A lunar coin also plays Sunshine's " +
@@ -227,7 +241,7 @@ namespace MarioTest
                 new ConfigDescription("How fast the TOO BAD / GAME OVER screens play against Sunshine's own " +
                     "timing (1 is the game's; they are drawn smoothly between its 30 frames a second).",
                     new AcceptableValueRange<float>(0.25f, 3f)));
-            TooBadDrop = Config.Bind("Hud", "TooBadDrop", 20f,
+            TooBadDrop = Config.Bind("Hud", "TooBadDrop", Unstuck.VoidDrop,
                 new ConfigDescription("Metres below where Mario last stood, with no ground under him for a " +
                     "long way, at which TOO BAD starts and its jingle plays on a fall off the map. He is put " +
                     "back later, when the stage's kill zone (or 150 m) takes him.",
@@ -276,9 +290,15 @@ namespace MarioTest
                 "sets what it hits on fire.");
             DiveDamage = Config.Bind("Damage", "Dive", 2.5f,
                 "Diving or belly sliding into an enemy.");
-            WaterDamage = Config.Bind("Damage", "WaterPerDrop", 0.035f,
+            WaterDamage = Config.Bind("Damage", "WaterPerDrop", 0.0484f,
                 "Each FLUDD drop that hits (not Sunshine's: its water mostly only stuns). The Spray " +
-                "fires about 93 a second, so 0.035 is about 330% a second on one enemy.");
+                "fires about 93 a second, so 0.0484 is about 450% a second on one enemy. A burst and a spin " +
+                "jump's spray count for more (BurstMultiplier, SpinSprayMultiplier): 667% is Commando's Double Tap " +
+                "(100% a bullet, one every 0.15 s).");
+            // Older defaults (0.035, about 330% a second; 0.0717, a build in between), and a config file
+            // keeps the default it was written with: a player who never changed it gets the new one.
+            if (Mathf.Approximately(WaterDamage.Value, 0.035f) || Mathf.Approximately(WaterDamage.Value, 0.0717f))
+                WaterDamage.Value = 0.0484f;
             FallDamageEnabled = Config.Bind("FallDamage", "Enabled", true,
                 "Take RoR2 fall damage after very long drops. Ground pounds are always safe.");
             FallSafeHeight = Config.Bind("FallDamage", "SafeHeight", 40f,
@@ -289,10 +309,16 @@ namespace MarioTest
                 "Fraction of maximum health per height beyond the safe drop, capped at 0.9 before dive reduction.");
             DiveFallMultiplier = Config.Bind("FallDamage", "DiveMultiplier", 0.5f,
                 "Damage multiplier beyond the dive's safe height (0 to 1).");
-            BurstMultiplier = Config.Bind("Damage", "BurstMultiplier", 3f,
+            BurstMultiplier = Config.Bind("Damage", "BurstMultiplier", 4.92f,
                 "A light press's short burst of the Spray (Fludd.SprayBursts) doesn't last, so each " +
-                "of its drops does this many times WaterPerDrop. A burst is about 28 drops, so 3 is " +
-                "about 290% a burst if it all hits.");
+                "of its drops does this many times WaterPerDrop. A burst is about 28 drops, so 4.92 is " +
+                "about 667% a burst if it all hits (Commando's Double Tap rate).");
+            if (Mathf.Approximately(BurstMultiplier.Value, 3f)) BurstMultiplier.Value = 4.92f;
+            SpinSprayMultiplier = Config.Bind("Damage", "SpinSprayMultiplier", 1.78f,
+                "A spin's spray (a spin jump, or spinning on the ground with a stick circle while spraying; it flies " +
+                "in every direction, so each enemy gets only part of it) does this many times WaterPerDrop a drop: " +
+                "1.78 makes it about 800% a second on one enemy.");
+            if (Mathf.Approximately(SpinSprayMultiplier.Value, 1.48f)) SpinSprayMultiplier.Value = 1.78f;
             WaterProc = Config.Bind("Items", "WaterProcCoefficient", 0.5f,
                 "FLUDD's water procs on-hit items at most once a second on each enemy (every nozzle " +
                 "shares it), at this proc coefficient; the drops in between do damage only.");
@@ -339,10 +365,13 @@ namespace MarioTest
             WetSlideGlide = Config.Bind("Items", "WetSlideGlide", true,
                 "A wet slide keeps its speed as if the stick were held forward (pull back to brake). " +
                 "Off: Sunshine's, where it only carries on while you hold forward.");
-            WetSlideSeconds = Config.Bind("Items", "WetSlideSeconds", 1.5f,
-                "Seconds a slide that starts over wet ground glides before turning plain. No charges " +
-                "or cooldown; cooldown reduction stretches this time and each Lysate Cell adds another " +
-                "base duration. 0: as long as the slide lasts.");
+            WetSlideSeconds = Config.Bind("Items", "WetSlideSeconds", 2f,
+                "A wet slide (one that starts over wet ground or water) glides for as long as the ground under " +
+                "it stays wet or it is in water, and this many seconds past the last wet contact before turning " +
+                "plain. No charges or cooldown; cooldown reduction stretches this time and each Lysate Cell adds " +
+                "another base duration. 0: as long as the slide lasts.");
+            // 1.5 was the default before 0.2.4, and a config keeps the default it was written with.
+            if (Mathf.Approximately(WetSlideSeconds.Value, 1.5f)) WetSlideSeconds.Value = 2f;
             SpraySeconds = Config.Bind("Items", "SpraySeconds", 0f,
                 "A hard cut: seconds the Spray fires before the trigger must be let go (cooldown " +
                 "items stretch it). 0: none (with Fludd.SprayBursts a held press already fades out " +
@@ -378,6 +407,11 @@ namespace MarioTest
                 "Sunshine's L-button camera: while L (the left trigger; the utility key on " +
                 "keyboard) is held, FLUDD points where the camera looks, and Mario crouching turns " +
                 "with the camera (the stick side-steps).");
+            AimAtCrosshair = Config.Bind("Controls", "AimAtCrosshair", true,
+                "The Spray goes where the crosshair points, like every RoR2 survivor's gun, not the way Mario faces: " +
+                "he keeps running where you steer and the nozzle follows the camera while RT is down (a full pull " +
+                "plants him facing it). The other nozzles are unchanged, and a lock-on (LB) still aims at its target. " +
+                "False: the Spray goes the way Mario faces (Sunshine's), or at the camera while L is held.");
             LockOn = Config.Bind("Controls", "LockOn", true,
                 "While the left bumper (the utility key on keyboard) is held, lock onto the enemy " +
                 "nearest where the camera points (within Controls.LockRange, 60 m, in line of sight) and aim FLUDD " +

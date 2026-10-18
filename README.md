@@ -49,7 +49,11 @@ How it works:
 - ror2-common's `NativeBody` does what RoR2's motor would for the items: jump pads, knockback
   and Milky Chrysalis throw Mario, stuns and roots hold him, RoR2's sprint button sprints.
   Jump pads preserve RoR2's complete ballistic trajectory and gravity until collision,
-  bypassing Sunshine's air braking and speed caps so elevated targets remain reachable.
+  bypassing Sunshine's air braking and speed caps so elevated targets remain reachable. A move
+  breaks the flight once it has got going (about a tenth of a second): a dive, a ground pound, the
+  Rocket or Hover, the Turbo held, a spin jump or a mid-air jump. Normal air control and gravity
+  come back, and the pad's sideways speed carries on beside the move, bleeding off over a couple
+  of seconds (`pad_carry` in libsms).
 - `MarioMain` replaces Commando's main state, so RoR2's own movement, jumping and skills stay
   off.
 - `MarioView` loads libsms's view (`sms_view_*`) the first time the player's Mario starts.
@@ -96,6 +100,20 @@ sprays at full reach for about 5 s and then fades until you let go or press deep
 trigger's travel is curved so the light zone is easier to hold (`Controls.TriggerCurve`). On
 keyboard a tap of the primary is a light press and holding it sprays at full
 (`Controls.LightTapSeconds`).
+
+The Spray goes where the crosshair points while RT is down (`Controls.AimAtCrosshair`, on), as every RoR2
+survivor's gun does: Mario runs where you steer and the nozzle follows the camera, and a full pull plants
+him facing it. Only the Spray; Hover, Rocket and Turbo are unchanged. A lock-on (LB) still aims at its
+target, and turning the setting off gives Sunshine's: the way Mario faces.
+
+With `Hud.SunshineLayout` (on) the HUD is arranged like Sunshine's while you play Mario, without hiding
+anything RoR2 needs: the life meter (the Shine Sprite sun) is in the top right, RoR2's health bar is gone and
+its numbers (n/m) use RoR2's damage font at half their former size beneath the doubled life meter.
+Difficulty, timer and stage sit below health. FLUDD's tank hugs the bottom-right corner with a small
+margin, RoR2's cooldowns move to the bottom middle, and items remain at top middle.
+RoR2's gold and lunar coin counters stay in the top left, with Sunshine's
+coin counters on them. The moves are measured on the screen and put back when Mario isn't your body
+(`MarioHudLayout`); the log says what was measured. Off: RoR2's places, the meter over the health bar's left end.
 
 The HUD's skill icons show the pad buttons Mario actually uses (ror2-common `GlyphOverride`): RT for FLUDD
 and the Air Pump, LT for the Ground Pound, B for the Wet Slide. On keyboard they are RoR2's binds, as
@@ -244,7 +262,7 @@ before the wipe pictures existed gets them when the disc is found (`Paths.Disc`)
 
 Sunshine's coin counters (`Hud.CoinCounters`) replace RoR2's gold and lunar coin counters: the yellow coin shows
 RoR2's gold and the blue coin the lunar coins (once there is one), drawn from the disc's coin icon and digit
-pictures like the game's HUD (more digits than its three: up to seven). Each sits where the counter it replaces
+pictures and green paint backplates like the game's HUD (more digits than its three: up to seven). Each sits where the counter it replaces
 was, or where `Hud.CoinX`/`CoinY` say, `Hud.CoinScale` big. Each yellow coin Mario picks up (the ones his kills
 drop) is also worth `Coins.Gold` (1) RoR2 gold. The 3D lunar coins in the world are unchanged.
 
@@ -268,8 +286,8 @@ Sunshine's life meter (`Hud.LifeMeter`) shows Mario's health in place of RoR2's 
 Shine Sprite sun from the disc, a hub and rays in a ring of eight, lit in whole rays by his health as
 a share of his full health and shield (RoR2's own values are untouched), the shield's rays after them
 in the cyan of Sunshine's air meter. The hub dims to grey under half, as in the game. RoR2's bars
-hide, its numbers stay (`Hud.HideHealthBar`); the meter sits over the left of RoR2's health bar,
-or where `Hud.LifeX`/`LifeY` say, `Hud.LifeScale` big.
+hide, with smaller damage-font numbers below the sun (`Hud.HideHealthBar`); the meter sits at top right
+with `Hud.SunshineLayout`, or where `Hud.LifeX`/`LifeY` say, `Hud.LifeScale` big.
 
 While locked on (`Controls.LockOn`), the same sun, alone and with its empty top filled to ten rays,
 turns on the enemy (`Look.LockMarker`): ror2-common's `LockMarker` puts it where Olimar's cursor

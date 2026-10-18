@@ -59,7 +59,7 @@ namespace MarioTest
         readonly Unstuck unstuck = new Unstuck();
         // How far below him ground still means he is not over a void (a vertical stage's floor can
         // be hundreds of metres down).
-        const float VoidReach = 2000f;
+        const float VoidReach = Unstuck.VoidReach;
         // "TOO BAD!" has started for a fall (it ends with him standing again).
         bool lostShown;
         // Keeps Mario out of walls the sim let him into (ror2-common's WallGuard); strict for a
@@ -276,7 +276,15 @@ namespace MarioTest
             else poundArmed = false;
             lWasHeld = lHeld;
             bool cycle = pad.TakeCycle(out var cycleDirection);
-            Aim(lHeld && Local && !(pad.LockSharesL && locking), locking, lockTarget, cycle, cycleDirection);
+            // The Spray follows the crosshair while RT is down (AimAtCrosshair); the sim's last state says
+            // which nozzle is fitted.
+            bool crosshair = false;
+            if (Local && Plugin.AimAtCrosshair.Value && step.r_analog > 0)
+            {
+                Native.sms_sim_state(sim, out var fitted);
+                crosshair = fitted.nozzle == 1;
+            }
+            Aim(lHeld && Local && !(pad.LockSharesL && locking), locking, lockTarget, cycle, cycleDirection, crosshair);
             Items.Begin(sim, sprinting, grounded);
             // The Shine Get pose, inside the step so the other players' puppets get it too.
             if (shineAt.HasValue)
@@ -506,6 +514,7 @@ namespace MarioTest
                 // as seen from Mario's chest.
                 MarioLife.Update(view.Handle, health);
                 MarioCoinHud.Update(view.Handle, body, localUser);
+                MarioHudLayout.Update(true, localUser);
                 lockMarker.Update(view.Handle, lockShown,
                     feet + Vector3.up * (height * 0.55f));
             }
@@ -526,10 +535,10 @@ namespace MarioTest
         // ror2-common's EnemyLock picks the enemy nearest where the camera points (Olimar's RT
         // does the same), `cycle` steps to the next toward `direction` on screen, and FLUDD
         // points at it, so the spray trigger sprays it; with none in reach it's the crosshair.
-        void Aim(bool camera, bool lockHeld, CharacterBody ai, bool cycle, Vector2 direction)
+        void Aim(bool camera, bool lockHeld, CharacterBody ai, bool cycle, Vector2 direction, bool crosshair = false)
         {
             // An AI's Mario aims at the enemy his brain locked onto.
-            camera &= Plugin.CameraAim.Value && input;
+            camera = ((camera && Plugin.CameraAim.Value) || crosshair) && input;
             enemyLock.Range = Plugin.LockRange.Value;
             var locked = ai ? ai : enemyLock.Update(body, lockHeld && input, cycle, direction);
             lockShown = lockHeld && Local ? locked : null;
@@ -570,6 +579,7 @@ namespace MarioTest
                 {
                     MarioLife.Update(IntPtr.Zero, null);
                     MarioCoinHud.Update(IntPtr.Zero, null, null);
+                    MarioHudLayout.Restore();
                 }
                 if (health && !health.alive)
                     Died();
@@ -636,8 +646,7 @@ namespace MarioTest
         // Far enough below where he last stood, with nothing to land on for a long way: a void.
         bool Lost(Vector3 feet)
         {
-            if (!unstuck.TryGetSafe(out var safe)) return false;
-            return safe.y - feet.y > Plugin.TooBadDrop.Value && !WorldProbe.Ground(feet, VoidReach, out _);
+            return unstuck.Lost(feet, Plugin.TooBadDrop.Value);
         }
 
         // RoR2 killed the body: Sunshine's fall for good (DOWN_LOSER: the "die" clip and the

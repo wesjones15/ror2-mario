@@ -248,7 +248,8 @@ namespace MarioTest
             Cover(new Rect(0f, 0f, Screen.width, h), info.fill);
             Banner(x0, scale);
             Letters(x0, scale);
-            if (info.card_a > 0f)
+            // GAME OVER's red vanishes as soon as the black starts fading; never fade red with it.
+            if (info.card_a > 0f && (info.kind != 2 || info.edge >= 1f))
             {
                 var before = GUI.color;
                 GUI.color = new Color(info.card_r, info.card_g, info.card_b, info.card_a);

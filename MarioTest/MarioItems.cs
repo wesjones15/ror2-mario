@@ -484,9 +484,13 @@ namespace MarioTest
             lang.SetStringByToken("MARIOTEST_FLUDD_DESC",
                 "<style=cIsUtility>Tap RT</style> for a burst: a short splash just ahead for up to " +
                 $"<style=cIsDamage>{burst:0}% damage</style>, with no cooldown, that also wets the ground for a Wet Slide. " +
-                "<style=cIsUtility>Pull deeper</style> to spray on the move, and all the way in to plant Mario. A spray reaches about " +
+                "<style=cIsUtility>Pull deeper</style> to spray on the move, and all the way in to plant Mario. " +
+                (Plugin.AimAtCrosshair.Value ? "The spray goes where your crosshair points. " : "") +
+                "A spray reaches about " +
                 $"<style=cIsUtility>{reach:0} m</style> and deals " +
-                $"<style=cIsDamage>{perSecond:0}% damage per second</style> to one enemy. A full spray lasts " +
+                $"<style=cIsDamage>{perSecond:0}% damage per second</style> to one enemy, and a spinning spray flies in every " +
+                $"direction for <style=cIsDamage>{perSecond * Plugin.SpinSprayMultiplier.Value:0}%</style> (spin the stick in a circle while spraying, " +
+                "or in a spin jump). A full spray lasts " +
                 "<style=cIsUtility>5 seconds</style>, then tapers until you let go. <style=cIsUtility>RB</style> switches nozzle: " +
                 "<style=cIsUtility>Hover</style> floats Mario for 3 seconds, <style=cIsUtility>Rocket</style> charges for 1.5 seconds " +
                 "then launches him skyward, <style=cIsUtility>Turbo</style> dashes at 3 times running speed. " +
@@ -494,7 +498,8 @@ namespace MarioTest
                 "Cooldown reduction lengthens the spray and hover and raises the rocket and turbo.");
             lang.SetStringByToken("MARIOTEST_AIR_NAME", "Air Pump");
             lang.SetStringByToken("MARIOTEST_AIR_DESC",
-                "<style=cIsUtility>Hold RT in mid-air</style> to start FLUDD. Mario gets one mid-air use per jump; each charge is " +
+                "<style=cIsUtility>Hold RT in mid-air</style> to start FLUDD. The <style=cIsUtility>Spray</style> can start as often as " +
+                "you like. Hover, Rocket and Turbo each take a use: Mario gets one per jump, each charge is " +
                 $"another, and one charge returns every <style=cIsUtility>{Plugin.AirUseRecharge.Value:0.#} seconds</style> " +
                 "once Mario is back on the ground.");
             lang.SetStringByToken("MARIOTEST_POUND_NAME", "Ground Pound");
@@ -511,7 +516,8 @@ namespace MarioTest
             lang.SetStringByToken("MARIOTEST_SLIDE_DESC",
                 "<style=cIsUtility>Press B in mid-air</style> to dive, then belly slide. Diving or sliding into an enemy deals " +
                 $"<style=cIsDamage>{Plugin.DiveDamage.Value * 100f:0}% damage</style>. Over wet ground (a light RT splash ahead of you, " +
-                $"or shallow water) the slide glides for <style=cIsUtility>{Plugin.WetSlideSeconds.Value:0.##} seconds</style>. " +
+                "or shallow water) the slide glides for as long as the ground under it stays wet or it is in water, and for " +
+                $"<style=cIsUtility>{Plugin.WetSlideSeconds.Value:0.##} seconds</style> after the last wet contact. " +
                 "No charges, no cooldown. Cooldown reduction and Lysate Cell lengthen the glide.");
         }
     }

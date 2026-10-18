@@ -81,6 +81,8 @@ namespace MarioTest
             /// He has landed with the Shine over his head: the Shine Get demo begins (pos: where he
             /// stands, arg: his yaw).
             ShineDemo = 21,
+            /// A water drop from a spin jump's spray hit.
+            SpinHit = 22,
         }
 
         /// Jump kinds (Event.arg of Jump).
@@ -120,7 +122,9 @@ namespace MarioTest
             /// 1 standing in shallow water (UnityHost's water callback).
             public byte in_water;
             /// 1 in the Shine Get pose and still falling, 2 holding the Shine up, else 0.
-            public byte win_demo, pad2;
+            public byte win_demo;
+            /// The fitted nozzle: 0 without FLUDD, else 1 Spray, 2 Rocket, 5 Hover, 6 Turbo.
+            public byte nozzle;
         }
 
         [StructLayout(LayoutKind.Sequential)]

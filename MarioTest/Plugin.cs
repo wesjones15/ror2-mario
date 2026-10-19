@@ -17,7 +17,7 @@ namespace MarioTest
     // the body moved by the sim instead of RoR2's character controller, and drawn and heard
     // as the disc's Mario. No R2API: content goes in through RoR2's own content-pack hook
     // (ror2-common's ContentProvider).
-    [BepInPlugin(Guid, "Mario", "0.3.4")]
+    [BepInPlugin(Guid, "Mario", "0.3.5")]
     // Use the pack's fixes first when installed; no pack APIs are required by this plugin.
     [BepInDependency("___riskofthunder.RoR2BepInExPack", BepInDependency.DependencyFlags.SoftDependency)]
     public class Plugin : BaseUnityPlugin
@@ -82,7 +82,7 @@ namespace MarioTest
         internal static ConfigEntry<float> HealToWater;
         internal static ConfigEntry<float> LifestealToWater;
         internal static ConfigEntry<float> LifestealWaterCap;
-        internal static ConfigEntry<float> RegenToWater;
+        internal static ConfigEntry<float> RegenToWater, MaxHealth, HealthPerLevel;
         internal static ConfigEntry<float> ShurikenInterval;
         internal static ConfigEntry<float> QuailScale;
         internal static ConfigEntry<bool> ExternalForces;
@@ -345,6 +345,11 @@ namespace MarioTest
                 "Standing in shallow water (anything RoR2 builds as water) wets the ground like " +
                 "FLUDD's water does, so a belly slide there glides wet for its duration limit " +
                 "instead of dragging as Sunshine's water does.");
+            MaxHealth = Config.Bind("Body", "MaxHealth", 160f,
+                "Mario's starting health. Commando's 110 is what he had; 160 is Loader's and Acrid's, the other " +
+                "close-range survivors with no armour. Restart to apply.");
+            HealthPerLevel = Config.Bind("Body", "HealthPerLevel", 48f,
+                "Health Mario gains per level (Commando's is 33, Loader's and Acrid's 48). Restart to apply.");
             KnockdownEnabled = Config.Bind("Knockdown", "Enabled", true,
                 "A powerful hit knocks Mario over (Sunshine's short fall), without stunning him: see " +
                 "GetUpEarly. His health is RoR2's; the sim's isn't touched.");
@@ -624,6 +629,8 @@ namespace MarioTest
             cb.baseNameToken = "MARIOTEST_BODY_NAME";
             cb.subtitleNameToken = "MARIOTEST_BODY_SUBTITLE";
             cb.bodyColor = new Color(0.9f, 0.1f, 0.1f);
+            cb.baseMaxHealth = MaxHealth.Value;
+            cb.levelMaxHealth = HealthPerLevel.Value;
             foreach (var esm in body.GetComponents<EntityStateMachine>())
                 if (esm.customName == "Body")
                     esm.mainStateType = new SerializableEntityStateType(typeof(MarioMain));

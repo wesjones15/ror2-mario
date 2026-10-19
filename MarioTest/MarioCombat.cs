@@ -112,12 +112,13 @@ namespace MarioTest
             float strength = it != null ? it.PoundStrength : 1f;
             foreach (var (victim, kind) in blows)
             {
-                // 0 stomp, 1 ground pound, 2 dive or slide.
+                // 0 stomp, 1 ground pound, 2 dive or slide, 3 the Turbo corkscrew dive.
                 float coefficient = kind == 0 ? Plugin.StompDamage.Value
                     : kind == 1 ? Plugin.PoundDamage.Value * PoundScale(poundTop - mario.y) * strength
+                    : kind == 3 ? Plugin.CorkscrewDamage.Value
                     : Plugin.DiveDamage.Value;
                 var at = victim.body ? victim.body.corePosition : victim.transform.position;
-                var push = kind == 2 ? Flat(at - mario).normalized * 1200f : Vector3.down * 1500f;
+                var push = kind >= 2 ? Flat(at - mario).normalized * (kind == 3 ? 2400f : 1200f) : Vector3.down * 1500f;
                 var type = kind == 1 && fallingSuper && ignite ? DamageType.IgniteOnHit : DamageType.Generic;
                 // Stomps are his basic attack (the primary), pounds the utility, the dive and the
                 // belly slide the special.

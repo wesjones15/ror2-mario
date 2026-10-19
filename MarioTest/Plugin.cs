@@ -58,7 +58,7 @@ namespace MarioTest
         internal static ConfigEntry<float> PoundDamage;
         internal static ConfigEntry<float> ShockDamage;
         internal static ConfigEntry<float> PoundRadius;
-        internal static ConfigEntry<float> DiveDamage;
+        internal static ConfigEntry<float> DiveDamage, CorkscrewDamage;
         internal static ConfigEntry<float> WaterDamage;
         internal static ConfigEntry<bool> FallDamageEnabled;
         internal static ConfigEntry<float> FallSafeHeight, DiveSafeHeight, FallPerHeight, DiveFallMultiplier;
@@ -290,6 +290,9 @@ namespace MarioTest
                 "sets what it hits on fire.");
             DiveDamage = Config.Bind("Damage", "Dive", 2.5f,
                 "Diving or belly sliding into an enemy.");
+            CorkscrewDamage = Config.Bind("Damage", "Corkscrew", 7f,
+                "The Turbo corkscrew dive (a full stick circle out of a Turbo dash jump) hitting an enemy: it " +
+                "carries the Turbo's speed plus a dive's, so it hits harder than a dive.");
             WaterDamage = Config.Bind("Damage", "WaterPerDrop", 0.0484f,
                 "Each FLUDD drop that hits (not Sunshine's: its water mostly only stuns). The Spray " +
                 "fires about 93 a second, so 0.0484 is about 450% a second on one enemy. A burst and a spin " +

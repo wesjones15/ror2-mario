@@ -1,4 +1,5 @@
 using System;
+using RoR2;
 using Ror2Common;
 using UnityEngine;
 
@@ -141,6 +142,8 @@ namespace MarioTest
             Native.sms_view_set_fx(view, (byte)(Plugin.Effects.Value ? 1 : 0),
                 (byte)(Plugin.PoundFlames.Value ? 1 : 0));
             Native.sms_view_set_smoke_speed(view, Plugin.SmokeSpeed.Value);
+            // RoR2's pause menu stops Mario's sounds where they are.
+            Native.sms_view_set_paused(view, (byte)(PauseManager.isPaused ? 1 : 0));
             Native.sms_view_update(view, sim, ref frame);
             water?.Update(view, UnityHost.Scale);
             if (hud) MarioHud.Update(view);

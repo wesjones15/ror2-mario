@@ -12,7 +12,7 @@ namespace MarioTest
     internal static class Native
     {
         public const string Dll = "sms";
-        public const uint AbiVersion = 27;
+        public const uint AbiVersion = 28;
         // ABI 20 refraction maps: R=1, G=4*Y, B=coverage, A=4*X. Separate the mask and
         // compensate material strength so RoR2's near-flat-normal discard keeps the crests.
         public const float RefractionNormalGain = 4f;
@@ -380,6 +380,7 @@ namespace MarioTest
         /// read what it shows: state, sprites (back to front), their pictures and the overlay's pixels.
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern byte sms_view_sound(IntPtr view, byte[] nameUtf8, ref Vec3 pos);
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern byte sms_view_hold_sound(IntPtr view, byte[] nameUtf8, ref Vec3 pos);
+        [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern void sms_view_set_paused(IntPtr view, byte paused);
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern void sms_view_shine_update(IntPtr view, ref ShineFrame frame);
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern byte sms_view_shine_info(IntPtr view, out ShineInfo info);
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern byte sms_view_camera_shot(IntPtr view, byte inside, float frame, out CameraShot shot);

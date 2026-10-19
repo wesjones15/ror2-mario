@@ -68,6 +68,7 @@ namespace MarioTest
             view = null;
             if (sim != IntPtr.Zero)
             {
+                MarioSims.Remove(sim);
                 Native.sms_sim_free(sim);
                 sim = IntPtr.Zero;
             }

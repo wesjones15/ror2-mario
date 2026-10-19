@@ -27,6 +27,9 @@ namespace MarioTest
         /// A client's Mario got a Shine at a charged teleporter: client to server.
         public const short ShineMsg = 0x4D06;
 
+        /// A client's Mario touched a coin: client to server.
+        public const short CoinTouchMsg = 0x4D07;
+
         /// One hit a client's Mario made, for the server to land.
         public struct HitRecord
         {
@@ -49,6 +52,7 @@ namespace MarioTest
             Mp.Register(WaterMsg, null, OnWater);
             Mp.Register(CoinMsg, null, OnCoin);
             Mp.Register(ShineMsg, OnShine, null);
+            Mp.Register(CoinTouchMsg, OnCoinTouch, null);
             Run.onRunDestroyGlobal += run => queues.Clear();
         }
 
@@ -216,6 +220,26 @@ namespace MarioTest
             Vec(w, velocity);
             w.U8((byte)team);
             Mp.SendToAll(CoinMsg, w.ToArray());
+        }
+
+        /// A client's own Mario touched coin `index` in its copy of the world; the server decides.
+        public static void SendCoinTouch(int index, CharacterBody by)
+        {
+            if (!Mp.Networked || !by || by.netId.Value == 0) return;
+            var w = new ByteWriter(8);
+            w.U8(FrameCodec.Protocol);
+            w.U8((byte)index);
+            w.U32(by.netId.Value);
+            Mp.SendToServer(CoinTouchMsg, w.ToArray());
+        }
+
+        static void OnCoinTouch(NetworkConnection from, ByteReader r)
+        {
+            if (!MarioCoins.Instance || r.U8() != FrameCodec.Protocol) return;
+            int index = r.U8();
+            var go = Mp.Find(r.U32());
+            var body = go ? go.GetComponent<CharacterBody>() : null;
+            if (!r.Failed && body) MarioCoins.Instance.Touched(index, body);
         }
 
         public static void SendCoinTaken(int index, CharacterBody by, Vector3 pos)

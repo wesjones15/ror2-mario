@@ -80,7 +80,35 @@ static class Program
         UnityEngine.Networking.NetworkServer.active = false;
         Step(coins);
         Check(Coins(coins).GetValue(0) != null && CharacterBody.lookups == 0, "clients never collect or scan bodies");
+        // A client's own Mario on a coin asks the server for it (its copy of the coin stays until the
+        // server says "taken"); it asks again only after half a second.
+        CharacterBody.readOnlyInstancesList.Clear();
+        var own = Body(true); own.hasEffectiveAuthority = true; own.footPosition = Vector3.zero;
+        var other = Body(true); other.footPosition = Vector3.zero;
+        Put(coins, 0, Vector3.zero);
+        MarioNet.touches = 0;
+        Step(coins);
+        Check(MarioNet.touches == 1 && Coins(coins).GetValue(0) != null, "a client reports its own Mario's touch and keeps the coin");
+        Step(coins);
+        Check(MarioNet.touches == 1, "the touch is not resent every step");
+        own.footPosition = new Vector3(100, 0, 0);
+        Put(coins, 1, Vector3.zero);
+        Step(coins);
+        Check(MarioNet.touches == 1, "a Mario out of reach reports nothing");
+        // The server takes the report for any Mario of the coin's team, wherever it thinks his body is.
         UnityEngine.Networking.NetworkServer.active = true;
+        var sender = Body(true); sender.footPosition = new Vector3(500, 0, 500);
+        MarioNet.taken = 0;
+        coins.Touched(0, sender);
+        Check(Coins(coins).GetValue(0) == null && MarioNet.taken == 1 && sender.healthComponent.heals == 1, "the server collects a touched coin for a client's Mario");
+        coins.Touched(0, sender);
+        Check(MarioNet.taken == 1, "a coin is taken once");
+        var foe = Body(true, TeamIndex.Monster);
+        coins.Touched(1, foe);
+        Check(Coins(coins).GetValue(1) != null, "another team's Mario cannot take it");
+        UnityEngine.Networking.NetworkServer.active = true;
+        Put(coins, 0, Vector3.zero);
+        CharacterBody.lookups = 0;
         PauseManager.isPaused = true;
         Step(coins);
         Check(Coins(coins).GetValue(0) != null && CharacterBody.lookups == 0, "pause retained");

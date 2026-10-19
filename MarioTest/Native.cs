@@ -12,7 +12,7 @@ namespace MarioTest
     internal static class Native
     {
         public const string Dll = "sms";
-        public const uint AbiVersion = 26;
+        public const uint AbiVersion = 27;
         // ABI 20 refraction maps: R=1, G=4*Y, B=coverage, A=4*X. Separate the mask and
         // compensate material strength so RoR2's near-flat-normal discard keeps the crests.
         public const float RefractionNormalGain = 4f;
@@ -314,6 +314,10 @@ namespace MarioTest
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern void sms_sim_free(IntPtr sim);
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern uint sms_sim_step(IntPtr sim, ref Host host, ref Pad pad, short cameraYaw, float dt, IntPtr view);
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern byte sms_sim_state(IntPtr sim, out State state);
+        /// Whether this sim's own FLUDD water has wetted the ground at `pos` (1), for another Mario to slide on.
+        [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern uint sms_sim_wet_at(IntPtr sim, ref Vec3 pos);
+        /// Says whether another Mario's wet ground is under this sim for its next step.
+        [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern void sms_sim_set_foreign_wet(IntPtr sim, uint wet);
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern IntPtr sms_sim_status_name(IntPtr sim);
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern IntPtr sms_sim_clip_name(IntPtr sim);
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern void sms_sim_teleport(IntPtr sim, ref Vec3 pos);

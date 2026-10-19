@@ -56,6 +56,7 @@ namespace RoR2
         public IEnumerator<CharacterBody> GetEnumerator() { foreach (var body in bodies) { visits++; yield return body; } }
         System.Collections.IEnumerator System.Collections.IEnumerable.GetEnumerator() => GetEnumerator();
     }
+    public class NetId { public uint Value; }
     public class TeamComponent : Object { public TeamIndex teamIndex; }
     public class CharacterBody : Object
     {
@@ -65,6 +66,8 @@ namespace RoR2
         public TeamComponent teamComponent;
         public CharacterMaster master;
         public Vector3 corePosition, footPosition;
+        public bool hasEffectiveAuthority;
+        public NetId netId = new NetId { Value = 1 };
         internal MarioTest.MarioDriver mario;
         public T GetComponent<T>() where T : class { lookups++; return mario as T; }
     }
@@ -138,6 +141,8 @@ namespace MarioTest
         public static void SendCoin(int i, Vector3 p, Vector3 v, RoR2.TeamIndex t) { }
         public static void CoinCollected(RoR2.CharacterBody b, Vector3 p) { collected++; }
         public static void SendCoinTaken(int i, RoR2.CharacterBody b, Vector3 p) { taken++; }
+        public static int touches;
+        public static void SendCoinTouch(int i, RoR2.CharacterBody b) { touches++; }
     }
     internal class SmsViewSource
     {

@@ -21,10 +21,13 @@ namespace MarioTest
             public TeamIndex team;
             public float age;
             public bool settled;
+            /// When a client last told the server one of its Marios touched this coin.
+            public float touchSent = -10f;
         }
 
         readonly Coin[] coins = new Coin[Capacity];
         readonly System.Collections.Generic.List<CharacterBody> collectors = new System.Collections.Generic.List<CharacterBody>();
+        readonly System.Collections.Generic.List<CharacterBody> ownMarios = new System.Collections.Generic.List<CharacterBody>();
         readonly System.Collections.Generic.HashSet<int> rewarded = new System.Collections.Generic.HashSet<int>();
         CoinSource source;
         ModelView models;
@@ -126,7 +129,7 @@ namespace MarioTest
             using var timing = MarioPerformance.Measure(MarioPerformance.Part.Coins);
             float dt = Time.fixedDeltaTime;
             float unit = UnityHost.Scale;
-            bool gathered = false;
+            bool gathered = false, ownGathered = false;
             for (int i = 0; i < coins.Length; i++)
             {
                 var coin = coins[i];
@@ -148,8 +151,22 @@ namespace MarioTest
                     }
                     else coin.pos += step;
                 }
-                // Only the server picks coins up; the others just let them fall and spin.
-                if (coin.age < PickupDelay || !NetworkServer.active) continue;
+                // Only the server picks coins up; the others let them fall and spin, and tell it when
+                // one of their own Marios touches one (the server's copy of that body may lag).
+                if (coin.age < PickupDelay) continue;
+                if (!NetworkServer.active)
+                {
+                    if (!ownGathered)
+                    {
+                        ownGathered = true;
+                        ownMarios.Clear();
+                        // Only bodies this machine drives: usually one, and none to look at otherwise.
+                        foreach (var candidate in CharacterBody.readOnlyInstancesList)
+                            if (candidate && candidate.hasEffectiveAuthority && candidate.GetComponent<MarioDriver>()) ownMarios.Add(candidate);
+                    }
+                    TouchedByOwnMario(i, coin);
+                    continue;
+                }
                 if (!gathered)
                 {
                     gathered = true;
@@ -168,16 +185,60 @@ namespace MarioTest
                     // coin_hit_data_table: radius 70, height 100; Mario's cylinder adds 50/160.
                     if (delta.x * delta.x + delta.z * delta.z > 120f * 120f * unit * unit
                         || coin.pos.y + 100f * unit < feet.y || coin.pos.y > feet.y + 160f * unit) continue;
-                    // Remove first: healing can trigger item callbacks, but a coin heals once.
-                    coins[i] = null;
-                    body.healthComponent.Heal(body.healthComponent.fullCombinedHealth / 8f, default, true);
-                    // And RoR2's own coin: the gold that the yellow counter shows.
-                    if (body.master && Plugin.CoinGold.Value > 0) body.master.GiveMoney((uint)Plugin.CoinGold.Value, false);
-                    MarioNet.CoinCollected(body, coin.pos);
-                    MarioNet.SendCoinTaken(i, body, coin.pos);
+                    Collect(i, body);
                     break;
                 }
             }
+        }
+
+        /// Whether a Mario's cylinder reaches a coin (coin_hit_data_table: radius 70, height 100; Mario's
+        /// cylinder adds 50 and 160).
+        static bool Reaches(Vector3 feet, Vector3 coin)
+        {
+            float unit = UnityHost.Scale;
+            var delta = coin - feet;
+            return delta.x * delta.x + delta.z * delta.z <= 120f * 120f * unit * unit
+                && coin.y + 100f * unit >= feet.y && coin.y <= feet.y + 160f * unit;
+        }
+
+        /// A coin is picked up: it heals once, pays RoR2's gold, and everyone is told. Server only.
+        void Collect(int index, CharacterBody body)
+        {
+            var coin = coins[index];
+            if (coin == null) return;
+            // Remove first: healing can trigger item callbacks, but a coin heals once.
+            coins[index] = null;
+            body.healthComponent.Heal(body.healthComponent.fullCombinedHealth / 8f, default, true);
+            // And RoR2's own coin: the gold that the yellow counter shows.
+            if (body.master && Plugin.CoinGold.Value > 0) body.master.GiveMoney((uint)Plugin.CoinGold.Value, false);
+            MarioNet.CoinCollected(body, coin.pos);
+            MarioNet.SendCoinTaken(index, body, coin.pos);
+        }
+
+        /// A client's own Mario stands on a coin its copy of the world has: ask the server for it. Resent
+        /// every half second until the server's "taken" removes the coin.
+        void TouchedByOwnMario(int index, Coin coin)
+        {
+            if (Time.time - coin.touchSent < 0.5f) return;
+            foreach (var body in ownMarios)
+            {
+                if (!body || !body.healthComponent || !body.healthComponent.alive || body.netId.Value == 0) continue;
+                if (!Reaches(body.footPosition, coin.pos)) continue;
+                coin.touchSent = Time.time;
+                MarioNet.SendCoinTouch(index, body);
+                return;
+            }
+        }
+
+        /// The server hears a client's Mario touched coin `index`: any Mario takes any Mario's coin of his team,
+        /// wherever the server thinks his body is.
+        internal void Touched(int index, CharacterBody body)
+        {
+            if (!NetworkServer.active || index < 0 || index >= Capacity) return;
+            var coin = coins[index];
+            if (coin == null || coin.age < PickupDelay || !body || !body.healthComponent || !body.healthComponent.alive
+                || !body.teamComponent || body.teamComponent.teamIndex != coin.team || !body.GetComponent<MarioDriver>()) return;
+            Collect(index, body);
         }
 
         void LateUpdate()

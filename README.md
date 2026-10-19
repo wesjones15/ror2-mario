@@ -37,6 +37,14 @@ How it works:
   Touching one restores one life-meter segment (one eighth of full health-meter capacity),
   through RoR2 healing, with Sunshine's pickup chime and sparkles. Coins fall onto terrain,
   spin, and expire after 60 seconds. Friendly kills and other survivors' kills do not drop them.
+- **Several Marios.** Any Mario takes any Mario's coin: a client's own machine tells the server when its Mario
+  touches one (the server's copy of that body can lag), as well as the server's own check. A belly slide glides
+  over another Mario's wet spots as over his own (every machine's sims ask each other, `sms_sim_wet_at`). A
+  Backup Magazine's charge arrives filled, including on a body that spawns holding one.
+- **Replay backlog.** Another player's Mario is played back one recorded step per update, hurrying when behind. A
+  backlog is replayed down to the prebuffer, spread over updates by a 6 ms budget (at least four steps), and in
+  full beyond 90 steps (about 1.8 s), so a slow machine never falls seconds behind. (0.3.0 capped it at four steps,
+  which a machine under about 13 updates a second could never drain.)
 - Movement speed items scale how far Mario gets each step (`Sim.SpeedFromItems`).
 - `MarioItems` hooks RoR2's items to Mario's moves; [ITEMS.md](ITEMS.md) goes through them
   all. His moves sit in RoR2's skill slots so items keep their charges: FLUDD is the primary,

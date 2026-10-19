@@ -151,6 +151,9 @@ namespace MarioTest
             if (Current == this) Current = null;
         }
 
+        /// The secondary's max stock last step (-1 before the first).
+        int airMaxSeen = -1;
+
         Native.Limits Limits()
         {
             var primary = Slot(SkillSlot.Primary);
@@ -162,6 +165,20 @@ namespace MarioTest
                 ? SkillCooldown.Boost(special, Plugin.CooldownExponent.Value, ref slideHeld)
                 : 1f;
             var secondary = Slot(SkillSlot.Secondary);
+            // A Backup Magazine raises the secondary's max stock from nothing. The charge it adds
+            // comes filled, as extra stock does for every other survivor, instead of empty and
+            // waiting out the recharge that only starts once he has touched the ground.
+            if (secondary && NativeSkills.Holds(secondary, MarioSkills.Air))
+            {
+                int max = secondary.maxStock;
+                // From the skill's own base on first sight, so a body that spawns holding the
+                // magazine (its bonus lands after the skill was filled with nothing) starts with it
+                // too, not only one that picks it up.
+                if (airMaxSeen < 0) airMaxSeen = Mathf.Max(0, secondary.skillDef.baseMaxStock);
+                if (max > airMaxSeen)
+                    secondary.stock = Mathf.Min(max, secondary.stock + (max - airMaxSeen));
+                airMaxSeen = max;
+            }
             bool free = NativeSkills.Unlimited(body);
             var l = new Native.Limits
             {

@@ -102,8 +102,14 @@ namespace MarioTest
             using var timing = MarioPerformance.Measure(MarioPerformance.Part.Replay);
             MarioPerformance.Backlog(waiting);
             int steps = FrameQueue.PlaybackSteps(waiting);
-            for (int i = 0; i < steps && queue.TryTake(out var frame); i++)
+            long started = System.Diagnostics.Stopwatch.GetTimestamp();
+            for (int done = 0; ; done++)
+            {
+                double elapsed = (System.Diagnostics.Stopwatch.GetTimestamp() - started) * 1000.0
+                    / System.Diagnostics.Stopwatch.Frequency;
+                if (!FrameQueue.KeepReplaying(queue.Count, done, steps, elapsed) || !queue.TryTake(out var frame)) break;
                 Play(frame);
+            }
         }
 
         bool Create()
@@ -119,6 +125,7 @@ namespace MarioTest
             var feet = UnityHost.ToSim(body.footPosition);
             sim = Native.sms_sim_new(NativeLib.CString(Plugin.AssetsDir), ref feet,
                 UnityHost.Yaw(body.transform.forward));
+            MarioSims.Add(sim);
             if (sim == IntPtr.Zero)
             {
                 failed = true;
@@ -189,6 +196,7 @@ namespace MarioTest
             if (!(health && !health.alive && failed == false && hidden)) GameSettings.HideModel(body, ref hidden, false);
             if (sim != IntPtr.Zero)
             {
+                MarioSims.Remove(sim);
                 Native.sms_sim_free(sim);
                 sim = IntPtr.Zero;
             }
@@ -222,6 +230,7 @@ namespace MarioTest
         public void Step(in Native.Pad pad, short cameraYaw, float dt)
         {
             var p = pad;
+            Native.sms_sim_set_foreign_wet(sim, MarioSims.OthersWet(sim) ? 1u : 0u);
             Native.sms_sim_step(sim, ref host, ref p, cameraYaw, dt, view != null ? view.Handle : IntPtr.Zero);
         }
     }

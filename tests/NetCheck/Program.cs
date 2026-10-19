@@ -140,26 +140,44 @@ static class Program
         for (uint s = 2; s < 40; s++) gap.Add(new Frame { seq = s, ops = new byte[0] });
         Check(gap.TryTake(out var after) && after.seq == 2, "a gap that stays is skipped");
 
-        // A stalled spectator must retain every ordered op, while bounding work per update.
+        // A stalled spectator must retain every ordered op, spread over updates by a time budget
+        // that never starves, and never stay seconds behind.
         Check(FrameQueue.PlaybackSteps(3) == 1 && FrameQueue.PlaybackSteps(8) == 1
             && FrameQueue.PlaybackSteps(9) == 2 && FrameQueue.PlaybackSteps(30) == 2, "normal playback unchanged");
+        Check(FrameQueue.PlaybackSteps(100) == 97, "a backlog is replayed down to the prebuffer");
+        Check(FrameQueue.KeepReplaying(50, 3, 47, 99.0), "a few steps always run, however slow the machine");
+        Check(!FrameQueue.KeepReplaying(50, 4, 47, 7.0), "a modest backlog stops at the time budget");
+        Check(FrameQueue.KeepReplaying(50, 4, 47, 2.0), "a modest backlog continues while inside the budget");
+        Check(FrameQueue.KeepReplaying(200, 40, 197, 99.0), "a deep backlog is replayed in full");
         var stalled = new FrameQueue();
         for (uint s = 0; s < 600; s++) stalled.Add(new Frame { seq = s, ops = frames[0].ops });
         uint expected = 0;
         int updates = 0;
-        while (stalled.Count > 0)
-        {
-            int budget = FrameQueue.PlaybackSteps(stalled.Count);
-            Check(budget > 0 && budget <= FrameQueue.MaxStepsPerUpdate, "bounded catch-up");
-            for (int i = 0; i < budget && stalled.TryTake(out var next); i++)
+        // A slow machine: 8 ms per replayed step, 13 fixed updates a second, 50 frames arriving a second.
+        double perStep = 8.0;
+        int arrived = 600;
+        int worstBacklog = stalled.Count;
+        for (int second = 0; second < 20 && stalled.Count > 0; second++)
+            for (int u = 0; u < 13; u++)
             {
-                Check(next.seq == expected++, "catch-up keeps every frame in order");
-                log.calls.Clear();
-                Check(FrameCodec.Replay(next, log) && log.calls.Count == expect0.Length, "catch-up keeps every op");
+                int plan = FrameQueue.PlaybackSteps(stalled.Count);
+                double elapsed = 0;
+                for (int done = 0; FrameQueue.KeepReplaying(stalled.Count, done, plan, elapsed) && stalled.TryTake(out var next); done++)
+                {
+                    Check(next.seq == expected++, "catch-up keeps every frame in order");
+                    log.calls.Clear();
+                    Check(FrameCodec.Replay(next, log) && log.calls.Count == expect0.Length, "catch-up keeps every op");
+                    elapsed += perStep;
+                }
+                updates++;
+                for (int a = 0; a < 4; a++) stalled.Add(new Frame { seq = (uint)arrived++, ops = frames[0].ops });
+                worstBacklog = Math.Max(worstBacklog, stalled.Count);
             }
-            updates++;
-        }
-        Check(expected == 600 && updates >= 150, "600-step burst spread over updates");
+        Console.WriteLine($"NetCheck: slow-machine replay ended {stalled.Count} frames behind after {updates} updates");
+        Check(stalled.Count <= FrameQueue.HardBacklog + 20, "a slow machine stays within about two seconds of live");
+        stalled = new FrameQueue();
+        for (uint s = 0; s < 600; s++) stalled.Add(new Frame { seq = s, ops = frames[0].ops });
+        while (stalled.Count > 0) { while (stalled.TryTake(out var drain)) { } }
         stalled.Clear();
         stalled.Add(new Frame { seq = 0, ops = Array.Empty<byte>() });
         Check(stalled.TryTake(out var restarted) && restarted.seq == 0, "cleared queue can restart sequence");

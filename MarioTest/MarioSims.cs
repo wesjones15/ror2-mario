@@ -1,0 +1,29 @@
+using System;
+using System.Collections.Generic;
+
+namespace MarioTest
+{
+    // The live Mario sims on this machine: the player's own, and the shadow sims that play the
+    // other players' Marios (MarioPuppet). Each sim only knows the ground its own FLUDD wetted,
+    // so before every step a sim is told whether any other Mario's water is under it: Marios
+    // glide over each other's wet spots, on every machine alike (the owner's sim and the shadow
+    // sims of him make the same call, so they stay in step).
+    internal static class MarioSims
+    {
+        static readonly HashSet<IntPtr> live = new HashSet<IntPtr>();
+
+        public static void Add(IntPtr sim) { if (sim != IntPtr.Zero) live.Add(sim); }
+        public static void Remove(IntPtr sim) => live.Remove(sim);
+        public static void Clear() => live.Clear();
+
+        /// Whether another Mario's water has wetted the ground where `sim`'s Mario stands.
+        public static bool OthersWet(IntPtr sim)
+        {
+            if (live.Count < 2 || sim == IntPtr.Zero || Native.sms_sim_state(sim, out var state) == 0) return false;
+            var at = state.pos;
+            foreach (var other in live)
+                if (other != sim && Native.sms_sim_wet_at(other, ref at) != 0) return true;
+            return false;
+        }
+    }
+}

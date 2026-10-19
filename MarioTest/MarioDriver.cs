@@ -695,6 +695,7 @@ namespace MarioTest
             var feet = UnityHost.ToSim(body.footPosition);
             short yaw = UnityHost.Yaw(direction ? direction.forward : transform.forward);
             sim = Native.sms_sim_new(NativeLib.CString(Plugin.AssetsDir), ref feet, yaw);
+            MarioSims.Add(sim);
             if (sim == IntPtr.Zero)
             {
                 failed = true;
@@ -824,6 +825,7 @@ namespace MarioTest
             cloneView = null;
             if (sim != IntPtr.Zero)
             {
+                MarioSims.Remove(sim);
                 Native.sms_sim_free(sim);
                 sim = IntPtr.Zero;
             }

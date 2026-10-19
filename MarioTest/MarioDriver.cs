@@ -257,8 +257,7 @@ namespace MarioTest
             short cameraYaw = UnityHost.Yaw(-input.aimDirection);
             // The lock-on (LB; a keyboard's utility key; the brain's): FLUDD takes its aim, and
             // its head turns, to the target (or where the camera looks), on the ground or in the
-            // air, and R's click (which plants and crouches him) is held back so R sprays on the
-            // move. L stays Sunshine's: crouch, ground pound, the camera. Only a keyboard has L
+            // air. L stays Sunshine's: crouch, ground pound, the camera. Only a keyboard has L
             // and the lock on one key; the sim then sees L as a pound pressed afresh in the air.
             bool lHeld = step.l != 0;
             bool locking = pad.LockHeld && Plugin.LockOn.Value && Plugin.CameraAim.Value && (Local || lockTarget);
@@ -271,7 +270,6 @@ namespace MarioTest
                     step.l = (byte)(poundArmed ? 1 : 0);
                     step.l_analog = (byte)(poundArmed ? 255 : 0);
                 }
-                step.r = 0;
             }
             else poundArmed = false;
             lWasHeld = lHeld;

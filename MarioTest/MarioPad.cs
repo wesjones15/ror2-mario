@@ -6,11 +6,11 @@ namespace MarioTest
 {
     // Mario's buttons. On a gamepad they're read by position through Rewired's gamepad
     // template, Sunshine's layout on an Xbox-style pad, whatever the player's RoR2 binds:
-    // A jump, B dive, right trigger spray (analog: a half press sprays on the move, all the
-    // way in plants Mario), left trigger crouch / ground pound (L), left bumper the lock-on (RB then cycles
+    // A jump, B dive, right trigger spray on the move at every pressure, left trigger
+    // crouch / ground pound (L), left bumper the lock-on (RB then cycles
     // the target), right bumper switch nozzle (Sunshine's X). X stays RoR2's interact and Y its equipment, and Mario uses neither, so
     // pressing them never does a Mario move too. On keyboard and mouse the RoR2 binds stand in:
-    // jump A, primary half spray, sprint plant, secondary B, utility L, special nozzle.
+    // jump A, primary half spray, sprint full spray, secondary B, utility L, special nozzle.
     //
     // Spray pressure (Fludd.SprayBursts): a light press is a short splash just ahead. On a
     // gamepad the trigger's travel is curved (Controls.TriggerCurve) so that's easier to hold;
@@ -188,8 +188,9 @@ namespace MarioTest
                 l = B(l || lTap),
                 l_analog = (byte)(l || lTap ? 255 : 0),
                 x = B(x || xTap),
-                // All the way in is the trigger's click (Sunshine's R button).
-                r = B(trigger >= 0.98f),
+                // Keep Sunshine's digital R click released: RoR2 needs movement at full
+                // pressure, while the analog value still gives Spray its full burst.
+                r = 0,
                 r_analog = (byte)Mathf.RoundToInt(trigger * 255f),
             };
             aTap = bTap = lTap = xTap = false;

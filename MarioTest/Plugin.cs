@@ -17,7 +17,7 @@ namespace MarioTest
     // the body moved by the sim instead of RoR2's character controller, and drawn and heard
     // as the disc's Mario. No R2API: content goes in through RoR2's own content-pack hook
     // (ror2-common's ContentProvider).
-    [BepInPlugin(Guid, "Mario", "0.3.0")]
+    [BepInPlugin(Guid, "Mario", "0.3.1")]
     // Use the pack's fixes first when installed; no pack APIs are required by this plugin.
     [BepInDependency("___riskofthunder.RoR2BepInExPack", BepInDependency.DependencyFlags.SoftDependency)]
     public class Plugin : BaseUnityPlugin
@@ -409,8 +409,8 @@ namespace MarioTest
                 "with the camera (the stick side-steps).");
             AimAtCrosshair = Config.Bind("Controls", "AimAtCrosshair", true,
                 "The Spray goes where the crosshair points, like every RoR2 survivor's gun, not the way Mario faces: " +
-                "he keeps running where you steer and the nozzle follows the camera while RT is down (a full pull " +
-                "plants him facing it). The other nozzles are unchanged, and a lock-on (LB) still aims at its target. " +
+                "he keeps running where you steer and the nozzle follows the camera while RT is down, " +
+                "even at full pressure. The other nozzles are unchanged, and a lock-on (LB) still aims at its target. " +
                 "False: the Spray goes the way Mario faces (Sunshine's), or at the camera while L is held.");
             LockOn = Config.Bind("Controls", "LockOn", true,
                 "While the left bumper (the utility key on keyboard) is held, lock onto the enemy " +

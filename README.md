@@ -83,7 +83,7 @@ Controls, on a gamepad, by button position (Sunshine's layout, whatever your RoR
 | left stick       | stick    | walk, run                                       |
 | A                | A        | jumps, wall kicks                               |
 | B                | B        | dive, punch                                     |
-| right trigger    | R        | spray; all the way in plants Mario and sprays   |
+| right trigger    | R analog | spray while moving, up to full pressure         |
 | left trigger     | L        | ground pound (in the air), crouch; aims FLUDD at the crosshair |
 | left bumper      |          | hold to lock onto an enemy and aim FLUDD at it, grounded or airborne |
 | right bumper     | X        | switch nozzle: Spray, Hover, Rocket, Turbo; with LB held, next target |
@@ -91,8 +91,8 @@ Controls, on a gamepad, by button position (Sunshine's layout, whatever your RoR
 | X, Y             |          | RoR2's interact and equipment, as ever          |
 | RoR2's sprint    |          | sprint, for sprint items (no speed of its own)  |
 
-On keyboard and mouse your RoR2 binds stand in: jump (A), primary (spray), sprint (plant
-and spray), secondary (B), utility (L), special (switch nozzle).
+On keyboard and mouse your RoR2 binds stand in: jump (A), primary (spray), sprint (full
+spray), secondary (B), utility (L), special (switch nozzle).
 
 The spray trigger works as in Sunshine (`Fludd.SprayBursts`): each press is a burst. A light
 press drops a short splash just ahead, which a belly slide then glides over; a full press
@@ -102,8 +102,8 @@ keyboard a tap of the primary is a light press and holding it sprays at full
 (`Controls.LightTapSeconds`).
 
 The Spray goes where the crosshair points while RT is down (`Controls.AimAtCrosshair`, on), as every RoR2
-survivor's gun does: Mario runs where you steer and the nozzle follows the camera, and a full pull plants
-him facing it. Only the Spray; Hover, Rocket and Turbo are unchanged. A lock-on (LB) still aims at its
+survivor's gun does: Mario runs where you steer and the nozzle follows the camera even at full pressure.
+Only the Spray; Hover, Rocket and Turbo are unchanged. A lock-on (LB) still aims at its
 target, and turning the setting off gives Sunshine's: the way Mario faces.
 
 With `Hud.SunshineLayout` (on) the HUD is arranged like Sunshine's while you play Mario, without hiding

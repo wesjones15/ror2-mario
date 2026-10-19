@@ -29,6 +29,8 @@ namespace MarioTest
 
         public Native.HudInfo Info => info;
         public Texture2D Texture => tex;
+        // The icon centres in Sunshine's standard_1.blo screen (yellow and blue).
+        public int IconCenterY => which == 0 ? 158 : 119;
 
         public void Reset()
         {
@@ -92,6 +94,7 @@ namespace MarioTest
         // group, so it can go back.
         static readonly List<CanvasGroup> hidden = new List<CanvasGroup>();
         static readonly List<bool> added = new List<bool>();
+        static readonly List<GameObject> coinRoots = new List<GameObject>();
         // The lunar coins last seen, for the jingle (none until the first reading).
         static long lunarSeen = -1;
 
@@ -165,14 +168,38 @@ namespace MarioTest
 
         static void HideRor2(bool gold, bool lunar)
         {
+            coinRoots.Clear();
             foreach (var hud in HUD.readOnlyInstanceList)
             {
                 if (!hud) continue;
-                if (gold && hud.moneyText) Hide(hud.moneyText.gameObject);
-                // The lunar counter is hidden whenever ours shows, or RoR2's would sit alone;
-                // its container is the icon and the number.
-                if (hud.lunarCoinContainer) Hide(hud.lunarCoinContainer);
+                // The text is only one child of MoneyRoot. Its BackgroundPanel and icon
+                // otherwise leave a rectangular frame around Sunshine's counter.
+                if (gold && hud.moneyText)
+                    coinRoots.Add(CounterRoot(hud.moneyText.transform, "MoneyRoot"));
+                if (lunar && hud.lunarCoinContainer)
+                    coinRoots.Add(CounterRoot(hud.lunarCoinContainer.transform, "LunarCoinRoot"));
             }
+            for (int i = hidden.Count - 1; i >= 0; i--)
+            {
+                var group = hidden[i];
+                if (group && coinRoots.Contains(group.gameObject)) continue;
+                if (group)
+                {
+                    if (added[i]) UnityEngine.Object.Destroy(group);
+                    else group.alpha = 1f;
+                }
+                hidden.RemoveAt(i);
+                added.RemoveAt(i);
+            }
+            foreach (var root in coinRoots)
+                if (root) Hide(root);
+        }
+
+        static GameObject CounterRoot(Transform child, string name)
+        {
+            for (var t = child; t && t.name != "UpperLeftCluster"; t = t.parent)
+                if (t.name == name) return t.gameObject;
+            return child.gameObject;
         }
 
         static void Hide(GameObject go)
@@ -232,12 +259,13 @@ namespace MarioTest
         {
             var info = image.Info;
             float w = info.width * scale, h = info.height * scale;
-            // The icon sits in the image's lower left, the number climbing away from it.
-            float iconMid = h * 0.72f;
+            // Anchor on the icon's row; the image grows upward when the green strip
+            // follows seven rising digits, but the icon should stay in place.
+            float iconMid = (image.IconCenterY - info.y) * scale;
             var rect = new Rect(Mathf.Clamp(at.x, 0f, Mathf.Max(0f, Screen.width - w)),
                 Mathf.Clamp(at.y - iconMid, 0f, Mathf.Max(0f, Screen.height - h)), w, h);
             GUI.DrawTexture(rect, image.Texture, ScaleMode.StretchToFill, true);
-            return h;
+            return 39f * scale; // spacing of the game's yellow and blue counter rows
         }
     }
 }

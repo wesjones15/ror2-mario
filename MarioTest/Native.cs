@@ -344,6 +344,7 @@ namespace MarioTest
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern uint sms_view_uvs(IntPtr view, uint model, [Out] float[] output, uint max);
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern uint sms_view_vertex_alphas(IntPtr view, uint model, [Out] float[] output, uint max);
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern byte sms_view_texture(IntPtr view, uint id, out ViewTexture info, [Out] byte[] rgba, uint len);
+        [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern uint sms_view_texture_version(IntPtr view, uint id);
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern void sms_view_update(IntPtr view, IntPtr sim, ref ViewFrame frame);
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern uint sms_view_draws(IntPtr view, [Out] ViewDraw[] output, uint max);
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern IntPtr sms_view_positions(IntPtr view, out uint count);
@@ -430,7 +431,7 @@ namespace MarioTest
     }
 
     // sms_view_* as ror2-common's IViewSource.
-    internal sealed class SmsViewSource : IViewSource, IVertexAlphaSource
+    internal sealed class SmsViewSource : IViewSource, IVertexAlphaSource, IAnimatedTextureSource
     {
         public readonly IntPtr Handle;
 
@@ -449,5 +450,6 @@ namespace MarioTest
         public IntPtr Colors(out uint count) => Native.sms_view_colors(Handle, out count);
         public IntPtr TextureIds(out uint count) => Native.sms_view_texture_ids(Handle, out count);
         public IntPtr FrameUvs(out uint count) => Native.sms_view_frame_uvs(Handle, out count);
+        public uint TextureVersion(uint id) => Native.sms_view_texture_version(Handle, id);
     }
 }

@@ -28,6 +28,7 @@ namespace MarioTest
         uint[] versions = new uint[0];
         bool[] worldSpace = new bool[0];
         byte[] scratch = new byte[0];
+        byte[] maskScratch = Array.Empty<byte>();
 
         MarioFx(GameObject go, Mesh mesh, MeshRenderer renderer)
         {
@@ -98,8 +99,7 @@ namespace MarioTest
                         materials.Remove(key);
                     }
             }
-            var px = new byte[len];
-            Buffer.BlockCopy(scratch, 0, px, 0, len);
+            var px = scratch;
             tex.SetPixelData(px, 0);
             tex.Apply(false, false);
             if (linear)
@@ -118,19 +118,15 @@ namespace MarioTest
                     };
                     refractionMasks[which] = mask;
                 }
-                var maskPixels = new byte[len];
-                int visible = 0;
+                if (maskScratch.Length < len) maskScratch = new byte[len];
+                var maskPixels = maskScratch;
                 for (int i = 0; i < len; i += 4)
                 {
                     maskPixels[i] = maskPixels[i + 1] = maskPixels[i + 2] = 255;
                     maskPixels[i + 3] = px[i + 2];
-                    float x = px[i + 3] / 255f * 2f - 1f, y = px[i + 1] / 255f * 2f - 1f;
-                    if (maskPixels[i + 3] / 255f >= 0.01f && x * x + y * y >= 1f - 0.99f * 0.99f)
-                        visible++;
                 }
                 mask.SetPixelData(maskPixels, 0);
                 mask.Apply(false, false);
-                Plugin.Log.LogDebug($"Mario slide-wave map: {t.width}x{t.height}, {visible} pixels pass RoR2's distortion cutoff");
             }
             versions[which] = version;
             return tex;

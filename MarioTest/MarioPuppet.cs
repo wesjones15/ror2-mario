@@ -34,6 +34,8 @@ namespace MarioTest
         bool playing, hidden, failed;
         float lagTicks;
         Native.State state;
+        int replayRenderFrame = -1, replayedThisFrame;
+        double replayMsThisFrame;
 
         static readonly Native.EventFn noEvent = (IntPtr user, ref Native.Event e) => { };
         static readonly unsafe Native.EnemiesFn noEnemies = (IntPtr user, ref Native.Vec3 pos, float radius, Native.Enemy* output, uint max) => 0u;
@@ -101,15 +103,27 @@ namespace MarioTest
             }
             using var timing = MarioPerformance.Measure(MarioPerformance.Part.Replay);
             MarioPerformance.Backlog(waiting);
+            if (replayRenderFrame != Time.frameCount)
+            {
+                replayRenderFrame = Time.frameCount;
+                replayedThisFrame = 0;
+                replayMsThisFrame = 0;
+            }
             int steps = FrameQueue.PlaybackSteps(waiting);
             long started = System.Diagnostics.Stopwatch.GetTimestamp();
             for (int done = 0; ; done++)
             {
                 double elapsed = (System.Diagnostics.Stopwatch.GetTimestamp() - started) * 1000.0
                     / System.Diagnostics.Stopwatch.Frequency;
+                // Unity can run several FixedUpdates before drawing. They share this budget.
+                if (!FrameQueue.KeepReplaying(queue.Count, replayedThisFrame,
+                    FrameQueue.MaxCatchUpSteps, replayMsThisFrame + elapsed)) break;
                 if (!FrameQueue.KeepReplaying(queue.Count, done, steps, elapsed) || !queue.TryTake(out var frame)) break;
                 Play(frame);
+                replayedThisFrame++;
             }
+            replayMsThisFrame += (System.Diagnostics.Stopwatch.GetTimestamp() - started) * 1000.0
+                / System.Diagnostics.Stopwatch.Frequency;
         }
 
         bool Create()

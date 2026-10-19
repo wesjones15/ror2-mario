@@ -25,6 +25,8 @@ namespace MarioTest
         MarioFx fx;
         readonly bool hud;
         readonly ViewDraw[] firstDraw = new ViewDraw[1];
+        readonly Func<ViewDraw, (Vector3, Quaternion)?> placement;
+        Vector3 drawFeet;
 
         /// The local player's, or null before Ensure (or after a failed load).
         public static MarioView Player => player;
@@ -39,6 +41,7 @@ namespace MarioTest
         {
             this.view = view;
             this.hud = hud;
+            placement = d => (drawFeet, new Quaternion(d.rot_x, d.rot_y, d.rot_z, d.rot_w));
             if (!Plugin.DrawModel.Value) return;
             models = ModelView.Create(new SmsViewSource(view), name, null, skin);
             // Sunshine's hit flash is pink (`addDamageFog`).
@@ -168,7 +171,8 @@ namespace MarioTest
         public void Draw(Vector3 feet)
         {
             using var timing = MarioPerformance.Measure(MarioPerformance.Part.Models);
-            models?.Update(UnityHost.Scale, d => (feet, new Quaternion(d.rot_x, d.rot_y, d.rot_z, d.rot_w)));
+            drawFeet = feet;
+            models?.Update(UnityHost.Scale, placement);
         }
 
         /// Hides the models, the water and the effects (until the next Update).

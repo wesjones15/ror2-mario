@@ -268,23 +268,20 @@ namespace MarioTest
     internal sealed class FrameQueue
     {
         internal const int Prebuffer = 3;
-        /// A backlog this deep (about 1.8 s of Mario) is replayed in one go whatever it costs:
-        /// a long hitch beats a Mario who is seconds behind and stays there.
-        internal const int HardBacklog = 90;
-        internal const int MinCatchUpSteps = 4;
+        internal const int MaxCatchUpSteps = 4;
         internal const double CatchUpBudgetMs = 6.0;
 
         /// How many frames to replay this update. Every op is replayed in order, never skipped;
-        /// a backlog is replayed down to the prebuffer.
+        /// a backlog is drained across updates, with a hard work bound even on fast machines.
         internal static int PlaybackSteps(int waiting) => waiting > 30
-            ? waiting - Prebuffer : waiting > 8 ? 2 : 1;
+            ? MaxCatchUpSteps : waiting > 8 ? 2 : 1;
 
         /// Whether to replay another frame after `done` of `planned` this update. A modest
-        /// backlog is spread over updates by a time budget (so a hitch is not repaid with a
-        /// bigger one) but never starves: a few steps always run, and a deep backlog runs fully.
+        /// backlog is spread over updates by a time budget. One indivisible step always runs;
+        /// queue depth must never bypass the budget and amplify an existing hitch.
         internal static bool KeepReplaying(int waitingNow, int done, int planned, double elapsedMs) =>
-            done < planned && waitingNow > 0
-            && (done < MinCatchUpSteps || waitingNow > HardBacklog || elapsedMs < CatchUpBudgetMs);
+            done < Math.Min(planned, MaxCatchUpSteps) && waitingNow > 0
+            && (done == 0 || elapsedMs < CatchUpBudgetMs);
 
         readonly SortedDictionary<uint, Frame> waiting = new SortedDictionary<uint, Frame>();
         uint next;

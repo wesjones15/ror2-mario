@@ -22,6 +22,7 @@ static class Program
         public void Down() => calls.Add("down");
         public void ShineGet(Native.Vec3 p, short yaw) => calls.Add($"shine {p.x},{p.y},{p.z},{yaw}");
         public void ShineEnd() => calls.Add("shine end");
+        public void ForeignWet(bool wet) => calls.Add($"wet {wet}");
         public void Step(in Native.Pad pad, short cam, float dt) => calls.Add($"step a{pad.a} r{pad.r_analog} mx{pad.move_x} cam{cam}");
     }
 
@@ -44,6 +45,7 @@ static class Program
         rec.Launch(new Native.Vec3(4, 5, 6));
         rec.LaunchPad(new Native.Vec3(7, 8, 9), 0.01f);
         rec.KnockDown(new Native.Vec3(1, 1, 1), 0);
+        rec.ForeignWet(true);
         rec.Step(new Native.Pad { a = 1, r_analog = 200, move_x = 0.5f, use_move = 1 }, -300, 1f / 60f);
         rec.BoostJump(1.2f);
         rec.ShineGet(new Native.Vec3(5, 6, 7), -1234);
@@ -53,17 +55,20 @@ static class Program
         rec.Begin();
         rec.Limits(new Native.Limits { air_extra = 2, wet_slide_seconds = 1.5f });
         rec.SetAim(true, 1234, 0.5f);
+        rec.ForeignWet(true);
         rec.Step(new Native.Pad { b = 1 }, 5, 1f / 60f);
         rec.End(new Native.Vec3(11, 20, 30));
         // Frame 2: a changed aim goes out.
         rec.Begin();
         rec.SetAim(false, 0, 0f);
+        rec.ForeignWet(false);
         rec.Step(new Native.Pad(), 0, 1f / 60f);
         rec.End(new Native.Vec3(12, 20, 30));
         // Frame 3: after Refresh the limits go out again.
         rec.Refresh();
         rec.Begin();
         rec.Limits(new Native.Limits { air_extra = 2, wet_slide_seconds = 1.5f });
+        rec.ForeignWet(false);
         rec.Step(new Native.Pad(), 0, 1f / 60f);
         rec.End(new Native.Vec3(13, 20, 30));
         Check(rec.Pending == 4, "four frames pending");
@@ -92,7 +97,7 @@ static class Program
         string[] expect0 =
         {
             "teleport 1,2,3", "tuning 1.6,1", "refill", "water 0.25", "limits 2,1.5", "aim True,1234,0.5",
-            "launch 4,5,6", "pad 7,8,9,0.01", "knock 1,1,1,0", "step a1 r200 mx0.5 cam-300", "boost 1.2",
+            "launch 4,5,6", "pad 7,8,9,0.01", "knock 1,1,1,0", "wet True", "step a1 r200 mx0.5 cam-300", "boost 1.2",
             "shine 5,6,7,-1234", "shine end",
         };
         Check(log.calls.Count == expect0.Length, $"frame 0 has {log.calls.Count} calls");
@@ -102,10 +107,10 @@ static class Program
         Check(FrameCodec.Replay(frames[1], log) && log.calls.Count == 1 && log.calls[0].StartsWith("step"), "frame 1 is only the step (limits and aim deduped)");
         log.calls.Clear();
         FrameCodec.Replay(frames[2], log);
-        Check(log.calls.Count == 2 && log.calls[0] == "aim False,0,0", "frame 2 has the changed aim");
+        Check(log.calls.Count == 3 && log.calls[0] == "aim False,0,0" && log.calls[1] == "wet False", "frame 2 has the changed aim and wet state");
         log.calls.Clear();
         FrameCodec.Replay(frames[3], log);
-        Check(log.calls.Count == 2 && log.calls[0] == "limits 2,1.5", "refresh resends limits");
+        Check(log.calls.Count == 3 && log.calls[0] == "limits 2,1.5" && log.calls[1] == "wet False", "refresh resends limits and the wet state");
 
         // Wrong protocol, wrong ABI and truncation are reported, not thrown.
         var wrong = (byte[])bytes.Clone();

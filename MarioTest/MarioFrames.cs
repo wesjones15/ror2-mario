@@ -17,6 +17,7 @@ namespace MarioTest
     {
         Teleport = 1, Tuning = 2, Refill = 3, AddWater = 4, Limits = 5, BoostJump = 6, Launch = 7,
         LaunchPad = 8, KnockDown = 9, SetAim = 10, Down = 11, Step = 12, ShineGet = 13, ShineEnd = 14,
+        ForeignWet = 15,
     }
 
     /// What replaying a frame does to a sim; MarioPuppet's implementation calls libsms.
@@ -35,6 +36,8 @@ namespace MarioTest
         void Down();
         void ShineGet(Native.Vec3 pos, short yaw);
         void ShineEnd();
+        /// Whether the player's sim counted the ground as wetted by another Mario's water.
+        void ForeignWet(bool wet);
         void Step(in Native.Pad pad, short cameraYaw, float dt);
     }
 
@@ -49,7 +52,7 @@ namespace MarioTest
     internal static class FrameCodec
     {
         /// Bumped whenever the wire format changes; a batch with another number is ignored.
-        public const byte Protocol = 2;
+        public const byte Protocol = 3;
 
         static void Vec(ByteWriter w, Native.Vec3 v) { w.F32(v.x); w.F32(v.y); w.F32(v.z); }
         static Native.Vec3 Vec(ByteReader r) => new Native.Vec3(r.F32(), r.F32(), r.F32());
@@ -67,6 +70,7 @@ namespace MarioTest
         public static void WriteDown(ByteWriter w) => w.U8((byte)Op.Down);
         public static void WriteShineGet(ByteWriter w, Native.Vec3 pos, short yaw) { w.U8((byte)Op.ShineGet); Vec(w, pos); w.I16(yaw); }
         public static void WriteShineEnd(ByteWriter w) => w.U8((byte)Op.ShineEnd);
+        public static void WriteForeignWet(ByteWriter w, bool wet) { w.U8((byte)Op.ForeignWet); w.Bool(wet); }
 
         public static void WriteStep(ByteWriter w, in Native.Pad pad, short cameraYaw, float dt)
         {
@@ -97,6 +101,7 @@ namespace MarioTest
                     case Op.Down: sink.Down(); break;
                     case Op.ShineGet: { var v = Vec(r); sink.ShineGet(v, r.I16()); break; }
                     case Op.ShineEnd: sink.ShineEnd(); break;
+                    case Op.ForeignWet: sink.ForeignWet(r.Bool()); break;
                     case Op.Step:
                     {
                         var pad = r.Struct<Native.Pad>();
@@ -184,7 +189,7 @@ namespace MarioTest
         readonly ByteWriter ops = new ByteWriter(128);
         readonly List<Frame> batch = new List<Frame>();
         uint seq;
-        bool haveLimits, haveAim;
+        bool haveLimits, haveAim, haveWet, lastWet;
         Native.Limits lastLimits;
         bool lastAimOn;
         short lastAimYaw;
@@ -197,7 +202,7 @@ namespace MarioTest
 
         /// Forget what the puppet has, so tuning, limits and aim are all sent again (a
         /// periodic refresh covers a puppet that joined late).
-        public void Refresh() => haveLimits = haveAim = false;
+        public void Refresh() => haveLimits = haveAim = haveWet = false;
 
         public void Teleport(Native.Vec3 p) => FrameCodec.WriteTeleport(ops, p);
         public void Tuning(in Native.Tuning t) => FrameCodec.WriteTuning(ops, t);
@@ -218,6 +223,16 @@ namespace MarioTest
             haveLimits = true;
             lastLimits = l;
             FrameCodec.WriteLimits(ops, l);
+        }
+
+        /// What the player's sim was told about other Marios' water, so the shadow sim uses the same and
+        /// a slide on a friend's wet spot looks the same on every machine.
+        public void ForeignWet(bool wet)
+        {
+            if (haveWet && wet == lastWet) return;
+            haveWet = true;
+            lastWet = wet;
+            FrameCodec.WriteForeignWet(ops, wet);
         }
 
         public void SetAim(bool on, short yaw, float pitch)

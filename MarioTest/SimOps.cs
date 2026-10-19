@@ -94,8 +94,10 @@ namespace MarioTest
 
         public static uint Step(IntPtr sim, ref Native.Host host, ref Native.Pad pad, short cameraYaw, float dt, IntPtr view)
         {
+            bool wet = MarioSims.OthersWet(sim);
+            Rec?.ForeignWet(wet);
             Rec?.Step(pad, cameraYaw, dt);
-            Native.sms_sim_set_foreign_wet(sim, MarioSims.OthersWet(sim) ? 1u : 0u);
+            Native.sms_sim_set_foreign_wet(sim, wet ? 1u : 0u);
             return Native.sms_sim_step(sim, ref host, ref pad, cameraYaw, dt, view);
         }
     }

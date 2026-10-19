@@ -226,11 +226,15 @@ namespace MarioTest
         public void Down() => Native.sms_sim_down(sim);
         public void ShineGet(Native.Vec3 pos, short yaw) => Native.sms_sim_shine_get(sim, ref pos, yaw);
         public void ShineEnd() => Native.sms_sim_shine_end(sim);
+        // What the player's own sim was told, not what this machine's other sims say: they differ when
+        // the wet spot is one of a Mario this machine no longer has (a dead spectator's own).
+        bool foreignWet;
+        public void ForeignWet(bool wet) => foreignWet = wet;
 
         public void Step(in Native.Pad pad, short cameraYaw, float dt)
         {
             var p = pad;
-            Native.sms_sim_set_foreign_wet(sim, MarioSims.OthersWet(sim) ? 1u : 0u);
+            Native.sms_sim_set_foreign_wet(sim, foreignWet ? 1u : 0u);
             Native.sms_sim_step(sim, ref host, ref p, cameraYaw, dt, view != null ? view.Handle : IntPtr.Zero);
         }
     }

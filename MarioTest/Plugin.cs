@@ -58,7 +58,7 @@ namespace MarioTest
         internal static ConfigEntry<float> PoundDamage;
         internal static ConfigEntry<float> ShockDamage;
         internal static ConfigEntry<float> PoundRadius;
-        internal static ConfigEntry<float> DiveDamage, CorkscrewDamage, SuperCorkscrewDamage, SuperCorkscrewRecoil;
+        internal static ConfigEntry<float> DiveDamage, CorkscrewDamage, SuperCorkscrewDamage, SuperCorkscrewRecoil, RocketSpinDamage;
         internal static ConfigEntry<float> WaterDamage;
         internal static ConfigEntry<bool> FallDamageEnabled;
         internal static ConfigEntry<float> FallSafeHeight, DiveSafeHeight, FallPerHeight, DiveFallMultiplier;
@@ -297,6 +297,9 @@ namespace MarioTest
             SuperCorkscrewDamage = Config.Bind("Damage", "SuperCorkscrew", 20f,
                 "A corkscrew that has spun for 4 seconds is in flames, and its one hit does this much " +
                 "instead of Corkscrew: 20 is 2000%. It bonks Mario over on impact.");
+            RocketSpinDamage = Config.Bind("Damage", "RocketSpin", 10f,
+                "A stick circle during the Rocket's climb doubles the climb and sets the spin burning while it " +
+                "rises; each enemy it hits above Mario takes this much: 10 is 1000%.");
             SuperCorkscrewRecoil = Config.Bind("Damage", "SuperCorkscrewRecoil", 0.04f,
                 "The share of Mario's max health the super corkscrew's impact costs him (it goes through " +
                 "armor and fall-damage items like a fall does). 0.04 is 4%.");

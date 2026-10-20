@@ -117,9 +117,11 @@ namespace MarioTest
                     : kind == 1 ? Plugin.PoundDamage.Value * PoundScale(poundTop - mario.y) * strength
                     : kind == 3 ? Plugin.CorkscrewDamage.Value
                     : kind == 4 ? Plugin.SuperCorkscrewDamage.Value
+                    : kind == 5 ? Plugin.RocketSpinDamage.Value
                     : Plugin.DiveDamage.Value;
                 var at = victim.body ? victim.body.corePosition : victim.transform.position;
-                var push = kind >= 2 ? Flat(at - mario).normalized * (kind == 4 ? 4000f : kind == 3 ? 2400f : 1200f) : Vector3.down * 1500f;
+                var push = kind == 5 ? Vector3.up * 2500f
+                    : kind >= 2 ? Flat(at - mario).normalized * (kind == 4 ? 4000f : kind == 3 ? 2400f : 1200f) : Vector3.down * 1500f;
                 var type = kind == 1 && fallingSuper && ignite ? DamageType.IgniteOnHit : DamageType.Generic;
                 // Stomps are his basic attack (the primary), pounds the utility, the dive and the
                 // belly slide the special.

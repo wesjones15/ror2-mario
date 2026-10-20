@@ -26,7 +26,7 @@ namespace MarioTest
                 .Add("Stick circle + RT", "Ground spin spray");
             sheet.Pad("Combinations")
                 .Add("RT then A", "Rocket: charge, then launch")
-                .Add("Circle in a rocket", "Spin out of it")
+                .Add("Circle in a rocket", "Spin: double height, burns")
                 .Add("Turbo + A", "Dash jump")
                 .Add("Circle, Turbo held in air", "Corkscrew (keep circling; 4 s burns)")
                 .Add("B onto wet ground", "Wet slide");

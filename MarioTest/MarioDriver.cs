@@ -344,9 +344,12 @@ namespace MarioTest
                 Plugin.Log.LogInfo($"Mario fell off the map at {UnityHost.ToUnity(st.pos)}; back on the surface at {fellFrom}");
                 // Sunshine's "Too Bad!" (the miss jingle) for a fall: already playing, if he fell far
                 // enough for it to start early. He is safe from hits as he stands again.
+                // Out through the top of the map (a Rocket, a long corkscrew) is no miss: he is put back with no
+                // "TOO BAD!".
+                bool wentHigh = UnityHost.ToUnity(st.pos).y > fellFrom.y;
                 if (Local)
                 {
-                    if (!lostShown) TooBad();
+                    if (!lostShown && !wentHigh) TooBad();
                     lostShown = false;
                     if (NetworkServer.active && body)
                         body.AddTimedBuff(RoR2Content.Buffs.HiddenInvincibility, 1.5f);

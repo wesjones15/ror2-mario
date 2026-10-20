@@ -183,10 +183,12 @@ namespace MarioTest
         void FixedUpdate()
         {
             spawnAge += Time.fixedDeltaTime;
+            MarioShipParts.Register(body);
             // A client's Mario on the server: what healing owes his tank goes to the client.
             if (NetworkServer.active && body && !body.hasEffectiveAuthority) Items.FlushRemote();
             if (!CanDrive)
             {
+                if (Local) MarioShipParts.Lost();
                 StopDriving();
                 return;
             }
@@ -380,6 +382,7 @@ namespace MarioTest
             bool wasGrounded = grounded;
             grounded = st.on_ground != 0;
             MarioCombat.Watch(st);
+            MarioShipParts.Step(body, st, Local);
             pounding = st.pounding;
             if (st.in_water != inWater)
             {

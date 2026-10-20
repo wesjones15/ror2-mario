@@ -20,6 +20,7 @@ namespace MarioTest
     [BepInPlugin(Guid, "Mario", "0.3.6")]
     // Use the pack's fixes first when installed; no pack APIs are required by this plugin.
     [BepInDependency("___riskofthunder.RoR2BepInExPack", BepInDependency.DependencyFlags.SoftDependency)]
+    [BepInDependency("com.libpikmin.olimartest", BepInDependency.DependencyFlags.SoftDependency)]
     public class Plugin : BaseUnityPlugin
     {
         public const string Guid = "com.libsms.mariotest";
@@ -120,6 +121,7 @@ namespace MarioTest
                 new ConfigDescription("How much FLUDD's wet patches darken terrain, fading as they dry. 0 hides the marks; wet-slide eligibility is unchanged.",
                     new AcceptableValueRange<float>(0f, 0.35f)));
             CommonLog.Log = Logger;
+            MarioShipParts.Bind();
             string here = Path.GetDirectoryName(Info.Location);
             RunAudio.Initialize(() =>
             {

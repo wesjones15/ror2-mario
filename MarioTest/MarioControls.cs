@@ -29,7 +29,8 @@ namespace MarioTest
                 .Add("Circle in a rocket", "Spin: double height, burns")
                 .Add("Turbo + A", "Dash jump")
                 .Add("Circle, Turbo held in air", "Corkscrew (keep circling; 4 s burns)")
-                .Add("B onto wet ground", "Wet slide");
+                .Add("B onto wet ground", "Wet slide")
+                .Add("B by a ship part", "Pick up, carry, put or throw into the Dolphin");
 
             sheet.Keys("Moving").Add("Move", "Run, walk, turn")
                 .Add("Jump", "Jump (again in rhythm: double, triple)")
@@ -44,7 +45,8 @@ namespace MarioTest
                 .Add("Primary then Jump", "Rocket: charge, then launch")
                 .Add("Turbo + Jump", "Dash jump")
                 .Add("Circle, Turbo held in air", "Corkscrew (keep circling; 4 s burns)")
-                .Add("Secondary onto wet", "Wet slide");
+                .Add("Secondary onto wet", "Wet slide")
+                .Add("Secondary by a ship part", "Pick up, carry, put or throw into the Dolphin");
             return sheet;
         }
     }

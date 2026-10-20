@@ -254,6 +254,11 @@ namespace MarioTest
                         if ((int)e.value == 4) fallFraction = Mathf.Max(fallFraction, Mathf.Clamp01(Plugin.SuperCorkscrewRecoil.Value));
                     }
                     break;
+                case Native.EventKind.Put:
+                case Native.EventKind.Throw:
+                case Native.EventKind.ThrowAim:
+                    MarioShipParts.OnEvent(ref e);
+                    break;
                 case Native.EventKind.WaterHit:
                 case Native.EventKind.BurstHit:
                 case Native.EventKind.SpinHit:

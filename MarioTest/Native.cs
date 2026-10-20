@@ -12,7 +12,7 @@ namespace MarioTest
     internal static class Native
     {
         public const string Dll = "sms";
-        public const uint AbiVersion = 28;
+        public const uint AbiVersion = 29;
         // ABI 20 refraction maps: R=1, G=4*Y, B=coverage, A=4*X. Separate the mask and
         // compensate material strength so RoR2's near-flat-normal discard keeps the crests.
         public const float RefractionNormalGain = 4f;
@@ -83,6 +83,12 @@ namespace MarioTest
             ShineDemo = 21,
             /// A water drop from a spin jump's spray hit.
             SpinHit = 22,
+            /// He set the held object `arg` down: pos where he stood, value his facing (a 16-bit angle).
+            Put = 23,
+            /// He threw the held object `arg` from `pos`; ThrowAim follows.
+            Throw = 24,
+            /// With the Throw before it: arg his facing (a 16-bit angle), pos his velocity.
+            ThrowAim = 25,
         }
 
         /// Jump kinds (Event.arg of Jump).
@@ -294,11 +300,25 @@ namespace MarioTest
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
         public delegate byte WaterFn(IntPtr user, ref Vec3 pos, out float level);
 
+        /// Something Mario can pick up (SmsTakeable): fruit is -1 for none.
+        [StructLayout(LayoutKind.Sequential)]
+        public struct Takeable
+        {
+            public uint id;
+            public Vec3 pos;
+            public float radius;
+            public int fruit;
+        }
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+        public unsafe delegate uint TakeablesFn(IntPtr user, ref Vec3 pos, float radius, Takeable* output, uint max);
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+        public delegate byte TakeFn(IntPtr user, uint id);
+
         [StructLayout(LayoutKind.Sequential)]
         public struct Host
         {
             public IntPtr user;
-            public IntPtr ground, roof, walls, evt, enemies, water;
+            public IntPtr ground, roof, walls, evt, enemies, water, takeables, take;
         }
 
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern uint sms_abi_version();

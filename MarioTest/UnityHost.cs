@@ -43,6 +43,8 @@ namespace MarioTest
             evt = MarioCombat.EventPtr,
             enemies = MarioCombat.EnemiesPtr,
             water = Marshal.GetFunctionPointerForDelegate(waterFn),
+            takeables = MarioShipParts.TakeablesPtr,
+            take = MarioShipParts.TakePtr,
         };
 
         public static Vector3 ToUnity(Native.Vec3 v) => new Vector3(v.x, v.y, v.z) * Scale;

@@ -116,9 +116,10 @@ namespace MarioTest
                 float coefficient = kind == 0 ? Plugin.StompDamage.Value
                     : kind == 1 ? Plugin.PoundDamage.Value * PoundScale(poundTop - mario.y) * strength
                     : kind == 3 ? Plugin.CorkscrewDamage.Value
+                    : kind == 4 ? Plugin.SuperCorkscrewDamage.Value
                     : Plugin.DiveDamage.Value;
                 var at = victim.body ? victim.body.corePosition : victim.transform.position;
-                var push = kind >= 2 ? Flat(at - mario).normalized * (kind == 3 ? 2400f : 1200f) : Vector3.down * 1500f;
+                var push = kind >= 2 ? Flat(at - mario).normalized * (kind == 4 ? 4000f : kind == 3 ? 2400f : 1200f) : Vector3.down * 1500f;
                 var type = kind == 1 && fallingSuper && ignite ? DamageType.IgniteOnHit : DamageType.Generic;
                 // Stomps are his basic attack (the primary), pounds the utility, the dive and the
                 // belly slide the special.
@@ -244,7 +245,12 @@ namespace MarioTest
                             Plugin.FallPerHeight.Value, Plugin.DiveFallMultiplier.Value));
                     break;
                 case Native.EventKind.EnemyHit:
-                    if (byId.TryGetValue((uint)e.arg, out var hc)) blows.Add((hc, (int)e.value));
+                    if (byId.TryGetValue((uint)e.arg, out var hc))
+                    {
+                        blows.Add((hc, (int)e.value));
+                        // The super corkscrew's impact costs Mario a share of his health, the way a fall does.
+                        if ((int)e.value == 4) fallFraction = Mathf.Max(fallFraction, Mathf.Clamp01(Plugin.SuperCorkscrewRecoil.Value));
+                    }
                     break;
                 case Native.EventKind.WaterHit:
                 case Native.EventKind.BurstHit:

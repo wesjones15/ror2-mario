@@ -28,7 +28,7 @@ namespace MarioTest
                 .Add("RT then A", "Rocket: charge, then launch")
                 .Add("Circle in a rocket", "Spin out of it")
                 .Add("Turbo + A", "Dash jump")
-                .Add("Circle in dash jump", "Corkscrew dive")
+                .Add("Circle, Turbo held in air", "Corkscrew (keep circling; 4 s burns)")
                 .Add("B onto wet ground", "Wet slide");
 
             sheet.Keys("Moving").Add("Move", "Run, walk, turn")
@@ -43,7 +43,7 @@ namespace MarioTest
             sheet.Keys("Combinations")
                 .Add("Primary then Jump", "Rocket: charge, then launch")
                 .Add("Turbo + Jump", "Dash jump")
-                .Add("Circle in dash jump", "Corkscrew dive")
+                .Add("Circle, Turbo held in air", "Corkscrew (keep circling; 4 s burns)")
                 .Add("Secondary onto wet", "Wet slide");
             return sheet;
         }

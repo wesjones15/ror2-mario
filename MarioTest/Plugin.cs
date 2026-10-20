@@ -486,6 +486,8 @@ namespace MarioTest
             gameObject.AddComponent<MarioLunarCoin>();
             MarioNet.Register();
             // The HUD's skill icons name the buttons Mario's sim reads (MarioPad), not RoR2's binds.
+            PauseControls.Install(gameObject);
+            PauseControls.Register("MarioTestBody", _ => MarioControls.Sheet());
             GlyphOverride.Install();
             GlyphOverride.Set("MarioTestBody", null, new Dictionary<SkillSlot, PadButton[]>
             {

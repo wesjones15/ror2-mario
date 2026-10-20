@@ -648,7 +648,7 @@ namespace MarioTest
             if (DrawModel.Value)
             {
                 DisplayModel.Attach(display, Guid, MarioDisplay.Get);
-                Portrait.Request(body, MarioDisplay.Get);
+                Portrait.Request(body, MarioDisplay.Get, framing: PortraitFraming.ThreeQuarter);
             }
 
             var survivor = ScriptableObject.CreateInstance<SurvivorDef>();

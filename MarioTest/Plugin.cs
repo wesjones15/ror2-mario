@@ -24,6 +24,8 @@ namespace MarioTest
     public class Plugin : BaseUnityPlugin
     {
         public const string Guid = "com.libsms.mariotest";
+        /// The unlockable the Olimar plugin grants when a Ship Repair run is won (matched by name).
+        public const string MarioUnlock = "Characters.MarioTest";
 
         internal static ManualLogSource Log;
         internal static string AssetsDir;
@@ -672,7 +674,19 @@ namespace MarioTest
             survivor.outroFlavorToken = "MARIOTEST_BODY_OUTRO";
             survivor.mainEndingEscapeFailureFlavorToken = "MARIOTEST_BODY_FAIL";
             survivor.primaryColor = cb.bodyColor;
-            survivor.desiredSortPosition = 100f;
+            survivor.desiredSortPosition = 101f; // Olimar leads the list at 100
+            // Mario is a reward for finishing Ship Repair as Olimar, so he is locked while the Olimar plugin (which
+            // grants "Characters.MarioTest" on a win) is installed; without it nothing could ever unlock him.
+            if (BepInEx.Bootstrap.Chainloader.PluginInfos.ContainsKey("com.libpikmin.olimartest"))
+            {
+                var unlock = ScriptableObject.CreateInstance<UnlockableDef>();
+                unlock.cachedName = MarioUnlock;
+                unlock.nameToken = "MARIOTEST_BODY_NAME";
+                unlock.getHowToUnlockString = () => "Repair the Dolphin in Ship Repair as Olimar.";
+                unlock.getUnlockedString = () => "Mario unlocked.";
+                survivor.unlockableDef = unlock;
+                pack.unlockableDefs.Add(new[] { unlock });
+            }
 
             // For Goobo Jr.'s clone and the like: Commando's AI walking him, MarioBrain pressing his buttons.
             var ai = SurvivorAi.Register(pack, body, "Prefabs/CharacterMasters/CommandoMonsterMaster", "MarioTestMonsterMaster", Guid);

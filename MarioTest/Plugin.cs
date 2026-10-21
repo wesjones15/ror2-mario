@@ -17,7 +17,7 @@ namespace MarioTest
     // the body moved by the sim instead of RoR2's character controller, and drawn and heard
     // as the disc's Mario. No R2API: content goes in through RoR2's own content-pack hook
     // (ror2-common's ContentProvider).
-    [BepInPlugin(Guid, "Mario", "0.3.8")]
+    [BepInPlugin(Guid, "Mario", "0.3.9")]
     // Use the pack's fixes first when installed; no pack APIs are required by this plugin.
     [BepInDependency("___riskofthunder.RoR2BepInExPack", BepInDependency.DependencyFlags.SoftDependency)]
     [BepInDependency("com.libpikmin.olimartest", BepInDependency.DependencyFlags.SoftDependency)]
@@ -619,11 +619,36 @@ namespace MarioTest
         void Update()
         {
             MarioPerformance.Report();
+            UpdateShipRepairLock();
             if (musicInitialized || !AssetsSettled) return;
             musicInitialized = true;
             // Main thread: bind config and load the worker's finished PCM for RoR2 playback.
             string folder = Path.Combine(AssetsDir, "ror2_audio");
             if (AssetsReady) SpawnMusic.Initialize(Config, folder);
+        }
+
+        // Mario's lock belongs to Ship Repair only. He is always unlocked in every other mode, so the survivor carries
+        // the unlockable only while a Ship Repair lobby is set up or a Ship Repair run is going.
+        static SurvivorDef marioSurvivor;
+        static UnlockableDef shipRepairLock;
+
+        static bool ShipRepairSelected()
+        {
+            var lobby = PreGameController.instance;
+            if (lobby)
+            {
+                var mode = GameModeCatalog.GetGameModePrefabComponent(lobby.gameModeIndex);
+                if (mode && mode.GetComponent("ShipRepairMarker")) return true;
+            }
+            var run = Run.instance;
+            return run && run.GetComponent("ShipRepairMarker");
+        }
+
+        static void UpdateShipRepairLock()
+        {
+            if (!marioSurvivor || !shipRepairLock) return;
+            var want = ShipRepairSelected() ? shipRepairLock : null;
+            if (marioSurvivor.unlockableDef != want) marioSurvivor.unlockableDef = want;
         }
 
         static string Utf8(byte[] buffer)
@@ -675,8 +700,9 @@ namespace MarioTest
             survivor.mainEndingEscapeFailureFlavorToken = "MARIOTEST_BODY_FAIL";
             survivor.primaryColor = cb.bodyColor;
             survivor.desiredSortPosition = 101f; // Olimar leads the list at 100
-            // Mario is a reward for finishing Ship Repair as Olimar, so he is locked while the Olimar plugin (which
-            // grants "Characters.MarioTest" on a win) is installed; without it nothing could ever unlock him.
+            // Mario is a reward for finishing Ship Repair as Olimar, but only in Ship Repair: the lock is attached to the
+            // survivor by UpdateShipRepairLock while that mode is selected, and he is unlocked in every other mode. The
+            // Olimar plugin grants "Characters.MarioTest" on a win; without it nothing could ever unlock him.
             if (BepInEx.Bootstrap.Chainloader.PluginInfos.ContainsKey("com.libpikmin.olimartest"))
             {
                 var unlock = ScriptableObject.CreateInstance<UnlockableDef>();
@@ -684,7 +710,8 @@ namespace MarioTest
                 unlock.nameToken = "MARIOTEST_BODY_NAME";
                 unlock.getHowToUnlockString = () => "Repair the Dolphin in Ship Repair as Olimar.";
                 unlock.getUnlockedString = () => "Mario unlocked.";
-                survivor.unlockableDef = unlock;
+                shipRepairLock = unlock;
+                marioSurvivor = survivor;
                 pack.unlockableDefs.Add(new[] { unlock });
             }
 

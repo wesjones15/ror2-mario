@@ -16,7 +16,7 @@ namespace MarioTest
             sheet.Pad("Moving").Add("Left stick", "Run, walk, turn")
                 .Add("A", "Jump (A A A in rhythm: double, triple)")
                 .Add("B", "Dive; slide on the ground")
-                .Add("LT", "Crouch; ground pound in the air")
+                .Add("LT", "Ground pound in the air")
                 .Add("Stick circle", "Spin jump (in the air)");
             sheet.Pad("FLUDD")
                 .Add("RT", "Spray: light press a splash, full a stream")
@@ -35,7 +35,7 @@ namespace MarioTest
             sheet.Keys("Moving").Add("Move", "Run, walk, turn")
                 .Add("Jump", "Jump (again in rhythm: double, triple)")
                 .Add("Secondary", "Dive; slide on the ground")
-                .Add("Utility", "Crouch; ground pound in the air")
+                .Add("Utility", "Ground pound in the air")
                 .Add("Mouse circle", "Spin jump: circle the move keys");
             sheet.Keys("FLUDD")
                 .Add("Primary", "Spray: tap a splash, hold a stream")

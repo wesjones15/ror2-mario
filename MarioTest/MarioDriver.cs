@@ -259,7 +259,7 @@ namespace MarioTest
             short cameraYaw = UnityHost.Yaw(-input.aimDirection);
             // The lock-on (LB; a keyboard's utility key; the brain's): FLUDD takes its aim, and
             // its head turns, to the target (or where the camera looks), on the ground or in the
-            // air. L stays Sunshine's: crouch, ground pound, the camera. Only a keyboard has L
+            // air. L is now just the ground pound in the air (no crouch, no camera aim). Only a keyboard has L
             // and the lock on one key; the sim then sees L as a pound pressed afresh in the air.
             bool lHeld = step.l != 0;
             bool locking = pad.LockHeld && Plugin.LockOn.Value && Plugin.CameraAim.Value && (Local || lockTarget);
@@ -284,7 +284,7 @@ namespace MarioTest
                 Native.sms_sim_state(sim, out var fitted);
                 crosshair = fitted.nozzle == 1;
             }
-            Aim(lHeld && Local && !(pad.LockSharesL && locking), locking, lockTarget, cycle, cycleDirection, crosshair);
+            Aim(false, locking, lockTarget, cycle, cycleDirection, crosshair);
             Items.Begin(sim, sprinting, grounded);
             // The Shine Get pose, inside the step so the other players' puppets get it too.
             if (shineAt.HasValue)

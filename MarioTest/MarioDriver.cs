@@ -561,9 +561,15 @@ namespace MarioTest
             var nozzle = transform.position - feetToOrigin
                 + Vector3.up * (UnityHost.MarioHeight * UnityHost.Scale * 0.55f);
             var d = target - nozzle;
-            var flat = new Vector3(d.x, 0f, d.z);
-            if (flat.sqrMagnitude < 0.01f) flat = new Vector3(dir.x, 0f, dir.z);
-            float pitch = Mathf.Atan2(d.y, flat.magnitude);
+            // The crosshair, or a locked enemy that circled or flew past him, can end up beside
+            // or behind the nozzle: the water must never spray backward into his own face, so a
+            // target that isn't out front falls back to the camera direction (as
+            // MeleeAim.ProjectileDirection does). "Perpendicular and up" spray was this: a target
+            // off to one side or behind sent the water sideways/backward instead of at the camera.
+            var aim = Vector3.Dot(d, dir) > 0.05f ? d.normalized : dir.normalized;
+            var flat = new Vector3(aim.x, 0f, aim.z);
+            float pitch = Mathf.Atan2(aim.y, flat.magnitude);
+            if (flat.sqrMagnitude < 1e-4f) flat = new Vector3(dir.x, 0f, dir.z);
             SimOps.SetAim(sim, 1, UnityHost.Yaw(flat), pitch);
         }
 

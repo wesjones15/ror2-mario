@@ -699,7 +699,7 @@ namespace MarioTest
             survivor.outroFlavorToken = "MARIOTEST_BODY_OUTRO";
             survivor.mainEndingEscapeFailureFlavorToken = "MARIOTEST_BODY_FAIL";
             survivor.primaryColor = cb.bodyColor;
-            survivor.desiredSortPosition = 101f; // Olimar leads the list at 100
+            survivor.desiredSortPosition = 100f; // Mario leads outside Ship Repair; the Olimar plugin swaps him with Olimar (101) there
             // Mario is a reward for finishing Ship Repair as Olimar, but only in Ship Repair: the lock is attached to the
             // survivor by UpdateShipRepairLock while that mode is selected, and he is unlocked in every other mode. The
             // Olimar plugin grants "Characters.MarioTest" on a win; without it nothing could ever unlock him.

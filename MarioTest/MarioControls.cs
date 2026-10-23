@@ -1,54 +1,73 @@
+using Rewired;
+using RoR2;
+using RoR2.UI;
 using Ror2Common;
 
 namespace MarioTest
 {
-    // Mario's entry in the pause menu's controls window (ror2-common PauseControls).
+    // The pause window chooses the section for the player's last input device.
     internal static class MarioControls
     {
+        static string Pad(Rewired.Player player, PadButton button, string fallback) =>
+            GlyphOverride.PhysicalGlyph(player, button) ?? fallback;
+
+        static string Key(MPEventSystem eventSystem, string action, string fallback)
+        {
+            if (!eventSystem) return fallback;
+            var glyph = Glyphs.GetGlyphString(eventSystem, action, AxisRange.Full,
+                MPEventSystem.InputSource.MouseAndKeyboard, true);
+            return string.IsNullOrEmpty(glyph) ? fallback : glyph;
+        }
+
         public static ControlSheet Sheet()
         {
+            var user = LocalUserManager.GetFirstLocalUser();
+            var player = user?.inputPlayer;
+            var eventSystem = user?.eventSystem;
+            string A = Pad(player, PadButton.A, "A"), B = Pad(player, PadButton.B, "B");
+            string LB = Pad(player, PadButton.LB, "LB"), RB = Pad(player, PadButton.RB, "RB");
+            string LT = Pad(player, PadButton.LT, "LT"), RT = Pad(player, PadButton.RT, "RT");
+            string LS = Pad(player, PadButton.LS, "LS");
+            string jump = Key(eventSystem, "Jump", "Jump");
+            string secondary = Key(eventSystem, "SecondarySkill", "Secondary");
+            string utility = Key(eventSystem, "UtilitySkill", "Utility");
+            string primary = Key(eventSystem, "PrimarySkill", "Primary");
+            string special = Key(eventSystem, "SpecialSkill", "Special");
+            string sprint = Key(eventSystem, "Sprint", "Sprint");
+            string move = Key(eventSystem, "MoveVertical", "W / S") + " / "
+                + Key(eventSystem, "MoveHorizontal", "A / D");
+
             var sheet = new ControlSheet
             {
-                Subtitle = "Sunshine's plumber, with FLUDD on his back",
-                Footer = "X stays RoR2's interact and Y its equipment. Moves are Sunshine's: stomps, pounds and dives hurt what they hit.",
+                Subtitle = "Hero of the Mushroom Kingdom... On Vacation!",
             };
+            sheet.Pad("")
+                .Add(A, "Jump")
+                .Add(B, "Dive (try sliding on\n<pos=170>wet terrain!)")
+                .Add(LS, "Move (click: Sprint)\n<pos=170>(spin: Spin)")
+                .Add(LT + " in air", "Ground Pound");
+            sheet.Pad("F.L.U.D.D.")
+                .Add(RT, "Spray Water / Use Nozzle")
+                .Add(RB, "Cycle Nozzles (Spray, Hover,\n<pos=170>Rocket, Turbo)")
+                .Add("hold " + LB, "Lock on to Target")
+                .Add(LB + " + " + RT, "Spray Target")
+                .Add(LB + " + tap " + RB, "Cycle target");
 
-            sheet.Pad("Moving").Add("Left stick", "Run, walk, turn")
-                .Add("A", "Jump (A A A in rhythm: double, triple)")
-                .Add("B", "Dive; slide on the ground")
-                .Add("LT", "Ground pound in the air")
-                .Add("Stick circle", "Spin jump (in the air)");
-            sheet.Pad("FLUDD")
-                .Add("RT", "Spray: light press a splash, full a stream")
-                .Add("RB", "Switch nozzle")
-                .Add("LB", "Hold to lock on (RB then cycles)")
-                .Add("D-pad down", "Refill the tank")
-                .Add("Stick circle + RT", "Ground spin spray");
-            // The ship part row is for Ship Repair only: it is on the sheet only while that mode is the one being played.
-            bool repair = Plugin.ShipRepairSelected();
-            var padCombos = sheet.Pad("Combinations")
-                .Add("RT then A", "Rocket: charge, then launch")
-                .Add("Circle in a rocket", "Spin: double height, burns")
-                .Add("Turbo + A", "Dash jump")
-                .Add("Circle, Turbo held in air", "Corkscrew (keep circling; 4 s burns)")
-                .Add("B onto wet ground", "Wet slide");
-            if (repair) padCombos.Add("B by a ship part", "Pick up, carry, put or throw into the Dolphin");
-
-            sheet.Keys("Moving").Add("Move", "Run, walk, turn")
-                .Add("Jump", "Jump (again in rhythm: double, triple)")
-                .Add("Secondary", "Dive; slide on the ground")
-                .Add("Utility", "Ground pound in the air")
-                .Add("Mouse circle", "Spin jump: circle the move keys");
-            sheet.Keys("FLUDD")
-                .Add("Primary", "Spray: tap a splash, hold a stream")
-                .Add("Sprint", "Full spray")
-                .Add("Special", "Switch nozzle");
-            var keyCombos = sheet.Keys("Combinations")
-                .Add("Primary then Jump", "Rocket: charge, then launch")
-                .Add("Turbo + Jump", "Dash jump")
-                .Add("Circle, Turbo held in air", "Corkscrew (keep circling; 4 s burns)")
-                .Add("Secondary onto wet", "Wet slide");
-            if (repair) keyCombos.Add("Secondary by a ship part", "Pick up, carry, put or throw into the Dolphin");
+            // MarioPad reads RoR2 bindings for keyboard and mouse. Utility also
+            // locks on while held, and Special cycles targets during that hold.
+            sheet.Keys("")
+                .Add(jump, "Jump")
+                .Add(secondary, "Dive (try sliding on\n<pos=170>wet terrain!)")
+                .Add(move, "Move (circle: Spin)")
+                .Add(sprint, "Sprint / full spray")
+                .Add(utility + " in air", "Ground Pound");
+            sheet.Keys("F.L.U.D.D.")
+                .Add(primary, "Spray Water / Use Nozzle")
+                .Add(special, "Cycle Nozzles (Spray, Hover,\n<pos=170>Rocket, Turbo)")
+                .Add("hold " + utility, "Lock on to Target")
+                .Add(utility + " + " + primary, "Spray Target")
+                .Add(utility + " + tap " + special, "Cycle target");
+            ControlSheetLayout.SpaceRows(sheet);
             return sheet;
         }
     }

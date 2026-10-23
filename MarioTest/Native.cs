@@ -123,7 +123,8 @@ namespace MarioTest
             public float forward_vel, anim_frame, water, alpha;
             public short face_yaw, model_yaw, health;
             public byte on_ground, has_fludd;
-            /// 1 falling in a ground pound, 2 in a super pound (Sunshine's flames), else 0.
+            /// 1 falling in a ground pound, 2 in a super pound (Sunshine's flames), 3 in the get-up after the
+            /// landing (hits do not interrupt any of them), else 0.
             public byte pounding;
             /// 1 standing in shallow water (UnityHost's water callback).
             public byte in_water;

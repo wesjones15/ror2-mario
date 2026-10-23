@@ -153,6 +153,7 @@ namespace MarioTest
 
         /// The secondary's max stock last step (-1 before the first).
         int airMaxSeen = -1;
+        bool airStockLogged;
 
         Native.Limits Limits()
         {
@@ -170,6 +171,19 @@ namespace MarioTest
             // waiting out the recharge that only starts once he has touched the ground.
             if (secondary && NativeSkills.Holds(secondary, MarioSkills.Air))
             {
+                // The magazine's stacks are the Air Pump's extra uses. RoR2 raises the secondary's max stock
+                // from them itself (CharacterBody.RecalculateStats); where it has not (a skill whose base stock
+                // is nothing), set the bonus here from the item count, so the uses never depend on that.
+                int magazines = ByName.Count(body, "SecondarySkillMagazine");
+                if (magazines > 0 && secondary.maxStock < MarioSkills.Air.baseMaxStock + magazines)
+                {
+                    secondary.SetBonusStockFromBody(magazines);
+                    if (!airStockLogged)
+                    {
+                        airStockLogged = true;
+                        Plugin.Log.LogInfo($"Air Pump: {magazines} Backup Magazine(s) set the max stock to {secondary.maxStock}");
+                    }
+                }
                 int max = secondary.maxStock;
                 // From the skill's own base on first sight, so a body that spawns holding the
                 // magazine (its bonus lands after the skill was filled with nothing) starts with it

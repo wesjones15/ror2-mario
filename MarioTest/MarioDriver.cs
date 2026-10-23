@@ -219,7 +219,10 @@ namespace MarioTest
             // Jump pads, knockback, Milky Chrysalis: whatever RoR2 put on the motor since the
             // last step throws Mario (mVel is per 30 Hz frame); a nudge under 2 m/s (a light
             // hit's knockback) leaves him be.
-            if (native && native.TakeExternalVelocity(out var thrown, 2f) && Plugin.ExternalForces.Value)
+            // A ground pound, and the get-up after it, are not interrupted by enemy damage: a hit's
+            // knockback leaves him be (the sim also refuses a knock-down then); a jump pad still launches.
+            if (native && native.TakeExternalVelocity(out var thrown, 2f) && Plugin.ExternalForces.Value
+                && (pounding == 0 || native.JumpPadLaunch))
             {
                 var v = UnityHost.ToSim(thrown / 30f);
                 if (native.JumpPadLaunch)

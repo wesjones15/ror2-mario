@@ -636,7 +636,7 @@ namespace MarioTest
         static SurvivorDef marioSurvivor;
         static UnlockableDef shipRepairLock;
 
-        static bool ShipRepairSelected()
+        internal static bool ShipRepairSelected()
         {
             var lobby = PreGameController.instance;
             if (lobby)

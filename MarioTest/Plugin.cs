@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Threading;
@@ -227,8 +227,8 @@ namespace MarioTest
                 "its middle, for you alone. Touching it (walking or jumping into it) is Sunshine's Shine Get: Mario's " +
                 "pose, the camera, the fanfare and \"SHINE!\", and the teleporter finishes as if you had used it: " +
                 "to the stage the run was going to, to a Lunar Seer's choice, or on the stage before the moon, to the moon.");
-            ShineHeight = Config.Bind("Shine", "Height", 1.6f,
-                new ConfigDescription("Metres above the teleporter's middle that the Shine hangs.",
+            ShineHeight = Config.Bind("Shine", "Height", 2.6f,
+                new ConfigDescription("Metres above the teleporter's middle that the Shine hangs (above his head: he jumps into it).",
                     new AcceptableValueRange<float>(0.2f, 6f)));
             ShineTouchRadius = Config.Bind("Shine", "TouchRadius", 1.5f,
                 new ConfigDescription("Metres around the Shine, across the ground, that Mario touches it from. " +

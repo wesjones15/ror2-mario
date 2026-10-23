@@ -72,19 +72,19 @@ namespace MarioTest
             if (!instance) return;
             instance.livesMaster = master;
             instance.livesStart = ExtraLives(master);
-            instance.Start(Kind.TooBad);
+            instance.Begin(Kind.TooBad);
         }
 
         /// GAME OVER for the local player.
-        internal static void GameOver() => instance?.Start(Kind.GameOver);
+        internal static void GameOver() => instance?.Begin(Kind.GameOver);
 
         /// The "SHINE!" letters of a Shine Get, over the scene.
-        internal static void ShineGet() => instance?.Start(Kind.ShineGet);
+        internal static void ShineGet() => instance?.Begin(Kind.ShineGet);
 
         /// Whichever is playing stops (leaving a run, quitting).
         internal static void Stop() => instance?.Clear();
 
-        void Start(Kind kind)
+        void Begin(Kind kind)
         {
             if (!Plugin.ShowScreenEffects.Value || !Plugin.AssetsReady) return;
             if (view == IntPtr.Zero && !tried)

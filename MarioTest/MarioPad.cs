@@ -22,7 +22,7 @@ namespace MarioTest
     //
     // A Mario no player controls (Goobo Jr.'s clone) is pressed by MarioBrain (which also tops
     // his tank back up with the D-pad refill); with no brain he takes the AI's presses from the
-    // input bank: jump A, primary half spray, secondary B, utility L, sprint.
+    // input bank: jump A, primary full spray, secondary B, utility L, sprint.
     //
     // Read every frame; presses are latched until the sim has stepped with them, so a tap
     // between two physics steps still counts. Movement is RoR2's own (the input bank's move
@@ -87,7 +87,7 @@ namespace MarioTest
                 b = input.skill2.down;
                 l = input.skill3.down;
                 x = false;
-                r = input.skill1.down ? 0.6f : 0f;
+                r = input.skill1.down ? 1f : 0f;
                 sprint = input.sprint.down;
                 Latch();
                 return;

@@ -264,8 +264,13 @@ namespace MarioTest
             // its head turns, to the target (or where the camera looks), on the ground or in the
             // air. L is now just the ground pound in the air (no crouch, no camera aim). Only a keyboard has L
             // and the lock on one key; the sim then sees L as a pound pressed afresh in the air.
+            // A player's lock picks its target with the camera, so it needs Controls.LockOn and
+            // CameraAim; an AI's target comes from its brain, which has no camera and is its own
+            // gun's aiming (as Olimar's brain sets his cursor), so the player's settings don't
+            // gate it.
             bool lHeld = step.l != 0;
-            bool locking = pad.LockHeld && Plugin.LockOn.Value && Plugin.CameraAim.Value && (Local || lockTarget);
+            bool locking = pad.LockHeld
+                && (Local ? Plugin.LockOn.Value && Plugin.CameraAim.Value : lockTarget != null);
             if (locking)
             {
                 if (pad.LockSharesL)
@@ -542,9 +547,10 @@ namespace MarioTest
         // ror2-common's EnemyLock picks the enemy nearest where the camera points (Olimar's RT
         // does the same), `cycle` steps to the next toward `direction` on screen, and FLUDD
         // points at it, so the spray trigger sprays it; with none in reach it's the crosshair.
+        // `ai` is an AI's Mario's target (his brain's lock): his gun's crosshair, aimed straight
+        // from the nozzle, since an AI has no camera and its input bank's aim is its walk.
         void Aim(bool camera, bool lockHeld, CharacterBody ai, bool cycle, Vector2 direction, bool crosshair = false)
         {
-            // An AI's Mario aims at the enemy his brain locked onto.
             camera = ((camera && Plugin.CameraAim.Value) || crosshair) && input;
             enemyLock.Range = Plugin.LockRange.Value;
             var locked = ai ? ai : enemyLock.Update(body, lockHeld && input, cycle, direction);
@@ -563,20 +569,33 @@ namespace MarioTest
             if (locked) target = locked.corePosition;
             else target = CrosshairTarget(origin, dir, out note);
             var d = target - nozzle;
-            // A crosshair hit that is not out where the camera looks (a collider beside him, or anything close
-            // that sits above the nozzle, which would send the water straight up) is not the target: the water
-            // goes the way the camera looks. Not for a locked enemy, which can be anywhere.
-            if (!locked && d.sqrMagnitude > 1e-4f && Vector3.Angle(d, dir) > MaxCrosshairTurn)
+            Vector3 aim;
+            if (ai)
             {
-                note += " turn " + Vector3.Angle(d, dir).ToString("0");
-                d = dir;
+                // An AI's crosshair is the enemy its brain locked onto: the water goes straight at
+                // it from the nozzle, whichever way the camera or the AI's own walk faces. An AI's
+                // InputBankTest aim follows its walk or the driver's aim, not its brain's enemy,
+                // since the Spray became a gun aimed by the host; this is its trigger's target.
+                aim = d.sqrMagnitude > 1e-6f ? d.normalized
+                    : (dir.sqrMagnitude > 1e-6f ? dir.normalized : Vector3.forward);
             }
-            // The crosshair, or a locked enemy that circled or flew past him, can end up beside
-            // or behind the nozzle: the water must never spray backward into his own face, so a
-            // target that isn't out front falls back to the camera direction (as
-            // MeleeAim.ProjectileDirection does). "Perpendicular and up" spray was this: a target
-            // off to one side or behind sent the water sideways/backward instead of at the camera.
-            var aim = Vector3.Dot(d, dir) > 0.05f ? d.normalized : dir.normalized;
+            else
+            {
+                // A crosshair hit that is not out where the camera looks (a collider beside him, or anything close
+                // that sits above the nozzle, which would send the water straight up) is not the target: the water
+                // goes the way the camera looks. Not for a locked enemy, which can be anywhere.
+                if (!locked && d.sqrMagnitude > 1e-4f && Vector3.Angle(d, dir) > MaxCrosshairTurn)
+                {
+                    note += " turn " + Vector3.Angle(d, dir).ToString("0");
+                    d = dir;
+                }
+                // The crosshair, or a locked enemy that circled or flew past him, can end up beside
+                // or behind the nozzle: the water must never spray backward into his own face, so a
+                // target that isn't out front falls back to the camera direction (as
+                // MeleeAim.ProjectileDirection does). "Perpendicular and up" spray was this: a target
+                // off to one side or behind sent the water sideways/backward instead of at the camera.
+                aim = Vector3.Dot(d, dir) > 0.05f ? d.normalized : dir.normalized;
+            }
             var flat = new Vector3(aim.x, 0f, aim.z);
             float pitch = Mathf.Atan2(aim.y, flat.magnitude);
             if (flat.sqrMagnitude < 1e-4f) flat = new Vector3(dir.x, 0f, dir.z);

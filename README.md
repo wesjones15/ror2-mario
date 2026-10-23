@@ -75,8 +75,9 @@ How it works:
     RoR2's own gummy clone material (`matGummyClone`, a DLC1 addressable; `Look.GummyClones`).
   - Its AI master only walks him (common `SurvivorAi.Drivers`: stand and face the enemy within
     spray range, else run at it, else follow the leader). `MarioBrain` presses his buttons: in
-    range it holds L (locking on, so FLUDD aims at the enemy) and R; close up it jumps and ground
-    pounds; further off it sprints, hops, and dives at middling range.
+    range it locks on (the left bumper's job for a player, so FLUDD aims at the enemy) and holds
+    R, a full press: the Spray is his gun, and it refills the tank when it runs low; close up it
+    jumps and ground pounds; further off it sprints, hops, and dives at middling range.
 - When Mario dies he falls down for good as in Sunshine (the "die" clip and his "down" voices)
   and Sunshine's game over song plays (falling off the map plays the miss jingle, the "Too Bad!" one,
   before he is put back on the surface). RoR2 removes a dead body a second

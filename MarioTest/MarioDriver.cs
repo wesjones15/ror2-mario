@@ -556,14 +556,21 @@ namespace MarioTest
             }
             var origin = input.aimOrigin;
             var dir = input.aimDirection;
-            Vector3 target;
-            if (locked) target = locked.corePosition;
-            else target = Physics.Raycast(origin, dir, out var hit, 300f,
-                LayerIndex.world.mask | LayerIndex.entityPrecise.mask, QueryTriggerInteraction.Ignore)
-                ? hit.point : origin + dir * 100f;
             var nozzle = transform.position - feetToOrigin
                 + Vector3.up * (UnityHost.MarioHeight * UnityHost.Scale * 0.55f);
+            Vector3 target;
+            string note = locked ? "locked" : "";
+            if (locked) target = locked.corePosition;
+            else target = CrosshairTarget(origin, dir, out note);
             var d = target - nozzle;
+            // A crosshair hit that is not out where the camera looks (a collider beside him, or anything close
+            // that sits above the nozzle, which would send the water straight up) is not the target: the water
+            // goes the way the camera looks. Not for a locked enemy, which can be anywhere.
+            if (!locked && d.sqrMagnitude > 1e-4f && Vector3.Angle(d, dir) > MaxCrosshairTurn)
+            {
+                note += " turn " + Vector3.Angle(d, dir).ToString("0");
+                d = dir;
+            }
             // The crosshair, or a locked enemy that circled or flew past him, can end up beside
             // or behind the nozzle: the water must never spray backward into his own face, so a
             // target that isn't out front falls back to the camera direction (as
@@ -574,7 +581,73 @@ namespace MarioTest
             float pitch = Mathf.Atan2(aim.y, flat.magnitude);
             if (flat.sqrMagnitude < 1e-4f) flat = new Vector3(dir.x, 0f, dir.z);
             SimOps.SetAim(sim, 1, UnityHost.Yaw(flat), pitch);
+            SprayDiag(locked, origin, dir, nozzle, target, note, UnityHost.Yaw(flat), pitch);
         }
+
+        // A crosshair hit nearer than this to the camera's origin is not taken as the target (a free aim at
+        // something that close points the water at its own parallax, up or down), and the water never turns
+        // further than MaxCrosshairTurn from where the camera looks to reach its target.
+        const float MinCrosshairHit = 2f, MaxCrosshairTurn = 35f;
+        static readonly RaycastHit[] crosshairHits = new RaycastHit[24];
+
+        /// Where the camera's ray lands, past Mario's own colliders and anything closer than MinCrosshairHit.
+        /// `note` says what was passed over, for SprayDiag.
+        Vector3 CrosshairTarget(Vector3 origin, Vector3 dir, out string note)
+        {
+            note = "";
+            int n = Physics.RaycastNonAlloc(origin, dir, crosshairHits, 300f,
+                LayerIndex.world.mask | LayerIndex.entityPrecise.mask, QueryTriggerInteraction.Ignore);
+            float best = float.MaxValue;
+            var point = origin + dir * 100f;
+            for (int i = 0; i < n; i++)
+            {
+                var h = crosshairHits[i];
+                if (!h.collider) continue;
+                if (h.collider.transform.IsChildOf(body.transform))
+                {
+                    note += " own:" + h.collider.name + "@" + h.distance.ToString("0.00");
+                    continue;
+                }
+                if (h.distance < MinCrosshairHit)
+                {
+                    note += " near:" + h.collider.name + "@" + h.distance.ToString("0.00");
+                    continue;
+                }
+                if (h.distance < best) { best = h.distance; point = h.point; }
+            }
+            return point;
+        }
+
+        // The water's direction, for the spray that goes straight up on its own: while the Spray is aimed by the
+        // camera (RT down, or a lock), the camera, the target, what was passed over, the aim sent to the sim and
+        // the direction the sim last sent the water, four times a second, and at once when the water goes
+        // well above where the camera looks.
+        float sprayLogAt;
+        uint sprayLogEmits;
+
+        void SprayDiag(CharacterBody locked, Vector3 origin, Vector3 dir, Vector3 nozzle, Vector3 target, string note,
+            short yaw, float pitch)
+        {
+            if (!Local || !Plugin.SprayDiag.Value) return;
+            uint emits = Native.sms_sim_last_spray(sim, out var spray);
+            bool fresh = emits != sprayLogEmits;
+            sprayLogEmits = emits;
+            if (!fresh && Time.unscaledTime - sprayLogAt > 1f) return;
+            var sent = new Vector3(spray.dir.x, spray.dir.y, spray.dir.z);
+            float camPitch = Mathf.Asin(Mathf.Clamp(dir.y, -1f, 1f)) * Mathf.Rad2Deg;
+            float sentPitch = Mathf.Asin(Mathf.Clamp(sent.y, -1f, 1f)) * Mathf.Rad2Deg;
+            bool odd = fresh && spray.spin == 0 && spray.nozzle == 1 && sentPitch - camPitch > 25f;
+            if (!odd && Time.unscaledTime - sprayLogAt < 0.25f) return;
+            if (odd && Time.unscaledTime - sprayLogAt < 0.1f) return;
+            sprayLogAt = Time.unscaledTime;
+            Plugin.Log.LogInfo($"SprayDiag{(odd ? " ODD" : "")}: camera dir {Fmt(dir)} (pitch {camPitch:0}) from {Fmt(origin)}; " +
+                $"nozzle {Fmt(nozzle)}; target {Fmt(target)}{(locked ? " (locked on " + locked.name + ")" : "")}" +
+                $"{(note.Length > 0 ? "; passed over:" + note : "")}; sent to sim yaw {yaw} pitch {pitch * Mathf.Rad2Deg:0}; " +
+                $"sim water dir {Fmt(sent)} (pitch {sentPitch:0}) nozzle {spray.nozzle} spin {spray.spin} drops {spray.count} emits {emits} " +
+                $"({(fresh ? "this tick" : "stale")})");
+        }
+
+        static string Fmt(Vector3 v) => $"({v.x:0.00}, {v.y:0.00}, {v.z:0.00})";
 
         void StopDriving()
         {

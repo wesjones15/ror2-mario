@@ -90,7 +90,7 @@ namespace MarioTest
         internal static ConfigEntry<float> QuailScale;
         internal static ConfigEntry<bool> ExternalForces;
         internal static ConfigEntry<bool> CrowdControl;
-        internal static ConfigEntry<bool> CameraAim, LockOn, AimAtCrosshair;
+        internal static ConfigEntry<bool> CameraAim, LockOn, AimAtCrosshair, SprayDiag;
         internal static ConfigEntry<bool> SprayBursts;
         internal static ConfigEntry<float> TriggerCurve;
         internal static ConfigEntry<float> LightTapSeconds;
@@ -459,6 +459,10 @@ namespace MarioTest
                 "RoR2 can throw Mario: jump pads, geysers, knockback, Milky Chrysalis.");
             CrowdControl = Config.Bind("Sim", "CrowdControl", true,
                 "Stuns, freezes and shocks stop Mario's controls; roots stop him moving.");
+            SprayDiag = Config.Bind("Debug", "SprayDiag", true,
+                "Log FLUDD's spray direction while the camera aims it: the camera's ray, the target, what the ray passed over, " +
+                "the aim sent to the sim and the direction the sim sent the water, four times a second, and at once when the water " +
+                "goes well above where the camera looks (a line marked ODD).");
             PerformanceLog = Config.Bind("Debug", "PerformanceLog", false,
                 "Every ten seconds during a run, log frame times and Mario's CPU timings, movement packet volume, " +
                 "replay backlog and drift corrections. For comparing host/client performance; does not measure GPU time.");

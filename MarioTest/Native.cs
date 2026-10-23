@@ -24,6 +24,18 @@ namespace MarioTest
             public Vec3(float x, float y, float z) { this.x = x; this.y = y; this.z = z; }
         }
 
+        /// The sim's last FLUDD emit (sms_sim_last_spray): a diagnostic of which way the water was sent.
+        [StructLayout(LayoutKind.Sequential)]
+        public struct Spray
+        {
+            public Vec3 pos, dir;
+            public float power;
+            public uint count;
+            /// NozzleKind + 1.
+            public byte nozzle, spin;
+            public uint emits;
+        }
+
         [StructLayout(LayoutKind.Sequential)]
         public struct GroundHit
         {
@@ -349,6 +361,7 @@ namespace MarioTest
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern void sms_sim_launch(IntPtr sim, ref Vec3 vel);
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern void sms_sim_launch_pad(IntPtr sim, ref Vec3 vel, float gravity);
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern void sms_sim_set_aim(IntPtr sim, byte on, short yaw, float pitch);
+        [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern uint sms_sim_last_spray(IntPtr sim, out Spray spray);
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern void sms_sim_down(IntPtr sim);
         /// A hit from `from` knocks Mario down (damage kind 0: the common enemy's) without touching the sim's health.
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern byte sms_sim_knock_down(IntPtr sim, ref Vec3 from, byte kind);

@@ -673,6 +673,11 @@ namespace MarioTest
 
             SetScale(commando);
             var body = Prefabs.Clone(commando, "MarioTestBody", Guid);
+            // The clone inherits Commando's RagdollController, so vanilla's death state would drop
+            // a Commando ragdoll corpse. Mario owns his death fall (MarioCorpse draws his knocked-out
+            // sim), so remove the controller and leave no vanilla corpse behind it.
+            foreach (var ragdoll in body.GetComponentsInChildren<RagdollController>(true))
+                UnityEngine.Object.DestroyImmediate(ragdoll);
             var cb = body.GetComponent<CharacterBody>();
             cb.baseNameToken = "MARIOTEST_BODY_NAME";
             cb.subtitleNameToken = "MARIOTEST_BODY_SUBTITLE";

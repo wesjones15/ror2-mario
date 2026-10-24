@@ -2,6 +2,19 @@
 
 # ror2-mario
 
+Mario's four approved skill portraits now render in Unity on first run after disc
+extraction, using the existing native models, moving effects and gameplay slide tuning.
+FLUDD uses blue, the three front-facing nozzles form an orange triangle (the wider
+Hover is enlarged), Ground Pound uses medium purple, and Wet Slide uses green.
+The generated 256x256 BMPs persist under the resolved
+`assets/skill-icons/approved-v2/` directory and load on later starts. Delete a card to
+regenerate it. No preview PNGs or extracted artwork ship with the plugin.
+
+Native scene/ABI checks: `dotnet run --project tests/PortraitCheck -c Release --
+../libsms/target/release/sms.dll ../libsms/assets`. The checks cover spraying water,
+the nozzle-only triangle and Hover size, airborne pound flames, and a moving slide's
+refraction ribbons. Unity capture appearance still needs manual in-game review.
+
 Risk of Rain 2 host for [libsms](../libsms): Super Mario Sunshine's Mario movement in RoR2.
 Targets the 2023 build (1.2.4.4, Unity 2019.4.37, BepInEx 5). It compiles against the copy in
 `../Risk Of Rain 2 2023` and installs into the Steam install at

@@ -485,12 +485,6 @@ namespace MarioTest
                 Icon(SkillSlot.Special), 0f, 1, false);
             Slide.requiredStock = 0;
             Slide.stockToConsume = 0;
-            // Icons RoR2 ships, swapped in once the catalogs load (the body's own family icons above
-            // stay if a name isn't found).
-            VanillaIcons.Use(Fludd, "EngiBodyPlaceWalkerTurret");  // TR58 Carbonizer Turret
-            VanillaIcons.Use(Air, "EngiBodyPlaceTurret");          // TR12 Gauss Auto-Turret
-            VanillaIcons.Use(Pound, "CommandoBodyRoll", 1);        // Tactical Dive, turned to point down
-            VanillaIcons.Use(Slide, "CommandoSlide");              // Tactical Slide
             NativeSkills.SetFamily(body, SkillSlot.Primary, Fludd, pack);
             NativeSkills.SetFamily(body, SkillSlot.Secondary, Air, pack);
             NativeSkills.SetFamily(body, SkillSlot.Utility, Pound, pack);

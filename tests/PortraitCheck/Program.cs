@@ -2,6 +2,7 @@ using System;
 using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
+using System.Numerics;
 using MarioTest;
 using Ror2Common;
 
@@ -42,6 +43,24 @@ static class Program
         {
             r.Step(new Native.Pad { r = 1, r_analog = 255 }, 90);
             Check(Native.sms_view_water_info(r.view, out var water) != 0 && water.drop_quads > 0, "FLUDD has no water");
+            var target = new Vector3(.18f, 1.5f, 0);
+            var eye = target + new Vector3(-MathF.Sin(.95f) * MathF.Cos(.08f), MathF.Sin(.08f), MathF.Cos(.95f) * MathF.Cos(.08f)) * 1.05f;
+            var forward = Vector3.Normalize(target - eye);
+            var right = Vector3.Normalize(Vector3.Cross(Vector3.UnitY, forward));
+            var up = Vector3.Cross(forward, right);
+            var frame = new Native.ViewFrame { eye = new Native.Vec3(eye.X * 100, eye.Y * 100, eye.Z * 100),
+                forward = new Native.Vec3(forward.X, forward.Y, forward.Z), up = new Native.Vec3(up.X, up.Y, up.Z) };
+            Native.sms_view_update(r.view, r.sim, ref frame);
+            var ptr = Native.sms_view_water_vertices(r.view, out var count);
+            int visible = 0;
+            for (int i = 0; i < water.drop_quads * 4; i++)
+            {
+                var v = Marshal.PtrToStructure<Native.WaterVertex>(IntPtr.Add(ptr, i * Marshal.SizeOf<Native.WaterVertex>()));
+                var p = new Vector3(v.pos.x, v.pos.y, v.pos.z) * .01f - eye;
+                float z = Vector3.Dot(p, forward), half = z * MathF.Tan(.45f);
+                if (z > .01f && Math.Abs(Vector3.Dot(p, right)) < half && Math.Abs(Vector3.Dot(p, up)) < half) visible++;
+            }
+            Check(visible > 0, "FLUDD water lies outside the actual portrait camera");
         }
         using (var r = new Rig())
         {
@@ -65,6 +84,11 @@ static class Program
             Native.sms_sim_portrait(r.sim, 1, 1, 22, 3, 1, 0); r.Step(default, 24);
             Check(Native.sms_sim_state(r.sim, out var state) != 0 && state.pounding == 2 && state.pos.y > 0, "pound must be an airborne super fall");
             Check(Native.sms_view_fx_info(r.view, out var fx) != 0 && fx.vertices > 0, "pound has no flames");
+            var draws = new ViewDraw[32]; Native.sms_view_draws(r.view, draws, 32);
+            float drawnY = draws[0].pos.y;
+            Check(drawnY > state.pos.y + 1, "test must exercise falling interpolation, not stationary framing");
+            r.Frame(0); Native.sms_view_draws(r.view, draws, 32);
+            Check(Math.Abs(draws[0].pos.y - drawnY) < .001f, "camera-only reframe advanced the falling pose");
         }
         using (var r = new Rig())
         {

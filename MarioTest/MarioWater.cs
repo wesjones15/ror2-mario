@@ -27,6 +27,7 @@ namespace MarioTest
         readonly List<int> dropTris = new List<int>(), splashTris = new List<int>();
         readonly List<int> wetTris = new List<int>();
         static readonly List<int> none = new List<int>();
+        bool portraitTint;
 
         MarioWater(GameObject go, Mesh mesh, Material drops, Material splashes, Material wetness, Material refraction,
             Texture2D dropTex, Texture2D splashTex)
@@ -42,7 +43,7 @@ namespace MarioTest
         }
 
         /// Null (and says why) without RoR2's Cloud Remap shader.
-        public static MarioWater Create(IntPtr view)
+        public static MarioWater Create(IntPtr view, Transform parent = null)
         {
             var dropTex = Load(view, 0, "Mario water drop");
             var splashTex = Load(view, 1, "Mario water splash");
@@ -63,7 +64,8 @@ namespace MarioTest
             wetness.SetColor("_TintColor", new Color(0f, 0f, 0f, Mathf.Clamp01(Plugin.GroundWetness.Value)));
             var refraction = Plugin.WaterRefraction.Value > 0f ? Refraction("Mario water refraction") : null;
             var go = new GameObject("Mario water");
-            UnityEngine.Object.DontDestroyOnLoad(go);
+            if (parent) go.transform.SetParent(parent, false);
+            else UnityEngine.Object.DontDestroyOnLoad(go);
             var mesh = new Mesh { name = "Mario water" };
             mesh.MarkDynamic();
             mesh.subMeshCount = refraction ? 4 : 3;
@@ -169,8 +171,8 @@ namespace MarioTest
 
             // The game mixes a little of its tint into what's behind the water (0.35) and shows
             // juice nearly solid (0.75). Overlapping drops add up, so each takes a little.
-            float a = info.a > 0.5f ? 0.9f : Mathf.Clamp01(Plugin.WaterOpacity.Value);
-            drops.SetFloat("_AlphaBoost", info.a > 0.5f ? 1f : Shaders.SurfaceTintOpacity);
+            float a = info.a > 0.5f ? 0.9f : portraitTint ? info.a : Mathf.Clamp01(Plugin.WaterOpacity.Value);
+            drops.SetFloat("_AlphaBoost", info.a > 0.5f || portraitTint ? 1f : Shaders.SurfaceTintOpacity);
             drops.SetColor("_TintColor", new Color(info.r, info.g, info.b, a));
             wetness.SetColor("_TintColor", new Color(0f, 0f, 0f, Mathf.Clamp01(Plugin.GroundWetness.Value)));
             if (!go.activeSelf) go.SetActive(true);
@@ -181,6 +183,10 @@ namespace MarioTest
             if (go && go.activeSelf) go.SetActive(false);
         }
 
+        // A flat icon has little background detail to refract. Use the native water's
+        // authored 0.35 tint instead of the faint gameplay overlay (0.12 * 0.25).
+        public void UsePortraitTint() => portraitTint = true;
+
         /// Offscreen portrait layer for the water mesh.
         public void SetLayer(int layer)
         {
@@ -189,6 +195,7 @@ namespace MarioTest
 
         public void Dispose()
         {
+            Hide(); // Destroy is delayed until frame end; another camera may render first.
             if (go) UnityEngine.Object.Destroy(go);
             if (mesh) UnityEngine.Object.Destroy(mesh);
             if (drops) UnityEngine.Object.Destroy(drops);

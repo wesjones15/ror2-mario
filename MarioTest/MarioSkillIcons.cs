@@ -105,7 +105,9 @@ namespace MarioTest
             readonly ModelView models;
             readonly MarioFx fx;
             readonly MarioWater water;
-            readonly float scale = UnityHost.Scale;
+            // The approved viewer uses centimetres at 0.01 m/unit. Gameplay adjusts
+            // UnityHost.Scale to the survivor's height; that must not move this crop.
+            const float scale = 0.01f;
             public IntPtr Sim { get; }
             public bool NozzleGroup;
 
@@ -122,8 +124,9 @@ namespace MarioTest
                 }
                 Native.sms_sim_refill(Sim);
                 models = ModelView.Create(new SmsViewSource(view), "Mario skill portrait", card.Root);
-                fx = MarioFx.Create(view);
-                water = withWater ? MarioWater.Create(view) : null;
+                fx = MarioFx.Create(view, card.Root);
+                water = withWater ? MarioWater.Create(view, card.Root) : null;
+                water?.UsePortraitTint();
                 if (models == null) { Dispose(); throw new InvalidOperationException("Mario's portrait model didn't load"); }
                 Native.sms_view_set_fx(view, 1, 1);
             }
@@ -142,6 +145,8 @@ namespace MarioTest
                 var forward = camera ? camera.transform.forward : Vector3.forward;
                 var up = camera ? camera.transform.up : Vector3.up;
                 var frame = new Native.ViewFrame { dt = dt, volume = 0f,
+                    eye = camera ? new Native.Vec3(camera.transform.position.x / scale,
+                        camera.transform.position.y / scale, camera.transform.position.z / scale) : default,
                     forward = new Native.Vec3(forward.x, forward.y, forward.z),
                     up = new Native.Vec3(up.x, up.y, up.z) };
                 Native.sms_view_update(view, Sim, ref frame);
@@ -153,8 +158,11 @@ namespace MarioTest
 
             public Vector3 At(float x, float y, float z)
             {
-                if (Native.sms_sim_state(Sim, out var state) == 0) throw new InvalidOperationException("Portrait pose unavailable");
-                return new Vector3(state.pos.x, state.pos.y, state.pos.z) * scale + new Vector3(x, y, z);
+                // Native rendering interpolates the feet between ticks (especially
+                // visible during the fast pound fall). Frame the drawn root, not sim.pos.
+                if (models.DrawCount == 0) throw new InvalidOperationException("Portrait pose unavailable");
+                var pos = models.DrawAt(0).pos;
+                return new Vector3(pos.x, pos.y, pos.z) * scale + new Vector3(x, y, z);
             }
             public void SetLayer(int layer) { fx?.SetLayer(layer); water?.SetLayer(layer); }
             public void SetEffectOpacity(float opacity) => fx?.SetOpacity(opacity);

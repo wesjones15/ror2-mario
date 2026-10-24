@@ -7,13 +7,21 @@ extraction, using the existing native models, moving effects and gameplay slide 
 FLUDD uses blue, the three front-facing nozzles form an orange triangle (the wider
 Hover is enlarged), Ground Pound uses medium purple, and Wet Slide uses green.
 The generated 256x256 BMPs persist under the resolved
-`assets/skill-icons/approved-v2/` directory and load on later starts. Delete a card to
+`assets/skill-icons/approved-v3/` directory and load on later starts. Delete a card to
 regenerate it. No preview PNGs or extracted artwork ship with the plugin.
 
 Native scene/ABI checks: `dotnet run --project tests/PortraitCheck -c Release --
 ../libsms/target/release/sms.dll ../libsms/assets`. The checks cover spraying water,
 the nozzle-only triangle and Hover size, airborne pound flames, and a moving slide's
 refraction ribbons. Unity capture appearance still needs manual in-game review.
+
+Portraits use the viewer's fixed centimetre scale, independently of the gameplay
+survivor height. The camera follows the rendered feet during fast falls. Portrait
+water uses the native 0.35 tint on the flat blue background; gameplay keeps its own
+configured water opacity. Effect meshes belong to the portrait root and deactivate
+before destruction, so another plugin cannot capture Mario's spray. Cache revision v3
+regenerates existing cards automatically. These fixes are build/boundary-checked;
+the corrected Unity captures still require manual in-game review.
 
 Risk of Rain 2 host for [libsms](../libsms): Super Mario Sunshine's Mario movement in RoR2.
 Targets the 2023 build (1.2.4.4, Unity 2019.4.37, BepInEx 5). It compiles against the copy in

@@ -40,7 +40,7 @@ namespace MarioTest
         }
 
         /// Null (and says why) without effects to draw or RoR2's Cloud Remap shader.
-        public static MarioFx Create(IntPtr view)
+        public static MarioFx Create(IntPtr view, Transform parent = null)
         {
             if (Native.sms_view_fx_info(view, out var info) == 0 || info.textures == 0)
             {
@@ -54,7 +54,8 @@ namespace MarioTest
                 return null;
             }
             var go = new GameObject("Mario effects");
-            UnityEngine.Object.DontDestroyOnLoad(go);
+            if (parent) go.transform.SetParent(parent, false);
+            else UnityEngine.Object.DontDestroyOnLoad(go);
             var mesh = new Mesh { name = "Mario effects", indexFormat = IndexFormat.UInt32 };
             mesh.MarkDynamic();
             go.AddComponent<MeshFilter>().sharedMesh = mesh;
@@ -268,6 +269,7 @@ namespace MarioTest
 
         public void Dispose()
         {
+            Hide(); // Do not leave a visible mesh until Unity's deferred Destroy runs.
             if (go) UnityEngine.Object.Destroy(go);
             if (mesh) UnityEngine.Object.Destroy(mesh);
             foreach (var m in materials.Values) if (m) UnityEngine.Object.Destroy(m);

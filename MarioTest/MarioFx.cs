@@ -23,6 +23,8 @@ namespace MarioTest
         readonly List<Material> shown = new List<Material>();
         Material[] assigned = Array.Empty<Material>();
         readonly Dictionary<long, Material> materials = new Dictionary<long, Material>();
+        /// Portrait-only brightness: additive effect layers otherwise wash a close-up white.
+        public float Opacity = 1f;
         Texture2D[] textures = new Texture2D[0];
         Texture2D[] refractionMasks = new Texture2D[0];
         uint[] versions = new uint[0];
@@ -143,6 +145,7 @@ namespace MarioTest
                     ? MarioWater.Refraction("Mario slide waves", tex, refractionMasks[texture], Native.RefractionNormalGain) : null;
             else
                 m = Shaders.SeeThrough($"Mario effect {texture}", tex, blend == 0, true);
+            if (m && m.HasProperty("_AlphaBoost")) m.SetFloat("_AlphaBoost", Opacity);
             materials[key] = m;
             return m;
         }
@@ -243,6 +246,24 @@ namespace MarioTest
         public void Hide()
         {
             if (go && go.activeSelf) go.SetActive(false);
+        }
+
+        /// The effect mesh's world bounds after Update, for framing a portrait.
+        public Bounds WorldBounds => renderer ? renderer.bounds : default;
+
+        /// Drawing layer for an offscreen portrait camera; the effect mesh is world-space and
+        /// not parented to the models.
+        public void SetLayer(int layer)
+        {
+            if (go) go.layer = layer;
+        }
+
+        /// A portrait's additive brightness (1 is the game's).
+        public void SetOpacity(float opacity)
+        {
+            Opacity = Mathf.Clamp01(opacity);
+            foreach (var m in materials.Values)
+                if (m && m.HasProperty("_AlphaBoost")) m.SetFloat("_AlphaBoost", Opacity);
         }
 
         public void Dispose()

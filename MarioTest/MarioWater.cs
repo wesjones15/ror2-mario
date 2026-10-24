@@ -181,6 +181,12 @@ namespace MarioTest
             if (go && go.activeSelf) go.SetActive(false);
         }
 
+        /// Offscreen portrait layer for the water mesh.
+        public void SetLayer(int layer)
+        {
+            if (go) go.layer = layer;
+        }
+
         public void Dispose()
         {
             if (go) UnityEngine.Object.Destroy(go);

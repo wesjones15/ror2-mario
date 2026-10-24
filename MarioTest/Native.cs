@@ -12,7 +12,7 @@ namespace MarioTest
     internal static class Native
     {
         public const string Dll = "sms";
-        public const uint AbiVersion = 29;
+        public const uint AbiVersion = 30;
         // ABI 20 refraction maps: R=1, G=4*Y, B=coverage, A=4*X. Separate the mask and
         // compensate material strength so RoR2's near-flat-normal discard keeps the crests.
         public const float RefractionNormalGain = 4f;
@@ -369,6 +369,9 @@ namespace MarioTest
         /// Mario touches a Shine at `pos`, turned `yaw`: the win pose. 1 if he took it.
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern byte sms_sim_shine_get(IntPtr sim, ref Vec3 pos, short yaw);
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern void sms_sim_shine_end(IntPtr sim);
+        /// Presentation-only: hold a status, clip and frame for a skill portrait (see libsms-ffi).
+        [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern byte sms_sim_portrait(IntPtr sim,
+            uint status, uint clip, float frame, uint state, uint nozzle, byte wet);
 
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern IntPtr sms_view_new(byte[] assetsDirUtf8, byte sound);
         /// look: 0 Mario, 1 Shadow Mario's colours (unused by the host now), 2 the yellow coin, 3 the Shine.

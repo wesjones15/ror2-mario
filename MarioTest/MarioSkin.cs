@@ -39,10 +39,18 @@ namespace MarioTest
             if (!string.IsNullOrWhiteSpace(configured)) return configured.Trim();
             string env = Environment.GetEnvironmentVariable("SSBM_ASSETS");
             if (!string.IsNullOrWhiteSpace(env)) return env.Trim();
-            foreach (var rel in new[] { "assets", "Melee/assets", "../../Melee/assets", "../../libssbm/assets" })
+            // The Melee plugin's own cache, beside its plugin folder (BepInEx/plugins/Melee/assets).
+            foreach (var rel in new[] { "../Melee/assets", "assets", "Melee/assets" })
             {
                 var p = Path.GetFullPath(Path.Combine(here, rel));
                 if (File.Exists(Path.Combine(p, "PlLgNr.dat"))) return p;
+            }
+            // The Melee plugin's pointer file, wherever its cache actually lives.
+            var pointer = Path.GetFullPath(Path.Combine(here, "../Melee/assets_dir.txt"));
+            if (File.Exists(pointer))
+            {
+                var target = File.ReadAllText(pointer).Trim();
+                if (!string.IsNullOrWhiteSpace(target) && File.Exists(Path.Combine(target, "PlLgNr.dat"))) return target;
             }
             return null;
         }
@@ -58,13 +66,18 @@ namespace MarioTest
         /// own portrait (the body's) is requested elsewhere, unchanged.
         public static void Register(GameObject body)
         {
-            if (!ready) return;
             var model = body.GetComponent<ModelLocator>().modelTransform;
             var controller = model.GetComponent<ModelSkinController>();
             if (!controller) controller = model.gameObject.AddComponent<ModelSkinController>();
             var character = model.GetComponent<CharacterModel>();
-            luigiSkin = Def("MarioSkinLuigi", "MARIOTEST_SKIN_LUIGI", model, character, null);
+            // Mario always replaces Commando's placeholder; Luigi joins only when his cache is there.
             var mario = Def("MarioSkinDefault", "MARIOTEST_SKIN_DEFAULT", model, character, Icon(new Color(0.9f, 0.1f, 0.1f)));
+            if (!ready)
+            {
+                controller.skins = new[] { mario };
+                return;
+            }
+            luigiSkin = Def("MarioSkinLuigi", "MARIOTEST_SKIN_LUIGI", model, character, null);
             controller.skins = new[] { mario, luigiSkin };
             // The Luigi portrait: Mario's framing and pose (the same sim state), the skin's icon.
             Portrait.Request(body, MarioDisplay.GetLuigi, tex =>

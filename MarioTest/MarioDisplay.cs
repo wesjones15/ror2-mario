@@ -16,6 +16,7 @@ namespace MarioTest
     internal sealed class MarioDisplay : IDisplayActor
     {
         static readonly Stack<MarioDisplay> spare = new Stack<MarioDisplay>();
+        static readonly Stack<MarioDisplay> spareLuigi = new Stack<MarioDisplay>();
         static readonly Native.GroundFn floorFn = Floor;
         static Native.Host floor = new Native.Host { ground = Marshal.GetFunctionPointerForDelegate(floorFn) };
 
@@ -32,24 +33,34 @@ namespace MarioTest
         IntPtr sim;
         float time;
         bool jumped, wasGrounded = true;
+        readonly bool luigi;
         public ModelView Models { get; }
         public float Scale => UnityHost.Scale;
 
-        MarioDisplay(IntPtr view, IntPtr sim, ModelView models)
+        MarioDisplay(IntPtr view, IntPtr sim, ModelView models, bool luigi)
         {
             this.view = view;
             this.sim = sim;
             Models = models;
+            this.luigi = luigi;
         }
 
         /// A display Mario starting his intro, or null (the prefab keeps Commando) if the
         /// disc's files won't load.
-        public static IDisplayActor Get()
+        public static IDisplayActor Get() => Create(false);
+
+        /// A display Luigi (the alt-skin): Mario's sim and FLUDD, Luigi's HSD mesh, for the
+        /// character-select scene and the skin's portrait. Null without the Melee cache.
+        public static IDisplayActor GetLuigi() => Create(true);
+
+        static IDisplayActor Create(bool luigi)
         {
             if (!Plugin.AssetsReady) return null;
-            if (spare.Count > 0)
+            if (luigi && !MarioSkin.Ready) return null;
+            var pool = luigi ? spareLuigi : spare;
+            if (pool.Count > 0)
             {
-                var d = spare.Pop();
+                var d = pool.Pop();
                 var origin = new Native.Vec3(0f, 0f, 0f);
                 Native.sms_sim_teleport(d.sim, ref origin);
                 d.Begin();
@@ -62,15 +73,25 @@ namespace MarioTest
                 Plugin.Log.LogWarning("Mario's lobby model didn't load; showing Commando");
                 return null;
             }
+            if (luigi)
+            {
+                // The skin draws Luigi's HSD mesh; a missing cache keeps the Mario view.
+                if (!MarioSkin.Load(view))
+                {
+                    Native.sms_view_free(view);
+                    return null;
+                }
+                Native.sms_view_skin(view, 1);
+            }
             var sim = Native.sms_sim_new(NativeLib.CString(Plugin.AssetsDir), ref start, 0);
-            var models = sim != IntPtr.Zero ? ModelView.Create(new SmsViewSource(view), "Mario (lobby)") : null;
+            var models = sim != IntPtr.Zero ? ModelView.Create(new SmsViewSource(view), luigi ? "Luigi (lobby)" : "Mario (lobby)") : null;
             if (models == null)
             {
                 if (sim != IntPtr.Zero) Native.sms_sim_free(sim);
                 Native.sms_view_free(view);
                 return null;
             }
-            var made = new MarioDisplay(view, sim, models);
+            var made = new MarioDisplay(view, sim, models, luigi);
             made.Begin();
             return made;
         }
@@ -136,7 +157,7 @@ namespace MarioTest
         public void Release()
         {
             Models.HideAll();
-            spare.Push(this);
+            (luigi ? spareLuigi : spare).Push(this);
         }
 
         static byte Floor(IntPtr user, ref Native.Vec3 pos, out Native.GroundHit hit)

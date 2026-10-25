@@ -19,7 +19,7 @@ namespace MarioTest
             return string.IsNullOrEmpty(glyph) ? fallback : glyph;
         }
 
-        public static ControlSheet Sheet()
+        public static ControlSheet Sheet(CharacterBody body)
         {
             var user = LocalUserManager.GetFirstLocalUser();
             var player = user?.inputPlayer;
@@ -40,6 +40,8 @@ namespace MarioTest
             var sheet = new ControlSheet
             {
                 Subtitle = "Hero of the Mushroom Kingdom... On Vacation!",
+                // The face follows the selected skin (Luigi's rendered portrait; null keeps Mario's own).
+                Portrait = MarioSkin.Selected(body) == MarioSkin.Luigi ? MarioSkin.LuigiPortrait : null,
             };
             sheet.Pad("")
                 .Add(A, "Jump")

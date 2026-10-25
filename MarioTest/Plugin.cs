@@ -138,6 +138,9 @@ namespace MarioTest
                 "Your Super Mario Sunshine (GameCube) disc image (.iso/.gcm/.ciso), used once to " +
                 "build AssetsDir if missing or incomplete. Empty: check $SMS_DISC, the plugin folder " +
                 "and next to AssetsDir. Any region is supported; convert RVZ/WIA/WBFS to ISO first.");
+            var meleeAssets = Config.Bind("Paths", "MeleeAssets", "",
+                "The Melee plugin's extracted cache (for the Luigi alt-skin, which reads Luigi's HSD mesh " +
+                "from it). Empty: $SSBM_ASSETS, then Melee/assets, assets, or libssbm/assets next to the plugin.");
             Height = Config.Bind("Look", "Height", 0f,
                 "Mario's height in metres; everything he does scales with it (his speed, jumps " +
                 "and FLUDD's reach). 0: as tall as Commando.");
@@ -487,6 +490,7 @@ namespace MarioTest
             SoundVolume = Config.Bind("Sound", "Volume", 1f,
                 "Mario's sounds, on top of RoR2's master and SFX volume (0-2).");
             AssetsDir = ResolveAssets(assets.Value, here);
+            MarioSkin.Discover(meleeAssets.Value, here);
 
             if (!Native.Load(Path.Combine(here, "sms.dll"), out string error))
             {
@@ -505,7 +509,7 @@ namespace MarioTest
             MarioNet.Register();
             // The HUD's skill icons name the buttons Mario's sim reads (MarioPad), not RoR2's binds.
             PauseControls.Install(gameObject);
-            PauseControls.Register("MarioTestBody", _ => MarioControls.Sheet());
+            PauseControls.Register("MarioTestBody", body => MarioControls.Sheet(body));
             GlyphOverride.Install();
             GlyphOverride.Set("MarioTestBody", null, new Dictionary<SkillSlot, PadButton[]>
             {
@@ -699,6 +703,8 @@ namespace MarioTest
             {
                 DisplayModel.Attach(display, Guid, MarioDisplay.Get);
                 Portrait.Request(body, MarioDisplay.Get, framing: PortraitFraming.ThreeQuarter);
+                // Luigi's alt-skin (gated on the Melee cache): its SkinDef and rendered portrait.
+                MarioSkin.Register(body);
             }
 
             var survivor = ScriptableObject.CreateInstance<SurvivorDef>();
@@ -764,6 +770,7 @@ namespace MarioTest
                 "< ! > Belly slide across wet ground to dodge danger or ram straight through it.\n" +
                 "< ! > Collect the coins enemies drop to heal.");
             MarioSkills.Tokens(lang);
+            MarioSkin.Tokens(lang);
             lang.SetStringByToken("MARIOTEST_BODY_OUTRO", "..and so he left, still wet.");
             lang.SetStringByToken("MARIOTEST_BODY_FAIL", "..and so he vanished, mid-triple-jump.");
         }

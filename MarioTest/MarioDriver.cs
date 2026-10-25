@@ -836,8 +836,9 @@ namespace MarioTest
             var t = new Native.Tuning
             {
                 // Jump power items (Faraday Spur, Hex of Leaping) scale takeoff speed, so height
-                // goes with its square.
-                jump_height = Plugin.JumpHeight.Value * Mathf.Pow(NativeBody.JumpScale(body), 2f),
+                // goes with its square. The Luigi alt-skin jumps higher on top of that.
+                jump_height = Plugin.JumpHeight.Value * Mathf.Pow(NativeBody.JumpScale(body), 2f)
+                    * (MarioSkin.Selected(body) == MarioSkin.Luigi ? Plugin.LuigiJumpHeight.Value : 1f),
                 // Hex of Acceleration's slippery ground.
                 traction = NativeBody.AccelerationScale(body),
                 jump_buffer = Plugin.JumpBuffer.Value,

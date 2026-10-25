@@ -37,11 +37,14 @@ namespace MarioTest
             string move = Key(eventSystem, "MoveVertical", "W / S") + " / "
                 + Key(eventSystem, "MoveHorizontal", "A / D");
 
+            var luigi = MarioSkin.Selected(body) == MarioSkin.Luigi;
             var sheet = new ControlSheet
             {
-                Subtitle = "Hero of the Mushroom Kingdom... On Vacation!",
+                // Luigi keeps Mario's name and quip; the alt-skin swaps both.
+                Title = luigi ? "Luigi" : null,
+                Subtitle = luigi ? "Second Most Famous Mario Brother... On Vacation!" : "Hero of the Mushroom Kingdom... On Vacation!",
                 // The face follows the selected skin (Luigi's rendered portrait; null keeps Mario's own).
-                Portrait = MarioSkin.Selected(body) == MarioSkin.Luigi ? MarioSkin.LuigiPortrait : null,
+                Portrait = luigi ? MarioSkin.LuigiPortrait : null,
             };
             sheet.Pad("")
                 .Add(A, "Jump")

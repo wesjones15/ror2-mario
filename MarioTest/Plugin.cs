@@ -40,6 +40,7 @@ namespace MarioTest
         internal static ConfigEntry<bool> Sound;
         internal static ConfigEntry<float> SoundVolume;
         internal static ConfigEntry<float> JumpHeight;
+        internal static ConfigEntry<float> LuigiJumpHeight;
         internal static ConfigEntry<float> JumpBuffer;
         internal static ConfigEntry<float> ChainGrace;
         internal static ConfigEntry<float> Height;
@@ -147,6 +148,9 @@ namespace MarioTest
             JumpHeight = Config.Bind("Sim", "JumpHeight", 1.6f,
                 "Jump heights times this. 1 is Sunshine's (a standing jump is 2.3 m, a triple 8 m, " +
                 "at 0.01 m per unit); RoR2's levels are built for higher jumps.");
+            LuigiJumpHeight = Config.Bind("Sim", "LuigiJumpHeight", 1.2f,
+                "The Luigi alt-skin's jumps are this many times Mario's (on top of JumpHeight). " +
+                "1 makes Luigi jump exactly as Mario does.");
             JumpBuffer = Config.Bind("Sim", "JumpBuffer", 0.1f,
                 "Seconds a jump press just before landing is remembered, so it still jumps (and " +
                 "chains into the double and triple jump). 0 is Sunshine's: the press is lost.");

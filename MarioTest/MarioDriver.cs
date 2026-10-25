@@ -258,6 +258,7 @@ namespace MarioTest
             Tune();
             if (pad.TakeRefill() && Plugin.DpadRefill.Value)
                 SimOps.Refill(sim);
+            bool secret = pad.TakeUp();
             var step = pad.Take(move, hold == NativeBody.Hold.All);
             // Facing from Mario toward the camera: the reverse of where the player aims.
             short cameraYaw = UnityHost.Yaw(-input.aimDirection);
@@ -294,6 +295,8 @@ namespace MarioTest
                 crosshair = fitted.nozzle == 1;
             }
             Aim(false, locking, lockTarget, cycle, cycleDirection, crosshair);
+            if (secret && Local && MarioSkin.Selected(body) == MarioSkin.Luigi)
+                SecretEggLay();
             Items.Begin(sim, sprinting, grounded);
             // The Shine Get pose, inside the step so the other players' puppets get it too.
             if (shineAt.HasValue)
@@ -602,6 +605,35 @@ namespace MarioTest
             if (flat.sqrMagnitude < 1e-4f) flat = new Vector3(dir.x, 0f, dir.z);
             SimOps.SetAim(sim, 1, UnityHost.Yaw(flat), pitch);
             SprayDiag(locked, origin, dir, nozzle, target, note, UnityHost.Yaw(flat), pitch);
+        }
+
+        // Luigi's secret dpad move: Yoshi's Egg Lay, borrowed from the Melee plugin through the
+        // shared EggLay service. Lays an egg on the locked enemy, else the nearest one in front.
+        void SecretEggLay()
+        {
+            if (!EggLay.Ready) return;
+            var target = lockShown;
+            if (!target) target = FrontEnemy();
+            if (target) EggLay.TryLay(body, target);
+        }
+
+        // The nearest alive enemy within reach and roughly in front of Mario.
+        CharacterBody FrontEnemy()
+        {
+            CharacterBody best = null;
+            float bestDist = float.PositiveInfinity;
+            var origin = body.corePosition;
+            var forward = body.transform.forward;
+            foreach (var e in CharacterBody.readOnlyInstancesList)
+            {
+                if (!e || e == body || !e.healthComponent || !e.healthComponent.alive) continue;
+                if (e.teamComponent && body.teamComponent && e.teamComponent.teamIndex == body.teamComponent.teamIndex) continue;
+                var d = e.corePosition - origin;
+                float dist = d.magnitude;
+                if (dist > 6f || (dist > 0.01f && Vector3.Dot(d / dist, forward) < 0.3f)) continue;
+                if (dist < bestDist) { bestDist = dist; best = e; }
+            }
+            return best;
         }
 
         // A crosshair hit nearer than this to the camera's origin is not taken as the target (a free aim at

@@ -33,8 +33,9 @@ namespace MarioTest
         bool a, b, l, x, aTap, bTap, lTap, xTap;
         // 0..1.
         float r, rMax;
-        // D-pad down (refill the tank): held, and pressed since the last step.
-        bool down, downTap;
+        // D-pad down (refill the tank), and up (the secret Egg Lay): held, and pressed since the
+        // last step.
+        bool down, downTap, up, upTap;
         // RoR2's sprint: held, and pressed since the last step.
         bool sprint, sprintTap;
         // Keyboard primary: down last frame, when it went down, and a tap's light splash
@@ -70,9 +71,10 @@ namespace MarioTest
             sprint = p.sprint;
             LockHeld = p.lockHeld;
             LockSharesL = false;
-            // The D-pad refill (an AI would otherwise run its tank dry for good).
+            // The D-pad refill (an AI would otherwise run its tank dry for good); an AI never does the secret.
             down = p.down;
             downTap |= down;
+            up = false;
             Latch();
         }
 
@@ -94,7 +96,7 @@ namespace MarioTest
             }
             if (player == null || user.isUIFocused)
             {
-                a = b = l = x = down = sprint = LockHeld = false;
+                a = b = l = x = down = up = sprint = LockHeld = false;
                 r = 0f;
                 return;
             }
@@ -121,6 +123,9 @@ namespace MarioTest
                 bool d = gp.dPad.down.value;
                 downTap |= d && !down;
                 down = d;
+                bool u = gp.dPad.up.value;
+                upTap |= u && !up;
+                up = u;
             }
             else if (input)
             {
@@ -216,6 +221,14 @@ namespace MarioTest
         {
             bool t = downTap;
             downTap = false;
+            return t;
+        }
+
+        /// D-pad up was pressed since the last call (the secret Egg Lay).
+        public bool TakeUp()
+        {
+            bool t = upTap;
+            upTap = false;
             return t;
         }
 

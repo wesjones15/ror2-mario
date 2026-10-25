@@ -2,6 +2,15 @@
 
 # ror2-mario
 
+Mario's first-stage pod now shows the approved Sunshine Pianta statue and animated M
+portal. It keeps the vanilla falling/crashing animation and sound events. The pod's
+Interact/X prompt opens the portal to the rendered Delfino Plaza still, plays the
+arrival sting, and runs the colored-particle transformation, woohoo, roll and
+cap-in-hand landing before returning control. The camera faces the M, and the
+statue remains behind with pedestal collision. The normal pod remains available
+if the optional disc assets or renderer cannot load. Build and native boundary
+checks pass; this arrival has not yet been played in RoR2.
+
 Mario's four approved skill portraits now render in Unity on first run after disc
 extraction, using the existing native models, moving effects and gameplay slide tuning.
 FLUDD uses blue, the three front-facing nozzles form an orange triangle (the wider

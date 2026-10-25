@@ -104,6 +104,55 @@ static class Program
             for (int i = 0; i < count; i++) { var b = Marshal.PtrToStructure<Native.FxBatch>(IntPtr.Add(batches, i * Marshal.SizeOf<Native.FxBatch>())); ribbon |= b.blend == 2 && b.vertex_count >= 8; }
             Check(ribbon, "moving slide has no native refraction ribbon");
         }
-        Console.WriteLine("PASS: Mario ABI, spraying FLUDD, exactly three nozzle models, airborne pound flames and moving slide ribbon");
+        CheckEntrance();
+        Console.WriteLine("PASS: Mario ABI, FLUDD, nozzle models, pound, slide and stage-one statue entrance handoff");
+    }
+
+    static void CheckEntrance()
+    {
+        if (!File.Exists(Path.Combine(assets, "portal", "05_gate01.bmd"))) { Console.WriteLine("SKIP: statue portal cache absent"); return; }
+        var view = Native.sms_view_entrance_new(NativeLib.CString(assets), 0);
+        Check(view != IntPtr.Zero, "native statue entrance couldn't load");
+        try {
+            Check(Native.sms_view_entrance_bounds(view, out var lo, out var hi) != 0, "no pedestal collision bounds");
+            Check(lo.y >= -.1f && hi.y > 300 && hi.z < 308.53f - 70, "pedestal blocks Mario's landing point");
+            var f = new Native.ViewFrame { forward = new Native.Vec3(0, 0, 1), up = new Native.Vec3(0, 1, 0) };
+            var draws = new ViewDraw[32];
+            Check(Native.sms_view_entrance_update(view, .5f, 0, ref f, out _) == 1, "idle entrance failed");
+            var n = Native.sms_view_draws(view, draws, 32);
+            Check(n == 2 && draws.Take((int)n).All(d => d.kind >= 240), "Mario visible before X");
+            var gate = draws.Take((int)n).Single(d => d.kind == 241);
+            Native.sms_view_model(view, gate.model, out var info);
+            var uv = new float[info.vertex_count * 2]; Native.sms_view_uvs(view, gate.model, uv, info.vertex_count);
+            int texture = -1;
+            var batches = new ViewBatch[info.batch_count]; Native.sms_view_batches(view, gate.model, batches, info.batch_count);
+            texture = batches[0].texture;
+            var version = Native.sms_view_texture_version(view, (uint)texture);
+            bool particles = false, gotCapInHand = false, done = false;
+            for (int i = 0; i <= 180; i++) {
+                float time = i / 30f;
+                var result = Native.sms_view_entrance_update(view, time, 1, ref f, out var feet);
+                Check(result != 0, "entrance update failed");
+                Check(!done || result == 2, "finished entrance restarted");
+                if (result == 2) { done = true; Check(Math.Abs(feet.y) < .001f && Math.Abs(feet.z - 308.53f) < .01f, "landing doesn't match the stock exit anchor"); }
+                n = Native.sms_view_draws(view, draws, 32);
+                Check(draws.Take((int)n).Select(d => d.key).Distinct().Count() == n, "statue and cap share an instance key");
+                gotCapInHand |= draws.Take((int)n).Any(d => d.kind == 15);
+                var fx = Native.sms_view_fx_batches(view, out var count);
+                uint colored = 0;
+                for (int j = 0; j < count; j++) {
+                    var b = Marshal.PtrToStructure<Native.FxBatch>(IntPtr.Add(fx, j * Marshal.SizeOf<Native.FxBatch>()));
+                    if (b.texture == 0) { colored += b.vertex_count; Check(b.blend == 1, "colored Mario particles add white"); }
+                }
+                if (time < 1.4f) particles |= colored > 0;
+                if (time >= 1.5f) Check(colored == 0, "particles survive the completed Mario reveal");
+                var ptr = Native.sms_view_positions(view, out var countVertices);
+                var xyz = new float[countVertices * 3]; Marshal.Copy(ptr, xyz, 0, xyz.Length);
+                Check(xyz.All(float.IsFinite), "invalid statue/Mario geometry");
+            }
+            Check(particles && gotCapInHand && done, "entrance missed particles, cap-in-hand landing or completion");
+            Check(Native.sms_view_texture_version(view, (uint)texture) > version, "portal texture did not animate");
+            Check(Native.sms_view_entrance_update(view, float.NaN, 1, ref f, out _) == 0, "invalid entrance time accepted");
+        } finally { Native.sms_view_free(view); }
     }
 }

@@ -116,6 +116,7 @@ namespace MarioTest
         }
 
         internal CharacterBody Body => body;
+        internal bool Drawing => driving && View?.Models != null;
         internal LocalUser LocalUser => localUser;
         internal bool Alive => !health || health.alive;
         /// Where his feet are now.

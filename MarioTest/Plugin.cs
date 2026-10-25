@@ -543,7 +543,8 @@ namespace MarioTest
             bool needExtras = !File.Exists(Path.Combine(AssetsDir, "wipe", "wipe_gameover.bti"))
                 || !File.Exists(Path.Combine(AssetsDir, "wipe", "wipe_m_mark.bti"))
                 || !File.Exists(Path.Combine(AssetsDir, "scene", "mapobj", "shine.bmd"))
-                || !File.Exists(Path.Combine(AssetsDir, "camera", "camera_demo_shine_get_outside.bck"));
+                || !File.Exists(Path.Combine(AssetsDir, "camera", "camera_demo_shine_get_outside.bck"))
+                || Array.Exists(MarioStatuePod.AssetFiles, file => !File.Exists(Path.Combine(AssetsDir, "portal", file)));
             bool needStings = !(File.Exists(Path.Combine(stings, "spawn.wav"))
                 && File.Exists(Path.Combine(stings, "death.wav"))
                 && File.Exists(Path.Combine(stings, "gameover.wav"))
@@ -568,7 +569,7 @@ namespace MarioTest
             {
                 // Only the optional pictures are missing, and there is no disc to take them from.
                 Log.LogInfo("Sunshine's wipe pictures (the GAME OVER screen), Shine Sprite and Shine Get camera aren't " +
-                            "all in the assets folder; set Paths.Disc to your Sunshine disc image to fetch them.");
+                            "all in the assets folder (including the statue portal); set Paths.Disc to your Sunshine disc image to fetch them.");
                 return;
             }
             if (!assetsReady && (string.IsNullOrEmpty(disc) || !File.Exists(disc)))
@@ -684,6 +685,7 @@ namespace MarioTest
             cb.bodyColor = new Color(0.9f, 0.1f, 0.1f);
             cb.baseMaxHealth = MaxHealth.Value;
             cb.levelMaxHealth = HealthPerLevel.Value;
+            MarioStatuePod.Register(cb, pack);
             foreach (var esm in body.GetComponents<EntityStateMachine>())
                 if (esm.customName == "Body")
                     esm.mainStateType = new SerializableEntityStateType(typeof(MarioMain));

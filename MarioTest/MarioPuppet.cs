@@ -32,6 +32,7 @@ namespace MarioTest
         StepSmoother smoother;
         FrameQueue queue;
         bool playing, hidden, failed;
+        internal bool Drawing => playing && view?.Models != null;
         float lagTicks;
         Native.State state;
         int replayRenderFrame = -1, replayedThisFrame;

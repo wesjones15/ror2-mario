@@ -13,6 +13,10 @@ namespace MarioTest
     {
         public const string Dll = "sms";
         public const uint AbiVersion = 30;
+        [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern IntPtr sms_view_entrance_new(byte[] dir, byte sound);
+        [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern byte sms_view_entrance_bounds(IntPtr view, out Vec3 lo, out Vec3 hi);
+        [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern byte sms_view_entrance_update(IntPtr view, float seconds, byte activated, ref ViewFrame frame, out Vec3 position);
+        [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern void sms_view_mario_voice(IntPtr view, byte[] name);
         // ABI 20 refraction maps: R=1, G=4*Y, B=coverage, A=4*X. Separate the mask and
         // compensate material strength so RoR2's near-flat-normal discard keeps the crests.
         public const float RefractionNormalGain = 4f;

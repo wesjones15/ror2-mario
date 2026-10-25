@@ -172,7 +172,7 @@ namespace MarioTest
 
         /// This frame's effects (after sms_view_update): sim units times `scale`, shifted by
         /// `offset` for attached effects. Smoke stays at its emitted world position.
-        public unsafe void Update(IntPtr view, float scale, Vector3 offset)
+        public unsafe void Update(IntPtr view, float scale, Vector3 offset, Matrix4x4? placement = null)
         {
             if (Native.sms_view_fx_info(view, out var info) == 0 || info.batches == 0) { Hide(); return; }
             var v = (Native.FxVertex*)Native.sms_view_fx_vertices(view, out uint count);
@@ -198,7 +198,8 @@ namespace MarioTest
                 uint texture = b[vertexBatch].texture;
                 var shift = texture < worldSpace.Length && worldSpace[texture] ? Vector3.zero : offset;
                 var w = v[i];
-                verts.Add(new Vector3(w.pos.x, w.pos.y, w.pos.z) * scale + shift);
+                var point = new Vector3(w.pos.x, w.pos.y, w.pos.z) * scale + shift;
+                verts.Add(placement.HasValue ? placement.Value.MultiplyPoint3x4(point) : point);
                 uvs.Add(new Vector2(w.u, w.v));
                 colors.Add(new Color(w.r, w.g, w.b, w.a));
             }

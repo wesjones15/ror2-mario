@@ -608,13 +608,13 @@ namespace MarioTest
         }
 
         // Luigi's secret dpad move: Yoshi's Egg Lay, borrowed from the Melee plugin through the
-        // shared EggLay service. Lays an egg on the locked enemy, else the nearest one in front.
+        // shared EggLay service. The tongue lashes out, catches, and lays the egg.
         void SecretEggLay()
         {
             if (!EggLay.Ready) return;
             var target = lockShown;
             if (!target) target = FrontEnemy();
-            if (target) EggLay.TryLay(body, target);
+            EggLay.TryShow(body, target ? target.corePosition : body.corePosition + body.transform.forward * 10f);
         }
 
         // The nearest alive enemy within reach and roughly in front of Mario.

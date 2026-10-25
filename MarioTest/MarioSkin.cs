@@ -58,6 +58,19 @@ namespace MarioTest
         /// The skin the body's loadout selected: 0 Mario, 1 Luigi (when available).
         public static uint Selected(CharacterBody body) => ready && body && body.skinIndex >= 1 ? Luigi : Mario;
 
+        /// The skin the loadout has selected for Mario's body, for scenes with no live body yet
+        /// (the character-select display): 0 Mario, 1 Luigi (when available).
+        public static uint Selected()
+        {
+            if (!ready) return Mario;
+            var index = BodyCatalog.FindBodyIndex("MarioTestBody");
+            if (index == BodyIndex.None) return Mario;
+            foreach (var user in LocalUserManager.readOnlyLocalUsersList)
+                if (user.userProfile != null)
+                    return user.userProfile.loadout.bodyLoadoutManager.GetSkinIndex(index) >= 1 ? Luigi : Mario;
+            return Mario;
+        }
+
         /// Loads Luigi's HSD mesh into an already-open view; false when the cache is incomplete.
         public static bool Load(IntPtr view) => ready && Native.sms_view_set_luigi(view, NativeLib.CString(meleeDir)) != 0;
 

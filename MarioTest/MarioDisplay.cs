@@ -11,8 +11,10 @@ namespace MarioTest
     // blinks), drawn through his own view. Each time he's picked he plays an intro, as RoR2's
     // survivors do (Commando's "Display" clip, MUL-T's "PoseForLobby"): he jumps on the spot
     // and says "wahoo" (MV23 JUMP_LARGE, which the sim only picks for running triple jumps,
-    // backflips and spins, so the view says it over his small jump's "hup"). Views take a
-    // moment to build (the bakes), so released ones wait in a pool for the next lobby.
+    // backflips and spins, so the view says it over his small jump's "hup"). The alt-skin
+    // (Luigi) plays the same intro and idle; the display follows the loadout's skin, so picking
+    // Luigi in the loadout swaps his HSD mesh in here too. Views take a moment to build (the
+    // bakes), so released ones wait in a pool for the next lobby.
     internal sealed class MarioDisplay : IDisplayActor
     {
         static readonly Stack<MarioDisplay> spare = new Stack<MarioDisplay>();
@@ -29,40 +31,45 @@ namespace MarioTest
         static extern void sms_view_mario_voice(IntPtr view, byte[] nameUtf8);
         static bool voiceMissing;
 
-        readonly IntPtr view;
+        IntPtr view;
         IntPtr sim;
         float time;
         bool jumped, wasGrounded = true;
-        readonly bool luigi;
-        public ModelView Models { get; }
+        /// The skin the view currently draws.
+        bool luigi;
+        /// Follow the loadout's skin (the character-select display), or stay fixed (the portrait).
+        bool follow;
+        public ModelView Models { get; private set; }
         public float Scale => UnityHost.Scale;
 
-        MarioDisplay(IntPtr view, IntPtr sim, ModelView models, bool luigi)
+        MarioDisplay(IntPtr view, IntPtr sim, ModelView models, bool luigi, bool follow)
         {
             this.view = view;
             this.sim = sim;
             Models = models;
             this.luigi = luigi;
+            this.follow = follow;
         }
 
         /// A display Mario starting his intro, or null (the prefab keeps Commando) if the
-        /// disc's files won't load.
-        public static IDisplayActor Get() => Create(false);
+        /// disc's files won't load. Follows the loadout's skin: Luigi appears when selected.
+        public static IDisplayActor Get() => Create(MarioSkin.Selected() == MarioSkin.Luigi, true);
 
         /// A display Luigi (the alt-skin): Mario's sim and FLUDD, Luigi's HSD mesh, for the
-        /// character-select scene and the skin's portrait. Null without the Melee cache.
-        public static IDisplayActor GetLuigi() => Create(true);
+        /// skin's portrait. Null without the Melee cache.
+        public static IDisplayActor GetLuigi() => Create(true, false);
 
-        static IDisplayActor Create(bool luigi)
+        static IDisplayActor Create(bool luigi, bool follow)
         {
             if (!Plugin.AssetsReady) return null;
             if (luigi && !MarioSkin.Ready) return null;
-            var pool = luigi ? spareLuigi : spare;
+            var pool = follow ? spare : spareLuigi;
             if (pool.Count > 0)
             {
                 var d = pool.Pop();
                 var origin = new Native.Vec3(0f, 0f, 0f);
                 Native.sms_sim_teleport(d.sim, ref origin);
+                d.follow = follow;
                 d.Begin();
                 return d;
             }
@@ -91,7 +98,7 @@ namespace MarioTest
                 Native.sms_view_free(view);
                 return null;
             }
-            var made = new MarioDisplay(view, sim, models, luigi);
+            var made = new MarioDisplay(view, sim, models, luigi, follow);
             made.Begin();
             return made;
         }
@@ -105,6 +112,7 @@ namespace MarioTest
 
         public void Step(float dt, Transform display)
         {
+            if (follow) FollowSkin();
             time += dt;
             var pad = default(Native.Pad);
             // A on the spot, held a moment so the sim's 30 Hz step sees it.
@@ -133,6 +141,36 @@ namespace MarioTest
             Native.sms_view_update(view, sim, ref frame);
         }
 
+        // When the loadout's skin changed, rebuild the view for the new body (Mario <-> Luigi).
+        // The shared sim keeps its clock, so the intro jump and "wahoo" play the same either way.
+        void FollowSkin()
+        {
+            bool want = MarioSkin.Selected() == MarioSkin.Luigi;
+            if (want == luigi) return;
+            var newView = Native.sms_view_new(NativeLib.CString(Plugin.AssetsDir), (byte)(Plugin.Sound.Value ? 1 : 0));
+            if (newView == IntPtr.Zero) return;
+            if (want)
+            {
+                if (!MarioSkin.Load(newView))
+                {
+                    Native.sms_view_free(newView);
+                    return;
+                }
+                Native.sms_view_skin(newView, 1);
+            }
+            var newModels = ModelView.Create(new SmsViewSource(newView), want ? "Luigi (lobby)" : "Mario (lobby)");
+            if (newModels == null)
+            {
+                Native.sms_view_free(newView);
+                return;
+            }
+            Models.Dispose();
+            Native.sms_view_free(view);
+            view = newView;
+            Models = newModels;
+            luigi = want;
+        }
+
         // The tick he leaves the ground on the intro's jump, he says "wahoo" over its "hup".
         void Intro()
         {
@@ -157,7 +195,7 @@ namespace MarioTest
         public void Release()
         {
             Models.HideAll();
-            (luigi ? spareLuigi : spare).Push(this);
+            (follow ? spare : spareLuigi).Push(this);
         }
 
         static byte Floor(IntPtr user, ref Native.Vec3 pos, out Native.GroundHit hit)

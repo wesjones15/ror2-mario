@@ -17,6 +17,7 @@ namespace MarioTest
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern byte sms_view_entrance_bounds(IntPtr view, out Vec3 lo, out Vec3 hi);
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern byte sms_view_entrance_update(IntPtr view, float seconds, byte activated, ref ViewFrame frame, out Vec3 position);
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern void sms_view_mario_voice(IntPtr view, byte[] name);
+        [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern void sms_view_set_voice_pitch(IntPtr view, float ratio);
         // ABI 20 refraction maps: R=1, G=4*Y, B=coverage, A=4*X. Separate the mask and
         // compensate material strength so RoR2's near-flat-normal discard keeps the crests.
         public const float RefractionNormalGain = 4f;

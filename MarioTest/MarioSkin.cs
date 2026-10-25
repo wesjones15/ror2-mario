@@ -14,6 +14,8 @@ namespace MarioTest
     internal static class MarioSkin
     {
         public const uint Mario = 0, Luigi = 1;
+        /// Luigi's voice is Mario's pitched up 14% with the line's length kept (the Melee trick).
+        public const float VoicePitch = 1.14f;
 
         static string meleeDir;
         static bool ready;

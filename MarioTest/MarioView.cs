@@ -107,7 +107,10 @@ namespace MarioTest
                 var v = Native.sms_view_new_look(NativeLib.CString(Plugin.AssetsDir), (byte)(sound ? 1 : 0), look);
                 // The alt-skin swaps the body for Luigi's HSD mesh; a missing cache keeps Mario.
                 if (v != IntPtr.Zero && luigi && MarioSkin.Load(v))
+                {
                     Native.sms_view_skin(v, 1);
+                    Native.sms_view_set_voice_pitch(v, MarioSkin.VoicePitch);
+                }
                 return v;
             }
             catch (Exception e)

@@ -89,6 +89,7 @@ namespace MarioTest
                     return null;
                 }
                 Native.sms_view_skin(view, 1);
+                Native.sms_view_set_voice_pitch(view, MarioSkin.VoicePitch);
             }
             var sim = Native.sms_sim_new(NativeLib.CString(Plugin.AssetsDir), ref start, 0);
             var models = sim != IntPtr.Zero ? ModelView.Create(new SmsViewSource(view), luigi ? "Luigi (lobby)" : "Mario (lobby)") : null;
@@ -158,6 +159,7 @@ namespace MarioTest
                 }
                 Native.sms_view_skin(newView, 1);
             }
+            Native.sms_view_set_voice_pitch(newView, want ? MarioSkin.VoicePitch : 1f);
             var newModels = ModelView.Create(new SmsViewSource(newView), want ? "Luigi (lobby)" : "Mario (lobby)");
             if (newModels == null)
             {

@@ -100,6 +100,10 @@ namespace MarioTest
             try {
                 view = Native.sms_view_entrance_new(NativeLib.CString(Plugin.AssetsDir), (byte)(Plugin.Sound.Value ? 1 : 0));
                 if (view == IntPtr.Zero) throw new InvalidOperationException("statue/portal assets unavailable");
+                // The rider's skin: Luigi lands from the gate as Luigi.
+                var rider = seat.currentPassengerBody;
+                if (rider && MarioSkin.Selected(rider) == MarioSkin.Luigi && MarioSkin.Load(view))
+                    Native.sms_view_skin(view, 1);
                 models = ModelView.Create(new SmsViewSource(view), "Mario Sunshine statue", transform);
                 if (models == null) throw new InvalidOperationException("statue renderer unavailable");
                 // MarioFx uploads world-space vertices; keep its renderer at world identity.

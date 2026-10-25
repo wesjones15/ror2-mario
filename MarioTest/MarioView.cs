@@ -50,21 +50,23 @@ namespace MarioTest
             fx = MarioFx.Create(view);
         }
 
-        /// The player's view, made the first time.
-        public static MarioView Ensure()
+        /// The player's view, made the first time. `body` supplies the selected skin (Luigi draws
+        /// his HSD mesh; the loadout skin is fixed for the run, so the first call decides).
+        public static MarioView Ensure(CharacterBody body)
         {
             if (!Plugin.AssetsReady || RunAudio.Ended) return null;
             if (tried) return player;
             tried = true;
             if (!Plugin.DrawModel.Value && !Plugin.Sound.Value) return null;
-            var v = Open(Plugin.Sound.Value, 0);
+            bool luigi = MarioSkin.Selected(body) == MarioSkin.Luigi;
+            var v = Open(Plugin.Sound.Value, 0, luigi);
             if (v == IntPtr.Zero)
             {
                 Plugin.Log.LogWarning($"Mario's models didn't load from {Plugin.AssetsDir}; he stays Commando");
                 return null;
             }
             Plugin.Log.LogInfo($"Mario's view: {NativeLib.Utf8(Native.sms_view_status(v))}");
-            player = new MarioView(v, true, "Mario");
+            player = new MarioView(v, true, luigi ? "Luigi" : "Mario");
             return player;
         }
 
@@ -73,7 +75,7 @@ namespace MarioTest
         public static MarioView Clone()
         {
             if (!Plugin.AssetsReady || RunAudio.Ended || !Plugin.DrawModel.Value || !Plugin.GummyClones.Value) return null;
-            var v = Open(false, 0);
+            var v = Open(false, 0, false);
             if (v == IntPtr.Zero)
             {
                 Plugin.Log.LogWarning("The clone's view didn't load; the clone stays Commando");
@@ -89,7 +91,7 @@ namespace MarioTest
         {
             if (!Plugin.AssetsReady || RunAudio.Ended || !Plugin.DrawModel.Value) return null;
             if (clone && !Plugin.GummyClones.Value) return null;
-            var v = Open(Plugin.Sound.Value && !clone, 0);
+            var v = Open(Plugin.Sound.Value && !clone, 0, false);
             if (v == IntPtr.Zero)
             {
                 Plugin.Log.LogWarning("Another player's Mario view didn't load; he stays Commando");
@@ -98,11 +100,15 @@ namespace MarioTest
             return new MarioView(v, false, clone ? "GooboMario" : "RemoteMario", clone ? GummyClone.Material() : null);
         }
 
-        static IntPtr Open(bool sound, byte look)
+        static IntPtr Open(bool sound, byte look, bool luigi)
         {
             try
             {
-                return Native.sms_view_new_look(NativeLib.CString(Plugin.AssetsDir), (byte)(sound ? 1 : 0), look);
+                var v = Native.sms_view_new_look(NativeLib.CString(Plugin.AssetsDir), (byte)(sound ? 1 : 0), look);
+                // The alt-skin swaps the body for Luigi's HSD mesh; a missing cache keeps Mario.
+                if (v != IntPtr.Zero && luigi && MarioSkin.Load(v))
+                    Native.sms_view_skin(v, 1);
+                return v;
             }
             catch (Exception e)
             {

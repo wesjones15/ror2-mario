@@ -496,7 +496,7 @@ namespace MarioTest
             if (!driving || sim == IntPtr.Zero) return;
             if (Local)
             {
-                MarioView.Ensure();
+                MarioView.Ensure(body);
                 ownsView = true;
             }
             else if (!cloneTried)
@@ -816,7 +816,7 @@ namespace MarioTest
             WorldProbe.UseBodyCollision(motor, gameObject);
             Plugin.Log.LogInfo($"Mario's sim started at {body.footPosition}");
             UnityHost.LogStageWater();
-            if (Local) MarioView.Ensure();
+            if (Local) MarioView.Ensure(body);
             return true;
         }
 

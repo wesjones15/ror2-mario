@@ -181,6 +181,10 @@ namespace MarioTest
                     // emitter. Raise it 600 cm; the preview pivot is not Unity height proof.
                     fireLocal = new Vector3(-(lo.x + hi.x) * .5f, lo.y + 600f, (lo.z + hi.z) * .5f) * UnityHost.Scale;
                     ConfigureDescentFire();
+                    // The podium alone is 8.0 x 5.2 x 8.0 m. The map's baked statue shadow
+                    // and a floor triangle used to be selected with it and made this
+                    // 10.3 x 5.2 x 11.0 m, hanging geometry off the base.
+                    Plugin.Log.LogInfo($"Mario statue podium collider {box.size.x:0.0} x {box.size.y:0.0} x {box.size.z:0.0} m");
                 }
                 Plugin.Log.LogInfo("Mario stage-one statue entrance ready (05_gate01 / particle 0x40)");
             } catch (Exception e) {

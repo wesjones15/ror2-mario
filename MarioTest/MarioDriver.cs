@@ -857,9 +857,8 @@ namespace MarioTest
             return true;
         }
 
-        /// Counts the coins this run has paid the local player (the HUD's gold), for Luigi's
-        /// unlock: the plaque's 2401. Gold spent on chests is not subtracted, so a decent run
-        /// always gets there; a different run (a new `Run`) starts at zero.
+        /// Checks the local player's coin counter for Luigi's unlock: at least 2401 held at one
+        /// time, the plaque's number.
         void CountCoins()
         {
             if (Local) MarioSkin.CountCoins(body);

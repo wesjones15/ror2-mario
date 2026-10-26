@@ -390,7 +390,11 @@ namespace MarioTest
                     Plugin.Log.LogInfo($"Mario put back at {back}: {through} (status {status}{(strict ? ", struck" : "")})");
                 }
                 transform.position = back + feetToOrigin;
-                Resync();
+                // A wall-guard put-back is a local correction, not a move to a new place: the
+                // last safe spot and the stuck timers stay valid. Wiping them here starved the
+                // recovery whenever the guard fired, so a body held against a collider never
+                // reached its three seconds, and one let out under the map never reached its five.
+                Resync(true);
                 Native.sms_sim_state(sim, out st);
                 status = NativeLib.Utf8(Native.sms_sim_status_name(sim));
             }
@@ -852,9 +856,9 @@ namespace MarioTest
             return true;
         }
 
-        void Resync()
+        void Resync(bool keepRecovery = false)
         {
-            unstuck.Reset();
+            if (!keepRecovery) unstuck.Reset();
             guard.Placed(transform.position - feetToOrigin);
             var feet = UnityHost.ToSim(transform.position - feetToOrigin);
             SimOps.Teleport(sim, ref feet);

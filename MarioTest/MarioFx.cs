@@ -91,7 +91,8 @@ namespace MarioTest
                 {
                     name = $"Mario effect {which}",
                     filterMode = FilterMode.Bilinear,
-                    wrapMode = t.wrap_s == 1 ? TextureWrapMode.Clamp : TextureWrapMode.Repeat,
+                    wrapModeU = ModelView.Wrap(t.wrap_s),
+                    wrapModeV = ModelView.Wrap(t.wrap_t),
                 };
                 textures[which] = tex;
                 // A new texture: materials holding the old one are rebuilt.

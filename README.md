@@ -15,7 +15,12 @@ in a single run as Mario; the lock and that line show in the loadout until then.
 Portal animation is rendered once on the asset worker at 512 square and cached as
 256-square raw RGBA with antialiased edge coverage. The M is mirrored through its
 texture matrix; source textures are untouched. The statue/gate geometry uploads once; hidden arrival Mario
-stops being processed after handoff. Stock pod graphics are suppressed except the
+stops being processed after handoff. Idle and spent portal frames stop sampling/uploading
+outside the player's camera frustum and resume at the current frame when visible, without
+replaying missed frames. Exit/control processing always runs, even offscreen. A slope-safe
+cut holds only the rider's pose until handoff; afterward the portal clock advances so the
+Plaza image closes back to colors. These changes are boundary/build checked, not yet played.
+Stock pod graphics are suppressed except the
 original descent fire: its mesh particles are 3.5x wider and 1.75x taller, with the emitter 600 cm
 above the pedestal base and local simulation so existing particles follow the
 statue. Its original material and emission rate remain.

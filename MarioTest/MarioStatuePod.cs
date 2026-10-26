@@ -57,6 +57,9 @@ namespace MarioTest
         readonly List<Collider> scanColliders = new List<Collider>();
         float scanAt;
         bool handedOff;
+        MarioPortalPlayback portalPlayback;
+        readonly Plane[] portalFrustum = new Plane[6];
+        Camera portalCuller;
         Func<ViewDraw, (Vector3, Quaternion)?> placement;
         Func<ViewDraw, bool> hideDraw;
         public bool Ready => custom;
@@ -225,14 +228,15 @@ namespace MarioTest
             if (!custom || !travel || RunAudio.Ended) return;
             if (anchored && !exitAligned && seat.currentPassengerBody && !activated) AlignExit();
             if (collision && !anchored) collision.transform.SetPositionAndRotation(Origin, Rotation);
+            // ModelView places children in world space. Keep its root on the same
+            // anchor so retained meshes follow descent even when view work is culled.
+            models.Root.SetPositionAndRotation(Origin, Rotation);
             PlaceCamera();
             if (!activated) SyncRiderSkin();
             PlaceDescentFire();
             HideStockVisuals();
             if (!PauseManager.isPaused) idle += Time.deltaTime;
             float raw = activated && machine.state is MarioPodExit exit ? exit.Elapsed : idle;
-            // A cut holds the clip on its last pose above the ground until the body takes over.
-            float time = exitCut ? Mathf.Min(raw, cutAt) : raw;
             var frame = new Native.ViewFrame { forward = new Native.Vec3(0, 0, 1), up = new Native.Vec3(0, 1, 0), volume = GameSettings.SfxVolume() * Mathf.Clamp(Plugin.SoundVolume.Value, 0, 2) };
             var camera = GameSettings.PlayerCamera();
             if (camera) {
@@ -251,9 +255,17 @@ namespace MarioTest
                 if (playableDraws) hideFallback = false;
                 else GameSettings.HideModel(passenger, ref hideFallback, false);
             }
+            bool visible = activated && !handedOff || PortalVisible(camera);
+            if (!portalPlayback.Sample(raw, activated, handedOff, exitCut, cutAt, visible)) {
+                // No native sampling, texture copies or ModelView geometry work.
+                fx.Hide();
+                return;
+            }
+            float time = portalPlayback.Time;
             // State 2 removes the character from native processing after the real body takes over.
-            var result = Native.sms_view_entrance_update(view, time, (byte)(handedOff ? 2 : activated ? 1 : 0), ref frame, out finalFeet);
+            var result = Native.sms_view_entrance_update(view, time, portalPlayback.State, ref frame, out finalFeet);
             if (result == 0) { Finished = true; return; }
+            portalPlayback.Updated();
             Finished = result == 2;
             // The clip's own landing point is the statue's base. Where that is inside the hill,
             // end the clip at the last pose still above the ground and redraw that pose (the
@@ -264,10 +276,28 @@ namespace MarioTest
             if (activated && (released || Finished || exitCut)) PlaceEjected();
             models.Update(UnityHost.Scale, placement, hideDraw);
             fx.Update(view, UnityHost.Scale, Vector3.zero, Matrix4x4.TRS(Origin, Rotation, Vector3.one));
-            if (activated && !voiced && time >= 0.8f) {
+            if (activated && !handedOff && !voiced && time >= 0.8f) {
                 voiced = true;
                 Native.sms_view_mario_voice(view, NativeLib.CString("MSD_SE_MV23_JUMP_LARGE_01"));
             }
+        }
+
+        bool PortalVisible(Transform camera)
+        {
+            if (!camera) return true;
+            if (!portalCuller || portalCuller.transform != camera) portalCuller = camera.GetComponent<Camera>();
+            if (!portalCuller) return true;
+            GeometryUtility.CalculateFrustumPlanes(portalCuller, portalFrustum);
+            // 05_gate01 is the 400 x 400 cm quad at Y 0..400, plus the
+            // entrance's 3.5 cm wall offset (entrance.rs::append_rigid).
+            // Pad its edges slightly; yaw changes its world-space AABB.
+            var rotation = Rotation;
+            var right = rotation * Vector3.right * (205f * UnityHost.Scale);
+            var forward = rotation * Vector3.forward * (10f * UnityHost.Scale);
+            var size = new Vector3(Mathf.Abs(right.x) + Mathf.Abs(forward.x),
+                205f * UnityHost.Scale, Mathf.Abs(right.z) + Mathf.Abs(forward.z)) * 2f;
+            var center = Origin + rotation * new Vector3(0, 200f, 3.5f) * UnityHost.Scale;
+            return GeometryUtility.TestPlanesAABB(portalFrustum, new Bounds(center, size));
         }
 
         (Vector3, Quaternion)? Place(ViewDraw d) => (Origin + Rotation * new Vector3(-d.pos.x, d.pos.y, d.pos.z) * UnityHost.Scale,

@@ -107,6 +107,7 @@ static class Program
         CheckEntrance();
         CheckFastEntrance(false);
         CheckFastEntrance(true);
+        CheckPortalPlayback();
         Console.WriteLine("PASS: Mario ABI, FLUDD, nozzle models, pound, slide and stage-one statue entrance handoff");
     }
 
@@ -156,6 +157,76 @@ static class Program
             Check(Native.sms_view_texture_version(view, (uint)texture) > version, "portal texture did not animate");
             Check(Native.sms_view_entrance_update(view, float.NaN, 1, ref f, out _) == 0, "invalid entrance time accepted");
         } finally { Native.sms_view_free(view); }
+    }
+
+    static void CheckPortalPlayback()
+    {
+        if (!File.Exists(Path.Combine(assets, "portal", "05_gate01.bmd"))) { Console.WriteLine("SKIP: statue portal cache absent"); return; }
+        var view = Native.sms_view_entrance_fast_new(NativeLib.CString(assets), 0);
+        var reference = Native.sms_view_entrance_fast_new(NativeLib.CString(assets), 0);
+        Check(view != IntPtr.Zero && reference != IntPtr.Zero, "portal playback views couldn't load");
+        try {
+            var playback = new MarioPortalPlayback();
+            var camera = new Native.ViewFrame { forward = new Native.Vec3(0, 0, 1), up = new Native.Vec3(0, 1, 0) };
+            var feet = default(Native.Vec3);
+            bool Sample(float elapsed, bool activated, bool handedOff, bool cut, bool visible)
+            {
+                if (!playback.Sample(elapsed, activated, handedOff, cut, 1.55f, visible)) return false;
+                Check(Native.sms_view_entrance_update(view, playback.Time, playback.State, ref camera, out feet) != 0, "portal playback update failed");
+                playback.Updated();
+                return true;
+            }
+            Check(Sample(.25f, false, false, false, false), "offscreen initial geometry wasn't initialized");
+            var draws = new ViewDraw[32];
+            uint n = Native.sms_view_draws(view, draws, 32);
+            var gate = draws.Take((int)n).Single(d => d.kind == 241);
+            // Keep the host's padded frustum bound honest against the disc model.
+            var pointer = Native.sms_view_positions(view, out var vertices);
+            var xyz = new float[vertices * 3]; Marshal.Copy(pointer, xyz, 0, xyz.Length);
+            uint end = vertices;
+            foreach (var d in draws.Take((int)n)) if (d.first_vertex > gate.first_vertex) end = Math.Min(end, d.first_vertex);
+            for (uint i = gate.first_vertex; i < end; i++)
+                Check(Math.Abs(xyz[i * 3]) <= 205 && xyz[i * 3 + 1] >= -5 && xyz[i * 3 + 1] <= 405
+                    && Math.Abs(xyz[i * 3 + 2] - 3.5f) <= 10, "M quad escaped the host frustum bound");
+            Native.sms_view_model(view, gate.model, out var model);
+            var batches = new ViewBatch[model.batch_count]; Native.sms_view_batches(view, gate.model, batches, model.batch_count);
+            uint texture = (uint)batches[0].texture;
+            byte[] Image(IntPtr v)
+            {
+                Native.sms_view_texture(v, texture, out var info, null, 0);
+                var pixels = new byte[info.width * info.height * 4];
+                Native.sms_view_texture(v, texture, out _, pixels, (uint)pixels.Length);
+                return pixels;
+            }
+            uint version = Native.sms_view_texture_version(view, texture);
+            for (int i = 1; i <= 300; i++) Check(!Sample(.25f + i / 60f, false, false, false, false), "hidden idle portal kept sampling");
+            Check(Native.sms_view_texture_version(view, texture) == version, "hidden idle portal changed texture version");
+            Check(Sample(8.37f, false, false, false, true) && playback.Time == 8.37f, "idle resume replayed missed time");
+            Native.sms_view_entrance_update(reference, 8.37f, 0, ref camera, out _);
+            Check(Image(view).SequenceEqual(Image(reference)), "idle resume differs from direct current-frame sampling");
+            for (int i = 0; i <= 93; i++) Check(Sample(i / 60f, true, false, false, false), "offscreen exit/control processing was culled");
+            var safeFeet = feet;
+            Check(Sample(1.58f, true, false, true, false) && playback.Time == 1.55f, "slope-safe pose wasn't held before handoff");
+            Check(feet.x == safeFeet.x && feet.y == safeFeet.y && feet.z == safeFeet.z, "slope-safe rider pose moved while held");
+            var activeImage = Image(view);
+            Check(Sample(1.6f, true, true, true, false) && playback.Time == 1.6f && playback.State == 2,
+                "hidden handoff froze the portal clock or failed to retire the rider");
+            n = Native.sms_view_draws(view, draws, 32);
+            Check(n == 2 && draws.Take((int)n).All(d => d.kind >= 240), "offscreen handoff left the native rider visible");
+            Native.sms_view_fx_info(view, out var fx);
+            Check(fx.vertices == 0, "offscreen handoff retained portal exit particles");
+            Check(Sample(1.95f, true, true, true, true), "visible spent portal stopped sampling");
+            Native.sms_view_entrance_update(reference, 1.95f, 0, ref camera, out _);
+            Check(Image(view).SequenceEqual(Image(reference)), "visible slope-cut portal stayed on Delfino after closing");
+            version = Native.sms_view_texture_version(view, texture);
+            for (int i = 1; i <= 300; i++) Check(!Sample(1.95f + i / 60f, true, true, true, false), "hidden spent portal kept sampling");
+            Check(Native.sms_view_texture_version(view, texture) == version, "hidden spent portal changed texture version");
+            Check(Sample(31.27f, true, true, true, true) && playback.Time == 31.27f, "spent resume replayed or clamped time");
+            Native.sms_view_entrance_update(reference, 31.27f, 0, ref camera, out _);
+            Check(Image(view).SequenceEqual(Image(reference)), "slope-cut handoff didn't restore current swirling colors");
+            Check(!activeImage.SequenceEqual(Image(view)), "Delfino image remained after handoff");
+            Console.WriteLine("PASS: slope-safe clock/handoff, hidden idle/spent culling, live offscreen exit and direct-frame resume");
+        } finally { if (view != IntPtr.Zero) Native.sms_view_free(view); if (reference != IntPtr.Zero) Native.sms_view_free(reference); }
     }
 
     static void CheckFastEntrance(bool luigi)

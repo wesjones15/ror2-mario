@@ -39,6 +39,13 @@ namespace MarioTest
         bool anchored, exitAligned;
         Vector3 landedOrigin, landedExit;
         Quaternion landedRotation;
+        // The exit clip drops the rider to the statue's base, which on a slope is inside the
+        // hill: its last frames draw his feet in the dirt, and the pod then lets the body out
+        // under the terrain (it pops up when the motor is handed over). Cut the clip at the last
+        // pose still above the ground, hold it there, and let the body out on that ground.
+        bool exitCut, exitPlaced;
+        float cutAt, lastAt = -1f;
+        Vector3 cutFeet, lastFeet;
         uint entranceSkin = uint.MaxValue;
         readonly Dictionary<Renderer, bool> stockRenderers = new Dictionary<Renderer, bool>();
         readonly List<Renderer> scanRenderers = new List<Renderer>();
@@ -51,6 +58,8 @@ namespace MarioTest
         Func<ViewDraw, (Vector3, Quaternion)?> placement;
         Func<ViewDraw, bool> hideDraw;
         public bool Ready => custom;
+        /// The exit clip was ended early because the next pose would draw the rider into the hill.
+        public bool Cut => exitCut;
         public bool Finished { get; private set; }
 
         public static void Register(CharacterBody body, RoR2.ContentManagement.ContentPack pack)
@@ -191,7 +200,9 @@ namespace MarioTest
             PlaceDescentFire();
             HideStockVisuals();
             if (!PauseManager.isPaused) idle += Time.deltaTime;
-            float time = activated && machine.state is MarioPodExit exit ? exit.Elapsed : idle;
+            float raw = activated && machine.state is MarioPodExit exit ? exit.Elapsed : idle;
+            // A cut holds the clip on its last pose above the ground until the body takes over.
+            float time = exitCut ? Mathf.Min(raw, cutAt) : raw;
             var frame = new Native.ViewFrame { forward = new Native.Vec3(0, 0, 1), up = new Native.Vec3(0, 1, 0), volume = GameSettings.SfxVolume() * Mathf.Clamp(Plugin.SoundVolume.Value, 0, 2) };
             var camera = GameSettings.PlayerCamera();
             if (camera) {
@@ -214,6 +225,13 @@ namespace MarioTest
             var result = Native.sms_view_entrance_update(view, time, (byte)(handedOff ? 2 : activated ? 1 : 0), ref frame, out finalFeet);
             if (result == 0) { Finished = true; return; }
             Finished = result == 2;
+            // The clip's own landing point is the statue's base. Where that is inside the hill,
+            // end the clip at the last pose still above the ground and redraw that pose (the
+            // update above already drew the frame that entered it).
+            bool exiting = machine.state is MarioPodExit;
+            if (activated && exiting && !released && !Finished && !exitCut && CutIfEnteringGround(time))
+                Native.sms_view_entrance_update(view, cutAt, 1, ref frame, out finalFeet);
+            if (activated && (released || Finished || exitCut)) PlaceEjected();
             models.Update(UnityHost.Scale, placement, hideDraw);
             fx.Update(view, UnityHost.Scale, Vector3.zero, Matrix4x4.TRS(Origin, Rotation, Vector3.one));
             if (activated && !voiced && time >= 0.8f) {
@@ -224,6 +242,97 @@ namespace MarioTest
 
         (Vector3, Quaternion)? Place(ViewDraw d) => (Origin + Rotation * new Vector3(-d.pos.x, d.pos.y, d.pos.z) * UnityHost.Scale,
             Rotation * new Quaternion(d.rot_x, d.rot_y, d.rot_z, d.rot_w));
+
+        /// The exit clip's feet (sim space, statue-local) in the world, placed like the draws.
+        Vector3 ToWorld(Native.Vec3 p) =>
+            Origin + Rotation * new Vector3(-p.x, p.y, p.z) * UnityHost.Scale;
+
+        static readonly RaycastHit[] groundHits = new RaycastHit[8];
+
+        /// True when solid ground sits above the rider's animated feet: the clip would draw him
+        /// into the hill. A floor below him is the landing, not an entry, and the pod's own
+        /// solids (the statue's pedestal box, the stock shell) are not ground.
+        bool GroundAbove(Vector3 feet, out Vector3 surface)
+        {
+            const float above = 4f, below = 3f;
+            surface = feet;
+            int n = Physics.RaycastNonAlloc(feet + Vector3.up * above, Vector3.down, groundHits,
+                above + below, WorldProbe.Mask, QueryTriggerInteraction.Ignore);
+            float nearest = float.PositiveInfinity;
+            for (int i = 0; i < n; i++)
+            {
+                var h = groundHits[i];
+                if (!h.collider || Ours(h.collider) || h.point.y <= feet.y + .02f) continue;
+                if (h.distance >= nearest) continue;
+                nearest = h.distance;
+                surface = h.point;
+            }
+            return !float.IsPositiveInfinity(nearest);
+        }
+
+        bool Ours(Collider c) =>
+            c.transform.IsChildOf(transform) || (passenger && c.transform.IsChildOf(passenger.transform));
+
+        /// Ends the exit clip at the last pose above the ground; the body is let out there.
+        bool CutIfEnteringGround(float time)
+        {
+            var feet = ToWorld(finalFeet);
+            if (!GroundAbove(feet, out var surface)) {
+                lastAt = time;
+                lastFeet = feet;
+                return false;
+            }
+            exitCut = true;
+            if (lastAt >= 0f) {
+                cutAt = lastAt;
+                cutFeet = lastFeet;
+            } else {
+                // Already inside it on the first frame (a hill above the reveal): use its surface.
+                cutAt = 0f;
+                cutFeet = surface;
+            }
+            Plugin.Log.LogInfo($"Statue exit cut at {cutAt:F2} s (feet {feet} would enter the ground); the body is let out at {cutFeet}");
+            return true;
+        }
+
+        /// Puts the rider's body where the clip ended (or was cut) once the seat lets him go.
+        /// Every peer places the copy it owns, so a client's body is not left at the raw exit.
+        /// The landing is validated: on a slope the exit point sits inside the hill, and the sim
+        /// then falls through to whatever room is below it.
+        void PlaceEjected()
+        {
+            if (exitPlaced || !passenger || passenger.currentVehicle) return;
+            exitPlaced = true;
+            if (!passenger.hasEffectiveAuthority || !passenger.healthComponent || !passenger.healthComponent.alive) return;
+            var height = UnityHost.MarioHeight * UnityHost.Scale;
+            var target = exitCut ? cutFeet : ToWorld(finalFeet);
+            // A point on or just above the ground is used as it is (the stock exit, or a cut just
+            // above the slope). One with ground above it is inside the hill: step out to clear
+            // standing ground, or the sim takes him through it into whatever room is below.
+            if (GroundAbove(target, out _)) {
+                Vector3 clear;
+                if (UnityHost.RecoveryGround(target, height * .25f, height * .5f, out clear)
+                    || NearestGround(target, height, out clear)) target = clear;
+            }
+            var feet = passenger.footPosition;
+            if ((target - feet).sqrMagnitude <= .0004f) return;
+            passenger.transform.position += target - feet;
+            Plugin.Log.LogInfo($"Statue exit: body at {passenger.footPosition} ({(exitCut ? "clip cut" : "clip complete")})");
+        }
+
+        /// Clear standing ground within three body heights of `sample`, for an exit point that
+        /// sits in the terrain.
+        static bool NearestGround(Vector3 sample, float height, out Vector3 feet)
+        {
+            for (int ring = 1; ring <= 3; ring++)
+                for (int i = 0; i < 8; i++) {
+                    float a = i * (Mathf.PI * .25f) + ring * .4f;
+                    var at = sample + new Vector3(Mathf.Sin(a), 0f, Mathf.Cos(a)) * (ring * height * .5f);
+                    if (UnityHost.RecoveryGround(at, height * 2f, height * 3f, out feet)) return true;
+                }
+            feet = sample;
+            return false;
+        }
 
         void SyncRiderSkin()
         {
@@ -370,10 +479,12 @@ namespace MarioTest
             // body. Stock seat unhide must not flash Commando between the two views.
             GameSettings.HideModel(passenger, ref hideFallback, true);
             if (NetworkServer.active && seat.currentPassengerBody) {
-                // The visual anchor places native feet at precisely this stock body-origin
-                // exit. Use the seat's own safe exit even if a native renderer failed.
-                seat.EjectPassenger(anchored ? landedExit : seat.exitPosition.position, Rotation);
+                // Stock release. The positional overload also moves the pod to the exit, which
+                // applies the exit marker's offset a second time and drags the pedestal's solid
+                // off the statue. The body is put on the clip's own last pose instead.
+                seat.EjectPassenger();
             }
+            PlaceEjected();
             DisableStockCollision();
         }
 
@@ -437,7 +548,7 @@ namespace MarioTest
         public override void OnEnter() { base.OnEnter(); statue = GetComponent<MarioStatuePod>(); if (statue) statue.Activate(); }
         public override void FixedUpdate() {
             base.FixedUpdate();
-            if (isAuthority && ((!statue || !statue.Ready || statue.Finished) || fixedAge > 4f)) {
+            if (isAuthority && ((!statue || !statue.Ready || statue.Finished || statue.Cut) || fixedAge > 4f)) {
                 if (statue) statue.Release();
                 else if (NetworkServer.active) vehicleSeat.EjectPassenger();
                 outer.SetNextState(new MarioPodSpent());

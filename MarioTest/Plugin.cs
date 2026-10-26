@@ -39,6 +39,7 @@ namespace MarioTest
         internal static ConfigEntry<bool> DrawModel;
         internal static ConfigEntry<bool> Sound;
         internal static ConfigEntry<float> SoundVolume;
+        internal static ConfigEntry<bool> PiantissimoGameVoice;
         internal static ConfigEntry<float> JumpHeight;
         internal static ConfigEntry<float> LuigiJumpHeight;
         internal static ConfigEntry<float> JumpBuffer;
@@ -493,6 +494,10 @@ namespace MarioTest
                 "Play Mario's sounds from the disc (voice, footsteps, FLUDD) on the default output device.");
             SoundVolume = Config.Bind("Sound", "Volume", 1f,
                 "Mario's sounds, on top of RoR2's master and SFX volume (0-2).");
+            PiantissimoGameVoice = Config.Bind("Sound", "PiantissimoGameVoice", false,
+                "The Piantissimo alt-skin swaps Mario's five jump voices for Piantissimo's own. " +
+                "The game gives him no other voice at all, so by default every other line stays Mario's; " +
+                "turn this on for the game's exact behaviour (his jump voice and silence otherwise).");
             AssetsDir = ResolveAssets(assets.Value, here);
             MarioSkin.Discover(meleeAssets.Value, here);
 

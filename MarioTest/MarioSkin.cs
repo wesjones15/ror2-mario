@@ -27,6 +27,9 @@ namespace MarioTest
         public float VoicePitch = 1f;
         /// Jump height times, on top of Mario's (read each step, so a config change applies).
         public Func<float> JumpScale = () => 1f;
+        /// Speak only the skin's own voice, like the game (silent where it has none); the
+        /// default falls back to Mario's lines. Only Piantissimo has voice swaps to be strict about.
+        public Func<bool> StrictVoice = () => false;
         /// The hidden dpad-up move (Yoshi's Egg Lay, borrowed from the Melee plugin).
         public bool EggLay;
 
@@ -72,6 +75,8 @@ namespace MarioTest
                 Id = Piantissimo, Name = "MarioSkinPiantissimo", Token = "MARIOTEST_SKIN_PIANTISSIMO",
                 Text = "Piantissimo", Title = "Piantissimo",
                 Quip = "Fastest Pianta on Isle Delfino... On Vacation!",
+                // His jump voice replaces Mario's jump cues natively (the skin picks the voice set).
+                StrictVoice = () => Plugin.PiantissimoGameVoice.Value,
                 // Available from the start: his model comes from the disc the plugin extracts.
             },
         };
@@ -179,8 +184,10 @@ namespace MarioTest
         /// Draws `skin` on a view that loaded it, with its voice.
         public static void Apply(IntPtr view, uint skin)
         {
+            var spec = Spec(skin);
             Native.sms_view_skin(view, skin);
-            Native.sms_view_set_voice_pitch(view, Spec(skin).VoicePitch);
+            Native.sms_view_set_voice_pitch(view, spec.VoicePitch);
+            if (spec.StrictVoice()) Native.sms_view_voice_set(view, 2);
         }
 
         /// Registers Mario's skins on the body (Mario default, then each offered one) and starts

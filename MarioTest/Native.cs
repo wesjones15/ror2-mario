@@ -14,6 +14,9 @@ namespace MarioTest
         public const string Dll = "sms";
         public const uint AbiVersion = 30;
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern IntPtr sms_view_entrance_new(byte[] dir, byte sound);
+        [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern IntPtr sms_view_entrance_fast_new(byte[] dir, byte sound);
+        [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern byte sms_entrance_cache_complete(byte[] dir);
+        [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern byte sms_prepare_entrance(byte[] dir, byte[] msg, uint len);
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern byte sms_view_entrance_bounds(IntPtr view, out Vec3 lo, out Vec3 hi);
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern byte sms_view_entrance_update(IntPtr view, float seconds, byte activated, ref ViewFrame frame, out Vec3 position);
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern void sms_view_mario_voice(IntPtr view, byte[] name);

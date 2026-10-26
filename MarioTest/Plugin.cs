@@ -563,7 +563,8 @@ namespace MarioTest
                 // again (libsms's STINGS_VERSION).
                 || !File.Exists(Path.Combine(stings, "stings.version"))
                 || File.ReadAllText(Path.Combine(stings, "stings.version")).Trim() != "2";
-            if (assetsReady && !needStings && !needExtras)
+            bool needPortalCache = Native.sms_entrance_cache_complete(NativeLib.CString(AssetsDir)) == 0;
+            if (assetsReady && !needStings && !needExtras && !needPortalCache)
                 return;
             string disc = configuredDisc?.Trim();
             if ((!assetsReady || needExtras) && string.IsNullOrEmpty(disc))
@@ -573,7 +574,7 @@ namespace MarioTest
                 if (Native.sms_find_disc(NativeLib.CString(here + ";" + parent), found, (uint)found.Length) != 0)
                     disc = Utf8(found);
             }
-            if (assetsReady && !needStings && (string.IsNullOrEmpty(disc) || !File.Exists(disc)))
+            if (assetsReady && !needStings && !needPortalCache && (string.IsNullOrEmpty(disc) || !File.Exists(disc)))
             {
                 // Only the optional pictures are missing, and there is no disc to take them from.
                 Log.LogInfo("Sunshine's wipe pictures (the GAME OVER screen), Shine Sprite and Shine Get camera aren't " +
@@ -588,7 +589,7 @@ namespace MarioTest
                 return;
             }
             assetsBusy = true;
-            Log.LogInfo(assetsReady ? "Preparing Sunshine arrival/death stings..."
+            Log.LogInfo(assetsReady ? "Preparing Sunshine audio and cached statue portal animation..."
                 : $"Extracting Sunshine assets from {disc} into {AssetsDir}...");
             var worker = new Thread(() =>
             {
@@ -614,6 +615,12 @@ namespace MarioTest
                             if (Native.sms_extract_extras(NativeLib.CString(disc), NativeLib.CString(AssetsDir), msg, (uint)msg.Length) != 0)
                                 Log.LogInfo($"Sunshine wipe pictures, Shine Sprite and camera: {Utf8(msg)}");
                             else Log.LogWarning($"Sunshine wipe pictures, Shine Sprite and camera unavailable: {Utf8(msg)}");
+                        }
+                        if (!Array.Exists(MarioStatuePod.AssetFiles, file => !File.Exists(Path.Combine(AssetsDir, "portal", file))))
+                        {
+                            if (Native.sms_prepare_entrance(NativeLib.CString(AssetsDir), msg, (uint)msg.Length) != 0)
+                                Log.LogInfo(Utf8(msg));
+                            else Log.LogWarning("Statue portal cache unavailable: " + Utf8(msg));
                         }
                     }
                 }

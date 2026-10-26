@@ -11,9 +11,9 @@ namespace MarioTest
     // one summary per ten seconds. These do not measure GPU time or network latency.
     internal static class MarioPerformance
     {
-        internal enum Part { Driver, View, Effects, Models, Coins, Replay, Receive }
-        static readonly double[] milliseconds = new double[7], maximum = new double[7];
-        static readonly int[] calls = new int[7];
+        internal enum Part { Driver, View, Effects, Models, Coins, Replay, Receive, Portal }
+        static readonly double[] milliseconds = new double[8], maximum = new double[8];
+        static readonly int[] calls = new int[8];
         static float since;
         static int frames, slowFrames, backlog, corrections, packets;
         static long bytes;

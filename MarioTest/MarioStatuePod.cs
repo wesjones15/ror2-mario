@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using EntityStates;
 using EntityStates.SurvivorPod;
 using RoR2;
@@ -30,7 +31,16 @@ namespace MarioTest
         Native.Vec3 finalFeet;
         GameObject collision;
         Transform originalCamera, portalCamera;
-        Renderer[] stockRenderers;
+        readonly Dictionary<Renderer, bool> stockRenderers = new Dictionary<Renderer, bool>();
+        readonly List<Renderer> scanRenderers = new List<Renderer>();
+        readonly List<ParticleSystem> scanParticles = new List<ParticleSystem>();
+        readonly HashSet<ParticleSystem> stoppedParticles = new HashSet<ParticleSystem>();
+        readonly Dictionary<Collider, bool> stockColliders = new Dictionary<Collider, bool>();
+        readonly List<Collider> scanColliders = new List<Collider>();
+        float scanAt;
+        bool handedOff;
+        Func<ViewDraw, (Vector3, Quaternion)?> placement;
+        Func<ViewDraw, bool> hideDraw;
         public bool Ready => custom;
         public bool Finished { get; private set; }
 
@@ -71,7 +81,8 @@ namespace MarioTest
         void Awake()
         {
             seat = GetComponent<VehicleSeat>(); pod = GetComponent<SurvivorPodController>(); machine = GetComponent<EntityStateMachine>();
-            stockRenderers = GetComponentsInChildren<Renderer>(true);
+            placement = Place;
+            hideDraw = d => handedOff && d.kind < 240;
         }
 
         Vector3 Origin => travel.TransformPoint(gateLocal);
@@ -98,22 +109,23 @@ namespace MarioTest
             tried = true;
             if (!Plugin.AssetsReady || !Plugin.DrawModel.Value || !Run.instance || Run.instance.stageClearCount != 0) return;
             try {
-                view = Native.sms_view_entrance_new(NativeLib.CString(Plugin.AssetsDir), (byte)(Plugin.Sound.Value ? 1 : 0));
+                view = Native.sms_view_entrance_fast_new(NativeLib.CString(Plugin.AssetsDir), (byte)(Plugin.Sound.Value ? 1 : 0));
                 if (view == IntPtr.Zero) throw new InvalidOperationException("statue/portal assets unavailable");
                 // The rider's skin: Luigi lands from the gate as Luigi.
                 var rider = seat.currentPassengerBody;
-                if (rider && MarioSkin.Selected(rider) == MarioSkin.Luigi && MarioSkin.Load(view))
+                if (rider && MarioSkin.Selected(rider) == MarioSkin.Luigi && MarioSkin.Load(view)) {
                     Native.sms_view_skin(view, 1);
+                    Native.sms_view_set_voice_pitch(view, MarioSkin.VoicePitch);
+                }
                 models = ModelView.Create(new SmsViewSource(view), "Mario Sunshine statue", transform);
                 if (models == null) throw new InvalidOperationException("statue renderer unavailable");
                 // MarioFx uploads world-space vertices; keep its renderer at world identity.
                 fx = MarioFx.Create(view);
                 if (fx == null) throw new InvalidOperationException("portal particle renderer unavailable");
                 custom = true;
-                // Only the shell: retain the original animator, animation events, crash FX,
-                // networking, collision and passenger protection throughout descent.
-                foreach (var renderer in stockRenderers)
-                    if (renderer is MeshRenderer || renderer is SkinnedMeshRenderer) renderer.enabled = false;
+                // Keep animator/audio events and the seat. Hide every stock renderer,
+                // including trails/lines/particles; animation cannot re-enable forceRenderingOff.
+                HideStockVisuals();
                 var camera = new GameObject("Mario portal camera").transform;
                 camera.SetParent(travel, false);
                 camera.position = Origin + Rotation * new Vector3(-5.5f, 3.8f, 11.5f) * (UnityHost.Scale * 100f);
@@ -139,10 +151,12 @@ namespace MarioTest
 
         void LateUpdate()
         {
+            using var timing = MarioPerformance.Measure(MarioPerformance.Part.Portal);
             Prepare();
             if (!custom || !travel || RunAudio.Ended) return;
+            HideStockVisuals();
             if (!PauseManager.isPaused) idle += Time.deltaTime;
-            float time = activated && machine.state is MarioPodExit exit ? exit.Elapsed : released ? 6f + idle : idle;
+            float time = activated && machine.state is MarioPodExit exit ? exit.Elapsed : idle;
             var frame = new Native.ViewFrame { forward = new Native.Vec3(0, 0, 1), up = new Native.Vec3(0, 1, 0), volume = GameSettings.SfxVolume() * Mathf.Clamp(Plugin.SoundVolume.Value, 0, 2) };
             var camera = GameSettings.PlayerCamera();
             if (camera) {
@@ -152,24 +166,65 @@ namespace MarioTest
                 frame.eye = UnityHost.ToSim(inv * (camera.position - Origin));
             }
             Native.sms_view_set_paused(view, (byte)(PauseManager.isPaused ? 1 : 0));
-            // Once ejected, retain only the statue/portal, not a duplicate landing Mario.
-            var result = Native.sms_view_entrance_update(view, time, (byte)(activated ? 1 : 0), ref frame, out finalFeet);
-            if (result == 0) { Finished = true; return; }
-            Finished = result == 2;
             bool playableDraws = passenger && (passenger.GetComponent<MarioDriver>()?.Drawing == true
                 || passenger.GetComponent<MarioPuppet>()?.Drawing == true);
-            bool handedOff = released && (playableDraws || !passenger || !passenger.healthComponent.alive || Time.time - releasedAt > 2f);
+            handedOff = released && (playableDraws || !passenger || !passenger.healthComponent.alive || Time.time - releasedAt > 2f);
             if (handedOff) {
                 // HideModel uses forceRenderingOff, not a counter. The normal driver now
                 // owns that flag; clearing it here would briefly reveal Commando.
                 if (playableDraws) hideFallback = false;
                 else GameSettings.HideModel(passenger, ref hideFallback, false);
             }
-            models.Update(UnityHost.Scale, d => (Origin + Rotation * new Vector3(-d.pos.x, d.pos.y, d.pos.z) * UnityHost.Scale, Rotation * new Quaternion(d.rot_x, d.rot_y, d.rot_z, d.rot_w)), d => handedOff && d.kind < 240);
+            // State 2 removes the character from native processing after the real body takes over.
+            var result = Native.sms_view_entrance_update(view, time, (byte)(handedOff ? 2 : activated ? 1 : 0), ref frame, out finalFeet);
+            if (result == 0) { Finished = true; return; }
+            Finished = result == 2;
+            models.Update(UnityHost.Scale, placement, hideDraw);
             fx.Update(view, UnityHost.Scale, Vector3.zero, Matrix4x4.TRS(Origin, Rotation, Vector3.one));
-            if (activated && !voiced && time >= 1f) {
+            if (activated && !voiced && time >= 0.8f) {
                 voiced = true;
                 Native.sms_view_mario_voice(view, NativeLib.CString("MSD_SE_MV23_JUMP_LARGE_01"));
+            }
+        }
+
+        (Vector3, Quaternion)? Place(ViewDraw d) => (Origin + Rotation * new Vector3(-d.pos.x, d.pos.y, d.pos.z) * UnityHost.Scale,
+            Rotation * new Quaternion(d.rot_x, d.rot_y, d.rot_z, d.rot_w));
+
+        void HideStockVisuals()
+        {
+            if (Time.unscaledTime >= scanAt) {
+                scanAt = Time.unscaledTime + 0.25f;
+                GetComponentsInChildren(true, scanRenderers);
+                foreach (var r in scanRenderers) {
+                    if (!r || !IsStock(r.transform)) continue;
+                    if (!stockRenderers.ContainsKey(r)) stockRenderers.Add(r, r.forceRenderingOff);
+                }
+                GetComponentsInChildren(true, scanParticles);
+                foreach (var ps in scanParticles) {
+                    if (!ps || !IsStock(ps.transform) || !stoppedParticles.Add(ps)) continue;
+                    // Remove the undersized descent fire and stock pod FX, retaining audio
+                    // on their objects. Do not deactivate hierarchy nodes used by the animator.
+                    var main = ps.main; main.stopAction = ParticleSystemStopAction.None;
+                    var emission = ps.emission; emission.enabled = false;
+                    ps.Stop(false, ParticleSystemStopBehavior.StopEmittingAndClear);
+                }
+            }
+            foreach (var entry in stockRenderers) if (entry.Key && !entry.Key.forceRenderingOff) entry.Key.forceRenderingOff = true;
+        }
+
+        bool IsStock(Transform part)
+        {
+            var rider = seat && seat.currentPassengerBody ? seat.currentPassengerBody : passenger;
+            return !(models != null && part.IsChildOf(models.Root)) && !(rider && part.IsChildOf(rider.transform));
+        }
+
+        void DisableStockCollision()
+        {
+            GetComponentsInChildren(true, scanColliders);
+            foreach (var collider in scanColliders) {
+                if (!collider || !IsStock(collider.transform) || (collision && collider.gameObject == collision)) continue;
+                if (!stockColliders.ContainsKey(collider)) stockColliders.Add(collider, collider.enabled);
+                collider.enabled = false;
             }
         }
 
@@ -193,6 +248,7 @@ namespace MarioTest
                 // exit. Use the seat's own safe exit even if a native renderer failed.
                 seat.EjectPassenger(seat.exitPosition.position, Rotation);
             }
+            DisableStockCollision();
         }
 
         void Cleanup()
@@ -202,7 +258,8 @@ namespace MarioTest
             if (pod && originalCamera) pod.cameraBone = originalCamera;
             if (portalCamera) Destroy(portalCamera.gameObject);
             if (collision) Destroy(collision);
-            if (stockRenderers != null) foreach (var r in stockRenderers) if (r && (r is MeshRenderer || r is SkinnedMeshRenderer)) r.enabled = true;
+            foreach (var entry in stockRenderers) if (entry.Key) entry.Key.forceRenderingOff = entry.Value;
+            foreach (var entry in stockColliders) if (entry.Key) entry.Key.enabled = entry.Value;
             fx?.Dispose(); fx = null; models?.Dispose(); models = null;
             if (view != IntPtr.Zero) Native.sms_view_free(view);
             view = IntPtr.Zero;
@@ -242,7 +299,7 @@ namespace MarioTest
         public override void OnEnter() { base.OnEnter(); statue = GetComponent<MarioStatuePod>(); if (statue) statue.Activate(); }
         public override void FixedUpdate() {
             base.FixedUpdate();
-            if (isAuthority && ((!statue || !statue.Ready || statue.Finished) || fixedAge > 8f)) {
+            if (isAuthority && ((!statue || !statue.Ready || statue.Finished) || fixedAge > 4f)) {
                 if (statue) statue.Release();
                 else if (NetworkServer.active) vehicleSeat.EjectPassenger();
                 outer.SetNextState(new MarioPodSpent());

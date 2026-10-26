@@ -105,6 +105,8 @@ static class Program
             Check(ribbon, "moving slide has no native refraction ribbon");
         }
         CheckEntrance();
+        CheckFastEntrance(false);
+        CheckFastEntrance(true);
         Console.WriteLine("PASS: Mario ABI, FLUDD, nozzle models, pound, slide and stage-one statue entrance handoff");
     }
 
@@ -153,6 +155,80 @@ static class Program
             Check(particles && gotCapInHand && done, "entrance missed particles, cap-in-hand landing or completion");
             Check(Native.sms_view_texture_version(view, (uint)texture) > version, "portal texture did not animate");
             Check(Native.sms_view_entrance_update(view, float.NaN, 1, ref f, out _) == 0, "invalid entrance time accepted");
+        } finally { Native.sms_view_free(view); }
+    }
+
+    static void CheckFastEntrance(bool luigi)
+    {
+        if (!File.Exists(Path.Combine(assets, "portal", "05_gate01.bmd"))) { Console.WriteLine("SKIP: statue portal cache absent"); return; }
+        var message = new byte[4096];
+        Check(Native.sms_prepare_entrance(NativeLib.CString(assets), message, (uint)message.Length) != 0, "portal cache preparation failed");
+        Check(Native.sms_entrance_cache_complete(NativeLib.CString(assets)) != 0, "portal cache not reusable");
+        var view = Native.sms_view_entrance_fast_new(NativeLib.CString(assets), 0);
+        Check(view != IntPtr.Zero, "fast entrance couldn't load");
+        try {
+            if (luigi) {
+                var melee = Path.GetFullPath(Path.Combine(assets, "..", "..", "libssbm", "assets"));
+                if (!Directory.Exists(melee)) { Console.WriteLine("SKIP: Luigi Melee cache absent"); return; }
+                Check(Native.sms_view_set_luigi(view, NativeLib.CString(melee)) != 0, "Luigi entrance mesh couldn't load");
+                Native.sms_view_skin(view, 1);
+            }
+            var camera = new Native.ViewFrame { forward = new Native.Vec3(0, 0, 1), up = new Native.Vec3(0, 1, 0) };
+            var draws = new ViewDraw[32];
+            Native.sms_view_entrance_update(view, .25f, 0, ref camera, out _);
+            uint n = Native.sms_view_draws(view, draws, 32);
+            Check(n == 2 && draws.Take((int)n).All(d => d.kind >= 240 && (d.flags & 4) == 0), "first static pose wasn't uploaded");
+            Native.sms_view_entrance_update(view, .26f, 0, ref camera, out _);
+            Native.sms_view_positions(view, out var idleVertices);
+            Check(idleVertices == 0, "idle statue rebuilt geometry");
+            Native.sms_view_fx_texture(view, 0, out var paletteInfo, null, 0);
+            var palette = new byte[paletteInfo.width * paletteInfo.height * 4];
+            Native.sms_view_fx_texture(view, 0, out _, palette, (uint)palette.Length);
+            int red = 0, green = 0;
+            for (int i = 0; i < palette.Length; i += 4) {
+                if (palette[i+3] < 128) continue;
+                if (palette[i] > palette[i+1] * 3 && palette[i] > palette[i+2] * 3) red++;
+                if (palette[i+1] > palette[i] * 3 && palette[i+1] > palette[i+2] * 3) green++;
+            }
+            Check(luigi ? green > red : red > green, "wrong red/green particle palette for rider");
+            bool done = false, particles = false, rider = false;
+            uint gateTexture = 0;
+            for (int i = 0; i <= 180; i++) {
+                float time = i / 60f;
+                var result = Native.sms_view_entrance_update(view, time, done ? (byte)2 : (byte)1, ref camera, out var feet);
+                Check(result != 0, "fast entrance update failed");
+                n = Native.sms_view_draws(view, draws, 32);
+                Check(draws.Take((int)n).Select(d => d.key).Distinct().Count() == n, "Luigi/static model instance keys collide");
+                var gate = draws.Take((int)n).Single(d => d.kind == 241);
+                Native.sms_view_model(view, gate.model, out var gateInfo);
+                var batches = new ViewBatch[gateInfo.batch_count]; Native.sms_view_batches(view, gate.model, batches, gateInfo.batch_count);
+                gateTexture = (uint)batches[0].texture;
+                if (!done) {
+                    rider |= draws.Take((int)n).Any(d => luigi ? d.model == Native.sms_view_model_count(view) - 1 : d.model == 0);
+                    if (!luigi) Check(draws.Take((int)n).All(d => d.kind != 15), "fast exit played held-cap landing");
+                } else {
+                    Native.sms_view_positions(view, out var vertices);
+                    Check(vertices == 0 && n == 2 && draws.Take((int)n).All(d => (d.flags & 4) != 0), "spent entrance still poses Mario/Luigi or static geometry");
+                }
+                var fx = Native.sms_view_fx_batches(view, out var count); uint colored = 0;
+                for (int j = 0; j < count; j++) {
+                    var b = Marshal.PtrToStructure<Native.FxBatch>(IntPtr.Add(fx, j * Marshal.SizeOf<Native.FxBatch>()));
+                    if (b.texture == 0) { colored += b.vertex_count; Check(b.blend == 1, "particle palette blends additively"); }
+                }
+                particles |= colored > 0;
+                if (time >= .8f) Check(colored == 0, "colored particles linger after materialization");
+                if (result == 2) {
+                    Check(time >= 1.74f && time <= 3f && Math.Abs(feet.y) < .001f, "wrong fall/completion timing"); done = true;
+                }
+            }
+            Check(done && particles && rider, "fast exit missed rider, particles or completion");
+            Native.sms_view_entrance_update(view, 3, 2, ref camera, out _);
+            Native.sms_view_texture(view, gateTexture, out var ti, null, 0);
+            var returned = new byte[ti.width * ti.height * 4]; Native.sms_view_texture(view, gateTexture, out _, returned, (uint)returned.Length);
+            Native.sms_view_entrance_update(view, 3, 0, ref camera, out _);
+            var idleImage = new byte[returned.Length]; Native.sms_view_texture(view, gateTexture, out _, idleImage, (uint)idleImage.Length);
+            Check(returned.SequenceEqual(idleImage), "portal didn't return to original swirling colors");
+            Console.WriteLine("PASS: fast " + (luigi ? "Luigi/green" : "Mario/red") + " exit, static retention, timing, control handoff and portal reset");
         } finally { Native.sms_view_free(view); }
     }
 }

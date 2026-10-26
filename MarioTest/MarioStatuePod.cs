@@ -167,9 +167,9 @@ namespace MarioTest
                     var box = collision.AddComponent<BoxCollider>();
                     box.center = new Vector3(-(lo.x + hi.x), lo.y + hi.y, lo.z + hi.z) * (.5f * UnityHost.Scale);
                     box.size = new Vector3(hi.x - lo.x, hi.y - lo.y, hi.z - lo.z) * UnityHost.Scale;
-                    // The source renderer's -1.2 Z pivot puts its luminous core well above
-                    // the emitter. Offset the whole system so that core sits below the base.
-                    fireLocal = new Vector3(-(lo.x + hi.x) * .5f, lo.y - 950f, (lo.z + hi.z) * .5f) * UnityHost.Scale;
+                    // Anchor the emitter to the actual pedestal base. The Rust preview's
+                    // approximate particle pivot is not a Unity world-space correction.
+                    fireLocal = new Vector3(-(lo.x + hi.x) * .5f, lo.y, (lo.z + hi.z) * .5f) * UnityHost.Scale;
                     ConfigureDescentFire();
                 }
                 Plugin.Log.LogInfo("Mario stage-one statue entrance ready (05_gate01 / particle 0x40)");
@@ -288,7 +288,7 @@ namespace MarioTest
             if (renderer) { renderer.enabled = true; renderer.forceRenderingOff = false; }
             descentFlames.Play(false);
             fireStarted = true;
-            Plugin.Log.LogInfo("Statue descent fire started: Flames / matEntryBurn, scale 3.5, emitter base Y - 950 cm");
+            Plugin.Log.LogInfo("Statue descent fire started: Flames / matEntryBurn, scale 3.5, emitter at pedestal base Y");
         }
 
         void PlaceDescentFire()

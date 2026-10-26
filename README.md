@@ -13,8 +13,8 @@ Rust viewer and original native playback API, but the game uses the short profil
 Portal animation is rendered once on the asset worker and cached under the user's
 ignored disc assets. The statue/gate geometry uploads once; hidden arrival Mario
 stops being processed after handoff. Stock pod graphics are suppressed except the
-original descent fire: its mesh particles are 3.5x larger and lowered so the bright
-core sits beneath the pedestal. Its original material and emission rate remain.
+original descent fire: its mesh particles are 3.5x larger, with the emitter anchored
+directly to the pedestal base. Its original material and emission rate remain.
 Stock collision is removed after exit. Vanilla falling/crashing sound events remain.
 The camera faces the M and the statue retains its own pedestal collision. The
 normal pod remains available if optional disc assets or rendering cannot load.
@@ -27,7 +27,10 @@ Luigi's entrance is now confirmed by the user's playtest. The fire starts from
 either order; it resolves the exact emitter on the spawned clone and logs
 `Statue descent fire started`. After landing, the statue, portal camera, pedestal
 collider and exit point use a fixed world anchor instead of the animated stock
-pod bone. These fire-start and exit-position fixes still need an in-game check.
+pod bone. The exit-position fix still needs an in-game check.
+The user's next playtest confirmed the fire starts, but the old -950 cm offset
+placed it far below the statue. That extra offset is removed; this height correction
+still needs an in-game check. The viewer's approximate pivot is not height proof.
 
 Mario's four approved skill portraits now render in Unity on first run after disc
 extraction, using the existing native models, moving effects and gameplay slide tuning.

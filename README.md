@@ -22,6 +22,12 @@ The revised profile is viewer/build/boundary checked; RoR2 playtesting is pendin
 The entrance preloads Luigi's mesh and refreshes the seated rider's selection from
 the master's loadout before activation, so late passenger/skin initialization does
 not leave Mario in Luigi's portal sequence. Green particles and voice pitch follow.
+Luigi's entrance is now confirmed by the user's playtest. The fire starts from
+`MarioPodDescent.OnEnter`, even when native preparation and state entry run in
+either order; it resolves the exact emitter on the spawned clone and logs
+`Statue descent fire started`. After landing, the statue, portal camera, pedestal
+collider and exit point use a fixed world anchor instead of the animated stock
+pod bone. These fire-start and exit-position fixes still need an in-game check.
 
 Mario's four approved skill portraits now render in Unity on first run after disc
 extraction, using the existing native models, moving effects and gameplay slide tuning.

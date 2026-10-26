@@ -34,7 +34,10 @@ namespace MarioTest
         [SerializeField] ParticleSystem descentFlames;
         Vector3 fireLocal, originalFirePosition, originalFireScale;
         ParticleSystemScalingMode originalFireScaling;
-        bool fireConfigured, luigiLoaded;
+        bool fireConfigured, fireStarted, descending, luigiLoaded;
+        bool anchored, exitAligned;
+        Vector3 landedOrigin, landedExit;
+        Quaternion landedRotation;
         uint entranceSkin = uint.MaxValue;
         readonly Dictionary<Renderer, bool> stockRenderers = new Dictionary<Renderer, bool>();
         readonly List<Renderer> scanRenderers = new List<Renderer>();
@@ -70,9 +73,7 @@ namespace MarioTest
             // SurvivorPod/Base/mdlEscapePod/EscapePodArmature/Base/Flames:
             // mesh-particle emitter -470276994286075641, donut5Mesh / matEntryBurn.
             // Exact asset and 3.5x placement proven in portal_fast --descent-fire.
-            var baseBone = children.FindChild("Base");
-            var flames = baseBone ? baseBone.Find("Flames") : null;
-            component.descentFlames = flames ? flames.GetComponent<ParticleSystem>() : null;
+            component.ResolveDescentFire();
             // The native landing ends 308.53 cm in front of the M. Anchor that end to the
             // stock exit point; no offset into the pedestal or displacement of the spawn.
             var forward = seat.exitPosition.forward; forward.y = 0;
@@ -92,26 +93,43 @@ namespace MarioTest
         void Awake()
         {
             seat = GetComponent<VehicleSeat>(); pod = GetComponent<SurvivorPodController>(); machine = GetComponent<EntityStateMachine>();
+            ResolveDescentFire();
             placement = Place;
             hideDraw = d => handedOff && d.kind < 240;
         }
 
-        Vector3 Origin => travel.TransformPoint(gateLocal);
-        Quaternion Rotation => travel.rotation * gateRotation;
+        Vector3 Origin => anchored ? landedOrigin : travel.TransformPoint(gateLocal);
+        Quaternion Rotation => anchored ? landedRotation : travel.rotation * gateRotation;
 
         public void AlignExit()
         {
             // Runtime motor/capsule data is authoritative once the pod has landed.
             // Reconcile any prefab-only foot offset before the exit can be requested.
+            if (!travel || activated) return;
             var body = seat.currentPassengerBody;
-            if (!body || !travel) return;
-            gateLocal = travel.InverseTransformPoint(seat.exitPosition.position - (body.transform.position - body.footPosition)
-                - Rotation * Vector3.forward * (308.53f * UnityHost.Scale));
-            if (portalCamera) {
-                portalCamera.position = Origin + Rotation * new Vector3(-5.5f, 3.8f, 11.5f) * (UnityHost.Scale * 100f);
-                portalCamera.rotation = Quaternion.LookRotation(Origin + Rotation * new Vector3(0, 1.8f, 1.4f) * (UnityHost.Scale * 100f) - portalCamera.position);
+            var rotation = Rotation;
+            var origin = Origin;
+            landedExit = seat.exitPosition.position;
+            if (body) {
+                origin = landedExit - (body.transform.position - body.footPosition)
+                    - rotation * Vector3.forward * (308.53f * UnityHost.Scale);
+                exitAligned = true;
             }
-            if (collision) { collision.transform.position = Origin; collision.transform.rotation = Rotation; }
+            // Travel is an animated pod bone. After impact the custom statue, camera,
+            // pedestal and eventual ejection must share one fixed world-space anchor.
+            landedOrigin = origin; landedRotation = rotation; anchored = true;
+            if (portalCamera) { portalCamera.SetParent(transform, true); PlaceCamera(); }
+            if (collision) {
+                collision.transform.SetParent(transform, true);
+                collision.transform.SetPositionAndRotation(Origin, Rotation);
+            }
+        }
+
+        void PlaceCamera()
+        {
+            if (!portalCamera) return;
+            portalCamera.position = Origin + Rotation * new Vector3(-5.5f, 3.8f, 11.5f) * (UnityHost.Scale * 100f);
+            portalCamera.rotation = Quaternion.LookRotation(Origin + Rotation * new Vector3(0, 1.8f, 1.4f) * (UnityHost.Scale * 100f) - portalCamera.position);
         }
 
         void Prepare()
@@ -136,16 +154,15 @@ namespace MarioTest
                 // including trails/lines/particles; animation cannot re-enable forceRenderingOff.
                 HideStockVisuals();
                 var camera = new GameObject("Mario portal camera").transform;
-                camera.SetParent(travel, false);
-                camera.position = Origin + Rotation * new Vector3(-5.5f, 3.8f, 11.5f) * (UnityHost.Scale * 100f);
-                camera.rotation = Quaternion.LookRotation(Origin + Rotation * new Vector3(0, 1.8f, 1.4f) * (UnityHost.Scale * 100f) - camera.position);
+                camera.SetParent(anchored ? transform : travel, false);
                 originalCamera = pod.cameraBone;
                 portalCamera = camera;
+                PlaceCamera();
                 pod.cameraBone = camera;
                 if (Native.sms_view_entrance_bounds(view, out var lo, out var hi) != 0) {
                     collision = new GameObject("Pianta statue pedestal collision");
                     collision.layer = LayerIndex.world.intVal;
-                    collision.transform.SetParent(travel, false);
+                    collision.transform.SetParent(anchored ? transform : travel, false);
                     collision.transform.position = Origin; collision.transform.rotation = Rotation;
                     var box = collision.AddComponent<BoxCollider>();
                     box.center = new Vector3(-(lo.x + hi.x), lo.y + hi.y, lo.z + hi.z) * (.5f * UnityHost.Scale);
@@ -167,6 +184,8 @@ namespace MarioTest
             using var timing = MarioPerformance.Measure(MarioPerformance.Part.Portal);
             Prepare();
             if (!custom || !travel || RunAudio.Ended) return;
+            if (anchored && !exitAligned && seat.currentPassengerBody && !activated) AlignExit();
+            PlaceCamera();
             if (!activated) SyncRiderSkin();
             PlaceDescentFire();
             HideStockVisuals();
@@ -219,7 +238,12 @@ namespace MarioTest
 
         void ConfigureDescentFire()
         {
-            if (!descentFlames || fireConfigured) return;
+            if (fireConfigured) return;
+            ResolveDescentFire();
+            if (!descentFlames) {
+                Plugin.Log.LogWarning("Statue descent fire unavailable: exact EscapePodArmature/Base/Flames emitter missing");
+                return;
+            }
             var t = descentFlames.transform;
             originalFirePosition = t.localPosition;
             originalFireScale = t.localScale;
@@ -232,7 +256,39 @@ namespace MarioTest
             PlaceDescentFire();
             // Discard particles emitted at the old pod position before the first LateUpdate.
             descentFlames.Stop(false, ParticleSystemStopBehavior.StopEmittingAndClear);
-            if (machine.state is MarioPodDescent) descentFlames.Play(false);
+            StartDescentFire();
+        }
+
+        void ResolveDescentFire()
+        {
+            // Resolve on the spawned clone too; do not depend on a prefab-side reference
+            // surviving registration or on the relative Awake order of the state machine.
+            if (descentFlames && descentFlames.transform.IsChildOf(transform)) return;
+            var locator = GetComponent<ModelLocator>();
+            var model = locator ? locator.modelTransform : null;
+            var flames = model ? model.Find("EscapePodArmature/Base/Flames") : null;
+            descentFlames = flames ? flames.GetComponent<ParticleSystem>() : null;
+        }
+
+        public void BeginDescent()
+        {
+            descending = true;
+            StartDescentFire();
+        }
+
+        void StartDescentFire()
+        {
+            // Either order is valid: OnEnter before native preparation, or preparation
+            // before OnEnter. Whichever happens second starts the exact stock emitter.
+            if (!descending || !fireConfigured || !descentFlames || fireStarted) return;
+            PlaceDescentFire();
+            descentFlames.gameObject.SetActive(true);
+            var emission = descentFlames.emission; emission.enabled = true;
+            var renderer = descentFlames.GetComponent<ParticleSystemRenderer>();
+            if (renderer) { renderer.enabled = true; renderer.forceRenderingOff = false; }
+            descentFlames.Play(false);
+            fireStarted = true;
+            Plugin.Log.LogInfo("Statue descent fire started: Flames / matEntryBurn, scale 3.5, emitter base Y - 950 cm");
         }
 
         void PlaceDescentFire()
@@ -246,6 +302,7 @@ namespace MarioTest
 
         public void Landed()
         {
+            descending = false;
             if (fireConfigured && descentFlames)
                 descentFlames.Stop(false, ParticleSystemStopBehavior.StopEmitting);
         }
@@ -290,6 +347,7 @@ namespace MarioTest
 
         public void Activate()
         {
+            if (!exitAligned) AlignExit();
             SyncRiderSkin();
             activated = true; idle = 0;
             passenger = seat.currentPassengerBody;
@@ -307,7 +365,7 @@ namespace MarioTest
             if (NetworkServer.active && seat.currentPassengerBody) {
                 // The visual anchor places native feet at precisely this stock body-origin
                 // exit. Use the seat's own safe exit even if a native renderer failed.
-                seat.EjectPassenger(seat.exitPosition.position, Rotation);
+                seat.EjectPassenger(anchored ? landedExit : seat.exitPosition.position, Rotation);
             }
             DisableStockCollision();
         }
@@ -335,6 +393,11 @@ namespace MarioTest
 
     public sealed class MarioPodDescent : Descent
     {
+        public override void OnEnter()
+        {
+            base.OnEnter();
+            GetComponent<MarioStatuePod>()?.BeginDescent();
+        }
         protected override void TransitionIntoNextState() => outer.SetNextState(new MarioPodLanded());
     }
 

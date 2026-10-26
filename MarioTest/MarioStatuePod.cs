@@ -37,7 +37,9 @@ namespace MarioTest
         Quaternion originalFireRotation;
         ParticleSystemScalingMode originalFireScaling;
         ParticleSystemSimulationSpace originalFireSpace;
-        bool fireConfigured, fireStarted, descending, luigiLoaded;
+        bool fireConfigured, fireStarted, descending;
+        /// A bit per skin id whose body the entrance view loaded.
+        uint loadedSkins = 1u << (int)MarioSkin.Mario;
         bool anchored, exitAligned;
         Vector3 landedOrigin, landedExit;
         Quaternion landedRotation;
@@ -179,8 +181,8 @@ namespace MarioTest
                 view = Native.sms_view_entrance_fast_new(NativeLib.CString(Plugin.AssetsDir), (byte)(Plugin.Sound.Value ? 1 : 0));
                 if (view == IntPtr.Zero) throw new InvalidOperationException("statue/portal assets unavailable");
                 // The seat/loadout may arrive after pod preparation. ModelView fixes its
-                // model table at creation, so preload Luigi and select the rider separately.
-                luigiLoaded = MarioSkin.Ready && MarioSkin.Load(view);
+                // model table at creation, so preload every skin and select the rider separately.
+                loadedSkins = MarioSkin.LoadAll(view);
                 SyncRiderSkin();
                 models = ModelView.Create(new SmsViewSource(view), "Mario Sunshine statue", transform, translucentOpacity: 1f);
                 if (models == null) throw new InvalidOperationException("statue renderer unavailable");
@@ -398,12 +400,12 @@ namespace MarioTest
         {
             var rider = seat.currentPassengerBody;
             if (!rider || view == IntPtr.Zero) return;
-            uint selected = luigiLoaded ? MarioSkin.Selected(rider) : MarioSkin.Mario;
+            uint selected = MarioSkin.Selected(rider);
+            if ((loadedSkins & (1u << (int)selected)) == 0) selected = MarioSkin.Mario;
             if (selected == entranceSkin) return;
             entranceSkin = selected;
-            Native.sms_view_skin(view, (byte)selected);
-            Native.sms_view_set_voice_pitch(view, selected == MarioSkin.Luigi ? MarioSkin.VoicePitch : 1f);
-            Plugin.Log.LogInfo("Statue entrance rider: " + (selected == MarioSkin.Luigi ? "Luigi" : "Mario"));
+            MarioSkin.Apply(view, selected);
+            Plugin.Log.LogInfo("Statue entrance rider: " + MarioSkin.Spec(selected).Text);
         }
 
         void ConfigureDescentFire()

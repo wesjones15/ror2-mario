@@ -11,6 +11,12 @@ existing pitched voice. The full cap-in-hand Sunshine sequence remains in the
 Rust viewer and original native playback API, but the game uses the short profile.
 Luigi is Mario's alt-skin and is unlocked by collecting 2401 coins (the HUD's gold)
 in a single run as Mario; the lock and that line show in the loadout until then.
+Piantissimo is the second alt-skin, available from the start: his model comes from the
+Sunshine disc the plugin already extracts (`mamma4.szs`, `npc/monteman/`), and it shares
+Mario's skeleton, so Mario's own pose drives it, as the game does for him. He has Mario's
+voice and jump, no secret move, and the same lobby, entrance, portrait and pause-sheet
+treatment as Luigi. Skins are table rows (`MarioSkin.Specs` here, `Skin` in libsms-present;
+`libsms/docs/skins.md`), so adding another is a row and not a code path.
 
 Portal animation is rendered once on the asset worker at 512 square and cached as
 256-square raw RGBA with antialiased edge coverage. The M is mirrored through its

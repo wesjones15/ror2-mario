@@ -387,6 +387,9 @@ namespace MarioTest
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern void sms_view_free(IntPtr view);
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern void sms_view_skin(IntPtr view, uint skin);
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern byte sms_view_set_luigi(IntPtr view, byte[] meleeDirUtf8);
+        /// Makes a skin drawable (see MarioSkin): `dirUtf8` is the Melee cache for Luigi, null for
+        /// a skin that comes from the Sunshine assets. 1 when its files were there.
+        [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern byte sms_view_load_skin(IntPtr view, uint skin, byte[] dirUtf8);
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern IntPtr sms_view_status(IntPtr view);
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern uint sms_view_model_count(IntPtr view);
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern byte sms_view_model(IntPtr view, uint model, out ViewModelInfo info);
@@ -506,7 +509,7 @@ namespace MarioTest
         public uint TextureVersion(uint id) => Native.sms_view_texture_version(Handle, id);
 
         /// Whose body the view draws: 0 Mario, 1 Luigi (an alt-skin whose HSD mesh comes from the
-        /// Melee cache).
+        /// Melee cache), 2 Piantissimo (a model on Mario's rig).
         public void SetSkin(uint skin) => Native.sms_view_skin(Handle, skin);
 
         /// Loads Luigi's HSD mesh from the Melee cache; false when the cache is incomplete.

@@ -296,7 +296,7 @@ namespace MarioTest
                 crosshair = fitted.nozzle == 1;
             }
             Aim(false, locking, lockTarget, cycle, cycleDirection, crosshair);
-            if (secret && Local && MarioSkin.Selected(body) == MarioSkin.Luigi)
+            if (secret && Local && MarioSkin.Current(body).EggLay)
                 SecretEggLay();
             Items.Begin(sim, sprinting, grounded);
             // The Shine Get pose, inside the step so the other players' puppets get it too.
@@ -880,9 +880,9 @@ namespace MarioTest
             var t = new Native.Tuning
             {
                 // Jump power items (Faraday Spur, Hex of Leaping) scale takeoff speed, so height
-                // goes with its square. The Luigi alt-skin jumps higher on top of that.
+                // goes with its square. An alt-skin may jump higher on top of that (Luigi's is 1.2).
                 jump_height = Plugin.JumpHeight.Value * Mathf.Pow(NativeBody.JumpScale(body), 2f)
-                    * (MarioSkin.Selected(body) == MarioSkin.Luigi ? Plugin.LuigiJumpHeight.Value : 1f),
+                    * MarioSkin.Current(body).JumpScale(),
                 // Hex of Acceleration's slippery ground.
                 traction = NativeBody.AccelerationScale(body),
                 jump_buffer = Plugin.JumpBuffer.Value,

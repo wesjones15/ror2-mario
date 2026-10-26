@@ -108,7 +108,33 @@ static class Program
         CheckFastEntrance(false);
         CheckFastEntrance(true);
         CheckPortalPlayback();
+        CheckSameRigSkin();
         Console.WriteLine("PASS: Mario ABI, FLUDD, nozzle models, pound, slide and stage-one statue entrance handoff");
+    }
+
+    // A same-rig alt-skin (Piantissimo, id 2) loads through the generic skin call and draws its own
+    // body instead of Mario's, with Mario's FLUDD and no separate cap or hands.
+    static void CheckSameRigSkin()
+    {
+        if (!File.Exists(Path.Combine(assets, "npc", "monteman", "monteman_model.bmd")))
+        { Console.WriteLine("SKIP: Piantissimo's model absent (extras not extracted)"); return; }
+        using var r = new Rig();
+        Check(Native.sms_view_load_skin(r.view, 2, null) != 0, "Piantissimo's model should load from the Sunshine assets");
+        Check(Native.sms_view_load_skin(r.view, 2, null) != 0, "loading a skin twice must stay true and not add a second body");
+        Native.sms_view_skin(r.view, 2);
+        r.Step(new Native.Pad { stick_y = 1f }, 60);
+        var draws = new ViewDraw[32]; uint n = Native.sms_view_draws(r.view, draws, 32);
+        uint models = Native.sms_view_model_count(r.view);
+        var drawn = draws.Take((int)n).Select(d => d.model).ToArray();
+        Check(!drawn.Contains(0u), "Mario's own body drew under the Piantissimo skin");
+        Check(drawn.Any(m => m >= 13 && m < models), "no Piantissimo body in the draw list: " + string.Join(",", drawn));
+        Check(drawn.Contains(6u), "FLUDD should stay Mario's under a same-rig skin");
+        Check(!drawn.Contains(5u), "his cap is part of his model");
+        Check(draws.Take((int)n).Select(d => d.key).Distinct().Count() == n, "instance keys collide");
+        Native.sms_view_skin(r.view, 0); r.Frame(0);
+        n = Native.sms_view_draws(r.view, draws, 32);
+        Check(draws.Take((int)n).Any(d => d.model == 0), "switching back must draw Mario's body");
+        Check(Native.sms_view_load_skin(r.view, 99, null) == 1, "an unknown id is Mario, which is always loaded");
     }
 
     static void CheckEntrance()

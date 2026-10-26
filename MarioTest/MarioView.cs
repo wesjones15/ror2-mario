@@ -58,15 +58,15 @@ namespace MarioTest
             if (tried) return player;
             tried = true;
             if (!Plugin.DrawModel.Value && !Plugin.Sound.Value) return null;
-            bool luigi = MarioSkin.Selected(body) == MarioSkin.Luigi;
-            var v = Open(Plugin.Sound.Value, 0, luigi);
+            uint skin = MarioSkin.Selected(body);
+            var v = Open(Plugin.Sound.Value, 0, skin);
             if (v == IntPtr.Zero)
             {
                 Plugin.Log.LogWarning($"Mario's models didn't load from {Plugin.AssetsDir}; he stays Commando");
                 return null;
             }
             Plugin.Log.LogInfo($"Mario's view: {NativeLib.Utf8(Native.sms_view_status(v))}");
-            player = new MarioView(v, true, luigi ? "Luigi" : "Mario");
+            player = new MarioView(v, true, MarioSkin.Spec(skin).Text);
             return player;
         }
 
@@ -75,7 +75,7 @@ namespace MarioTest
         public static MarioView Clone()
         {
             if (!Plugin.AssetsReady || RunAudio.Ended || !Plugin.DrawModel.Value || !Plugin.GummyClones.Value) return null;
-            var v = Open(false, 0, false);
+            var v = Open(false, 0, MarioSkin.Mario);
             if (v == IntPtr.Zero)
             {
                 Plugin.Log.LogWarning("The clone's view didn't load; the clone stays Commando");
@@ -91,7 +91,7 @@ namespace MarioTest
         {
             if (!Plugin.AssetsReady || RunAudio.Ended || !Plugin.DrawModel.Value) return null;
             if (clone && !Plugin.GummyClones.Value) return null;
-            var v = Open(Plugin.Sound.Value && !clone, 0, false);
+            var v = Open(Plugin.Sound.Value && !clone, 0, MarioSkin.Mario);
             if (v == IntPtr.Zero)
             {
                 Plugin.Log.LogWarning("Another player's Mario view didn't load; he stays Commando");
@@ -100,16 +100,17 @@ namespace MarioTest
             return new MarioView(v, false, clone ? "GooboMario" : "RemoteMario", clone ? GummyClone.Material() : null);
         }
 
-        static IntPtr Open(bool sound, byte look, bool luigi)
+        static IntPtr Open(bool sound, byte look, uint skin)
         {
             try
             {
                 var v = Native.sms_view_new_look(NativeLib.CString(Plugin.AssetsDir), (byte)(sound ? 1 : 0), look);
-                // The alt-skin swaps the body for Luigi's HSD mesh; a missing cache keeps Mario.
-                if (v != IntPtr.Zero && luigi && MarioSkin.Load(v))
+                // An alt-skin swaps the body (Luigi's HSD mesh, Piantissimo's model); a skin whose
+                // files are missing keeps Mario.
+                if (v != IntPtr.Zero && skin != MarioSkin.Mario)
                 {
-                    Native.sms_view_skin(v, 1);
-                    Native.sms_view_set_voice_pitch(v, MarioSkin.VoicePitch);
+                    if (MarioSkin.Load(v, skin)) MarioSkin.Apply(v, skin);
+                    else Plugin.Log.LogWarning($"{MarioSkin.Spec(skin).Text}'s files didn't load; drawing Mario");
                 }
                 return v;
             }

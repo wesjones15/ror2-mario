@@ -112,11 +112,11 @@ namespace MarioTest
             }
             luigiSkin = Def("MarioSkinLuigi", "MARIOTEST_SKIN_LUIGI", model, character, null);
             // Luigi's key, as the plaque says: 2401 coins in one run. The loadout shows the lock
-            // and this line until MarioDriver has collected them.
+            // and the plaque's line until MarioDriver has collected them.
             luigiUnlock = ScriptableObject.CreateInstance<UnlockableDef>();
             luigiUnlock.cachedName = "Skins.Mario.Luigi";
             luigiUnlock.nameToken = luigiSkin.nameToken;
-            luigiUnlock.getHowToUnlockString = () => $"Collect {LuigiCoins} coins in a single run as Mario.";
+            luigiUnlock.getHowToUnlockString = () => "L is real 2401";
             luigiUnlock.getUnlockedString = () => "Luigi unlocked.";
             luigiSkin.unlockableDef = luigiUnlock;
             pack.unlockableDefs.Add(new[] { luigiUnlock });

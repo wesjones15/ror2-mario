@@ -14,7 +14,7 @@ Portal animation is rendered once on the asset worker at 512 square and cached a
 256-square raw RGBA with antialiased edge coverage. The M is mirrored through its
 texture matrix; source textures are untouched. The statue/gate geometry uploads once; hidden arrival Mario
 stops being processed after handoff. Stock pod graphics are suppressed except the
-original descent fire: its mesh particles are 3.5x wider and 1.75x taller, with the emitter 550 cm
+original descent fire: its mesh particles are 3.5x wider and 1.75x taller, with the emitter 600 cm
 above the pedestal base and local simulation so existing particles follow the
 statue. Its original material and emission rate remain.
 Stock collision is removed after exit. Vanilla falling/crashing sound events remain.
@@ -31,7 +31,7 @@ either order; it resolves the exact emitter on the spawned clone and logs
 collider and exit point use a fixed world anchor instead of the animated stock
 pod bone. The exit-position fix still needs an in-game check.
 The user's playtests confirmed the fire starts, but both -950 cm and zero offset
-left it too low. The new +550 cm offset, halved vertical scale and local simulation still need an in-game
+left it too low. The new +600 cm offset, halved vertical scale and local simulation still need an in-game
 check. The viewer's approximate pivot is not height proof.
 
 Mario's four approved skill portraits now render in Unity on first run after disc

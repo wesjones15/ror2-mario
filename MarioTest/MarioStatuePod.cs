@@ -178,8 +178,8 @@ namespace MarioTest
                     box.center = new Vector3(-(lo.x + hi.x), lo.y + hi.y, lo.z + hi.z) * (.5f * UnityHost.Scale);
                     box.size = new Vector3(hi.x - lo.x, hi.y - lo.y, hi.z - lo.z) * UnityHost.Scale;
                     // In-game feedback: the mesh's luminous region remains below its
-                    // emitter. Raise it 550 cm; the preview pivot is not Unity height proof.
-                    fireLocal = new Vector3(-(lo.x + hi.x) * .5f, lo.y + 550f, (lo.z + hi.z) * .5f) * UnityHost.Scale;
+                    // emitter. Raise it 600 cm; the preview pivot is not Unity height proof.
+                    fireLocal = new Vector3(-(lo.x + hi.x) * .5f, lo.y + 600f, (lo.z + hi.z) * .5f) * UnityHost.Scale;
                     ConfigureDescentFire();
                 }
                 Plugin.Log.LogInfo("Mario stage-one statue entrance ready (05_gate01 / particle 0x40)");
@@ -402,7 +402,7 @@ namespace MarioTest
             if (renderer) { renderer.enabled = true; renderer.forceRenderingOff = false; }
             descentFlames.Play(false);
             fireStarted = true;
-            Plugin.Log.LogInfo("Statue descent fire started: Flames / matEntryBurn, width 3.5x / height 1.75x, emitter base Y + 550 cm, local particles (original space " + originalFireSpace + ")");
+            Plugin.Log.LogInfo("Statue descent fire started: Flames / matEntryBurn, width 3.5x / height 1.75x, emitter base Y + 600 cm, local particles (original space " + originalFireSpace + ")");
         }
 
         void PlaceDescentFire()

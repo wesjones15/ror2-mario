@@ -34,6 +34,7 @@ namespace MarioTest
         [SerializeField] ParticleSystem descentFlames;
         Vector3 fireLocal, originalFirePosition, originalFireScale;
         ParticleSystemScalingMode originalFireScaling;
+        ParticleSystemSimulationSpace originalFireSpace;
         bool fireConfigured, fireStarted, descending, luigiLoaded;
         bool anchored, exitAligned;
         Vector3 landedOrigin, landedExit;
@@ -144,7 +145,7 @@ namespace MarioTest
                 // model table at creation, so preload Luigi and select the rider separately.
                 luigiLoaded = MarioSkin.Ready && MarioSkin.Load(view);
                 SyncRiderSkin();
-                models = ModelView.Create(new SmsViewSource(view), "Mario Sunshine statue", transform);
+                models = ModelView.Create(new SmsViewSource(view), "Mario Sunshine statue", transform, translucentOpacity: 1f);
                 if (models == null) throw new InvalidOperationException("statue renderer unavailable");
                 // MarioFx uploads world-space vertices; keep its renderer at world identity.
                 fx = MarioFx.Create(view);
@@ -167,9 +168,9 @@ namespace MarioTest
                     var box = collision.AddComponent<BoxCollider>();
                     box.center = new Vector3(-(lo.x + hi.x), lo.y + hi.y, lo.z + hi.z) * (.5f * UnityHost.Scale);
                     box.size = new Vector3(hi.x - lo.x, hi.y - lo.y, hi.z - lo.z) * UnityHost.Scale;
-                    // Anchor the emitter to the actual pedestal base. The Rust preview's
-                    // approximate particle pivot is not a Unity world-space correction.
-                    fireLocal = new Vector3(-(lo.x + hi.x) * .5f, lo.y, (lo.z + hi.z) * .5f) * UnityHost.Scale;
+                    // In-game feedback: the mesh's luminous region remains below its
+                    // emitter. Raise it 550 cm; the preview pivot is not Unity height proof.
+                    fireLocal = new Vector3(-(lo.x + hi.x) * .5f, lo.y + 550f, (lo.z + hi.z) * .5f) * UnityHost.Scale;
                     ConfigureDescentFire();
                 }
                 Plugin.Log.LogInfo("Mario stage-one statue entrance ready (05_gate01 / particle 0x40)");
@@ -249,9 +250,13 @@ namespace MarioTest
             originalFireScale = t.localScale;
             var main = descentFlames.main;
             originalFireScaling = main.scalingMode;
+            originalFireSpace = main.simulationSpace;
             // Local scaling ignored animated ancestor scale. Hierarchy scales the shape
             // AND its mesh particles. Keep the authored rate, lifetime, material and lights.
             main.scalingMode = ParticleSystemScalingMode.Hierarchy;
+            // This is a shell attached to the falling statue. Existing particles must
+            // follow its current frame instead of remaining at earlier world positions.
+            main.simulationSpace = ParticleSystemSimulationSpace.Local;
             fireConfigured = true;
             PlaceDescentFire();
             // Discard particles emitted at the old pod position before the first LateUpdate.
@@ -288,14 +293,16 @@ namespace MarioTest
             if (renderer) { renderer.enabled = true; renderer.forceRenderingOff = false; }
             descentFlames.Play(false);
             fireStarted = true;
-            Plugin.Log.LogInfo("Statue descent fire started: Flames / matEntryBurn, scale 3.5, emitter at pedestal base Y");
+            Plugin.Log.LogInfo("Statue descent fire started: Flames / matEntryBurn, width 3.5x / height 1.75x, emitter base Y + 550 cm, local particles (original space " + originalFireSpace + ")");
         }
 
         void PlaceDescentFire()
         {
             if (!fireConfigured || !descentFlames) return;
             descentFlames.transform.position = Origin + Rotation * fireLocal;
-            descentFlames.transform.localScale = originalFireScale * 3.5f;
+            // The authored emitter's local Z runs along world vertical. Keep its
+            // radial footprint but halve the tall dimension, including its mesh particles.
+            descentFlames.transform.localScale = Vector3.Scale(originalFireScale, new Vector3(3.5f, 3.5f, 1.75f));
         }
 
         bool IsDescentFire(Transform part) => descentFlames && part.IsChildOf(descentFlames.transform);
@@ -381,6 +388,7 @@ namespace MarioTest
                 descentFlames.transform.localPosition = originalFirePosition;
                 descentFlames.transform.localScale = originalFireScale;
                 var main = descentFlames.main; main.scalingMode = originalFireScaling;
+                main.simulationSpace = originalFireSpace;
             }
             foreach (var entry in stockRenderers) if (entry.Key) entry.Key.forceRenderingOff = entry.Value;
             foreach (var entry in stockColliders) if (entry.Key) entry.Key.enabled = entry.Value;

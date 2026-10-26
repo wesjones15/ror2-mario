@@ -209,6 +209,7 @@ static class Program
                 var gate = draws.Take((int)n).Single(d => d.kind == 241);
                 Native.sms_view_model(view, gate.model, out var gateInfo);
                 var batches = new ViewBatch[gateInfo.batch_count]; Native.sms_view_batches(view, gate.model, batches, gateInfo.batch_count);
+                Check(batches.All(b => b.blend == ViewBlend.Translucent), "smooth M edge was assigned a hard cutout material");
                 gateTexture = (uint)batches[0].texture;
                 if (!done) {
                     rider |= draws.Take((int)n).Any(d => luigi ? d.model == Native.sms_view_model_count(view) - 1 : d.model == 0);
@@ -232,6 +233,8 @@ static class Program
             Native.sms_view_entrance_update(view, 3, 2, ref camera, out _);
             Native.sms_view_texture(view, gateTexture, out var ti, null, 0);
             var returned = new byte[ti.width * ti.height * 4]; Native.sms_view_texture(view, gateTexture, out _, returned, (uint)returned.Length);
+            Check(ti.width == 256 && ti.height == 256, "portal used the low-resolution cache");
+            Check(Enumerable.Range(0, returned.Length / 4).Any(i => returned[i * 4 + 3] > 0 && returned[i * 4 + 3] < 255), "portal cache lost smooth edge coverage");
             Native.sms_view_entrance_update(view, 3, 0, ref camera, out _);
             var idleImage = new byte[returned.Length]; Native.sms_view_texture(view, gateTexture, out _, idleImage, (uint)idleImage.Length);
             Check(returned.SequenceEqual(idleImage), "portal didn't return to original swirling colors");

@@ -10,11 +10,13 @@ The portal returns to swirling colors; Luigi uses green cap particles and his
 existing pitched voice. The full cap-in-hand Sunshine sequence remains in the
 Rust viewer and original native playback API, but the game uses the short profile.
 
-Portal animation is rendered once on the asset worker and cached under the user's
-ignored disc assets. The statue/gate geometry uploads once; hidden arrival Mario
+Portal animation is rendered once on the asset worker at 512 square and cached as
+256-square raw RGBA with antialiased edge coverage. The M is mirrored through its
+texture matrix; source textures are untouched. The statue/gate geometry uploads once; hidden arrival Mario
 stops being processed after handoff. Stock pod graphics are suppressed except the
-original descent fire: its mesh particles are 3.5x larger, with the emitter anchored
-directly to the pedestal base. Its original material and emission rate remain.
+original descent fire: its mesh particles are 3.5x wider and 1.75x taller, with the emitter 550 cm
+above the pedestal base and local simulation so existing particles follow the
+statue. Its original material and emission rate remain.
 Stock collision is removed after exit. Vanilla falling/crashing sound events remain.
 The camera faces the M and the statue retains its own pedestal collision. The
 normal pod remains available if optional disc assets or rendering cannot load.
@@ -28,9 +30,9 @@ either order; it resolves the exact emitter on the spawned clone and logs
 `Statue descent fire started`. After landing, the statue, portal camera, pedestal
 collider and exit point use a fixed world anchor instead of the animated stock
 pod bone. The exit-position fix still needs an in-game check.
-The user's next playtest confirmed the fire starts, but the old -950 cm offset
-placed it far below the statue. That extra offset is removed; this height correction
-still needs an in-game check. The viewer's approximate pivot is not height proof.
+The user's playtests confirmed the fire starts, but both -950 cm and zero offset
+left it too low. The new +550 cm offset, halved vertical scale and local simulation still need an in-game
+check. The viewer's approximate pivot is not height proof.
 
 Mario's four approved skill portraits now render in Unity on first run after disc
 extraction, using the existing native models, moving effects and gameplay slide tuning.

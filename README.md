@@ -19,6 +19,11 @@ stops being processed after handoff. Stock pod graphics are suppressed except th
 original descent fire: its mesh particles are 3.5x wider and 1.75x taller, with the emitter 600 cm
 above the pedestal base and local simulation so existing particles follow the
 statue. Its original material and emission rate remain.
+The statue descends vertically above that same landing point: the C# adapter keeps
+the stock animation's height and timing, fixes X/Z to the unanimated landing
+reference, and keeps the statue upright. The fire's long axis is aligned with world
+vertical; its 6 m offset and existing width/height scales remain unchanged. This
+path/alignment change is build checked and still needs an in-game check.
 Stock collision is removed after exit. Vanilla falling/crashing sound events remain.
 The camera faces the M and the statue retains its own pedestal collision. The
 normal pod remains available if optional disc assets or rendering cannot load.

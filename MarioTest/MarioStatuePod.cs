@@ -16,7 +16,8 @@ namespace MarioTest
         internal static readonly string[] AssetFiles = { "05_gate01.bmd", "05_gate01.btk", "05_gate01.brk", "plaza.bmd", "scene.bin", "efdokangate.bmd", "manhole.bmd", "monumentshine.bmd", "palmleaf.bmd", "palmnormal.bmd", "ms_gatewind_a.jpa", "ms_gatewind_a2.jpa", "ms_gatewind_a3.jpa", "ms_gatewind_b.jpa" };
         public Transform travel;
         public Vector3 gateLocal;
-        public Quaternion gateRotation;
+        public Vector3 landingLocal;
+        public Quaternion landingRotationLocal;
         VehicleSeat seat;
         SurvivorPodController pod;
         EntityStateMachine machine;
@@ -33,6 +34,7 @@ namespace MarioTest
         Transform originalCamera, portalCamera;
         [SerializeField] ParticleSystem descentFlames;
         Vector3 fireLocal, originalFirePosition, originalFireScale;
+        Quaternion originalFireRotation;
         ParticleSystemScalingMode originalFireScaling;
         ParticleSystemSimulationSpace originalFireSpace;
         bool fireConfigured, fireStarted, descending, luigiLoaded;
@@ -92,8 +94,12 @@ namespace MarioTest
             var capsule = body.GetComponent<CapsuleCollider>();
             var feet = capsule ? capsule.transform.TransformPoint(capsule.center - Vector3.up * (capsule.height * .5f)) : body.footPosition;
             var originToFeet = body.transform.position - feet;
-            component.gateLocal = travel.InverseTransformPoint(seat.exitPosition.position - originToFeet - rotation * Vector3.forward * (308.53f * UnityHost.Scale));
-            component.gateRotation = Quaternion.Inverse(travel.rotation) * rotation;
+            var landing = seat.exitPosition.position - originToFeet - rotation * Vector3.forward * (308.53f * UnityHost.Scale);
+            component.gateLocal = travel.InverseTransformPoint(landing);
+            // ExitPosition is a sibling of the animated Base bone. Keep the same landing
+            // point in the unanimated pod root, independently of InitialSpawn's slanted path.
+            component.landingLocal = prefab.transform.InverseTransformPoint(landing);
+            component.landingRotationLocal = Quaternion.Inverse(prefab.transform.rotation) * rotation;
             prefab.GetComponent<EntityStateMachine>().initialStateType = new SerializableEntityStateType(typeof(MarioPodDescent));
             body.preferredPodPrefab = prefab;
             pack.networkedObjectPrefabs.Add(new[] { prefab });
@@ -108,8 +114,27 @@ namespace MarioTest
             hideDraw = d => handedOff && d.kind < 240;
         }
 
-        Vector3 Origin => anchored ? landedOrigin : travel.TransformPoint(gateLocal);
-        Quaternion Rotation => anchored ? landedRotation : travel.rotation * gateRotation;
+        Vector3 Origin
+        {
+            get {
+                if (anchored) return landedOrigin;
+                var animated = travel.TransformPoint(gateLocal);
+                var landing = transform.TransformPoint(landingLocal);
+                // Keep the stock height clock and impact timing; take X/Z from its
+                // original landing point so the upright statue travels straight down.
+                return new Vector3(landing.x, animated.y, landing.z);
+            }
+        }
+
+        Quaternion Rotation
+        {
+            get {
+                if (anchored) return landedRotation;
+                var forward = (transform.rotation * landingRotationLocal) * Vector3.forward;
+                forward.y = 0f;
+                return Quaternion.LookRotation(forward.sqrMagnitude > .0001f ? forward : Vector3.forward);
+            }
+        }
 
         public void AlignExit()
         {
@@ -199,6 +224,7 @@ namespace MarioTest
             Prepare();
             if (!custom || !travel || RunAudio.Ended) return;
             if (anchored && !exitAligned && seat.currentPassengerBody && !activated) AlignExit();
+            if (collision && !anchored) collision.transform.SetPositionAndRotation(Origin, Rotation);
             PlaceCamera();
             if (!activated) SyncRiderSkin();
             PlaceDescentFire();
@@ -361,6 +387,7 @@ namespace MarioTest
             var t = descentFlames.transform;
             originalFirePosition = t.localPosition;
             originalFireScale = t.localScale;
+            originalFireRotation = t.localRotation;
             var main = descentFlames.main;
             originalFireScaling = main.scalingMode;
             originalFireSpace = main.simulationSpace;
@@ -412,7 +439,11 @@ namespace MarioTest
         void PlaceDescentFire()
         {
             if (!fireConfigured || !descentFlames) return;
-            descentFlames.transform.position = Origin + Rotation * fireLocal;
+            // The source flame mesh uses local +Z as its long axis. Point it down
+            // world vertical, retaining the source's back-facing Y basis and our yaw,
+            // instead of inheriting the tilted stock Base/Flames rotation.
+            var fireRotation = Rotation * Quaternion.LookRotation(Vector3.down, Vector3.back);
+            descentFlames.transform.SetPositionAndRotation(Origin + Rotation * fireLocal, fireRotation);
             // The authored emitter's local Z runs along world vertical. Keep its
             // radial footprint but halve the tall dimension, including its mesh particles.
             descentFlames.transform.localScale = Vector3.Scale(originalFireScale, new Vector3(3.5f, 3.5f, 1.75f));
@@ -502,6 +533,7 @@ namespace MarioTest
             if (fireConfigured && descentFlames) {
                 descentFlames.transform.localPosition = originalFirePosition;
                 descentFlames.transform.localScale = originalFireScale;
+                descentFlames.transform.localRotation = originalFireRotation;
                 var main = descentFlames.main; main.scalingMode = originalFireScaling;
                 main.simulationSpace = originalFireSpace;
             }

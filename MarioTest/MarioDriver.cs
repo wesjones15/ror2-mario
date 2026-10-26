@@ -185,6 +185,7 @@ namespace MarioTest
         {
             spawnAge += Time.fixedDeltaTime;
             MarioShipParts.Register(body);
+            CountCoins();
             // A client's Mario on the server: what healing owes his tank goes to the client.
             if (NetworkServer.active && body && !body.hasEffectiveAuthority) Items.FlushRemote();
             if (!CanDrive)
@@ -854,6 +855,14 @@ namespace MarioTest
             UnityHost.LogStageWater();
             if (Local) MarioView.Ensure(body);
             return true;
+        }
+
+        /// Counts the coins this run has paid the local player (the HUD's gold), for Luigi's
+        /// unlock: the plaque's 2401. Gold spent on chests is not subtracted, so a decent run
+        /// always gets there; a different run (a new `Run`) starts at zero.
+        void CountCoins()
+        {
+            if (Local) MarioSkin.CountCoins(body);
         }
 
         void Resync(bool keepRecovery = false)

@@ -715,7 +715,7 @@ namespace MarioTest
                 DisplayModel.Attach(display, Guid, MarioDisplay.Get);
                 Portrait.Request(body, MarioDisplay.Get, framing: PortraitFraming.ThreeQuarter);
                 // Luigi's alt-skin (gated on the Melee cache): its SkinDef and rendered portrait.
-                MarioSkin.Register(body);
+                MarioSkin.Register(body, pack);
             }
 
             var survivor = ScriptableObject.CreateInstance<SurvivorDef>();

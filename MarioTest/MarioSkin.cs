@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using RoR2;
 using Ror2Common;
@@ -14,12 +15,20 @@ namespace MarioTest
     internal static class MarioSkin
     {
         public const uint Mario = 0, Luigi = 1;
+        /// Luigi's key, the plaque's number: coins collected in one run (see [`Grant`]).
+        public const uint LuigiCoins = 2401;
         /// Luigi's voice is Mario's pitched up 14% with the line's length kept (the Melee trick).
         public const float VoicePitch = 1.14f;
 
         static string meleeDir;
         static bool ready;
         static SkinDef luigiSkin;
+        static UnlockableDef luigiUnlock;
+        // Luigi's key, counted per player across the whole run: the master outlives each stage's
+        // body, so a count on the body would restart at every pod.
+        static Run coinRun;
+        static readonly Dictionary<CharacterMaster, uint> coinsEarned = new Dictionary<CharacterMaster, uint>();
+        static readonly Dictionary<CharacterMaster, uint> coinsSeen = new Dictionary<CharacterMaster, uint>();
         /// The rendered Luigi portrait, for the skin's icon and the pause sheet's face.
         public static Texture2D LuigiPortrait { get; private set; }
 
@@ -88,7 +97,7 @@ namespace MarioTest
         /// Registers Mario's skins on the body (Mario default, then Luigi) and starts the first-run
         /// Portrait job that renders Luigi and hands the texture back as the skin's icon. Mario's
         /// own portrait (the body's) is requested elsewhere, unchanged.
-        public static void Register(GameObject body)
+        public static void Register(GameObject body, RoR2.ContentManagement.ContentPack pack)
         {
             var model = body.GetComponent<ModelLocator>().modelTransform;
             var controller = model.GetComponent<ModelSkinController>();
@@ -102,6 +111,15 @@ namespace MarioTest
                 return;
             }
             luigiSkin = Def("MarioSkinLuigi", "MARIOTEST_SKIN_LUIGI", model, character, null);
+            // Luigi's key, as the plaque says: 2401 coins in one run. The loadout shows the lock
+            // and this line until MarioDriver has collected them.
+            luigiUnlock = ScriptableObject.CreateInstance<UnlockableDef>();
+            luigiUnlock.cachedName = "Skins.Mario.Luigi";
+            luigiUnlock.nameToken = luigiSkin.nameToken;
+            luigiUnlock.getHowToUnlockString = () => $"Collect {LuigiCoins} coins in a single run as Mario.";
+            luigiUnlock.getUnlockedString = () => "Luigi unlocked.";
+            luigiSkin.unlockableDef = luigiUnlock;
+            pack.unlockableDefs.Add(new[] { luigiUnlock });
             controller.skins = new[] { mario, luigiSkin };
             // The Luigi portrait: Mario's framing and pose (the same sim state), the skin's icon.
             Portrait.Request(body, MarioDisplay.GetLuigi, tex =>
@@ -109,6 +127,49 @@ namespace MarioTest
                 LuigiPortrait = tex;
                 luigiSkin.icon = Sprite(tex);
             }, framing: PortraitFraming.ThreeQuarter);
+        }
+
+        /// Counts the coins this run has paid the player whose body this is (the HUD's gold), for
+        /// Luigi's unlock. Gold earned, not held: buying chests never takes the count back. A new
+        /// `Run` starts from zero, and a player seen for the first time in a run sets its baseline.
+        public static void CountCoins(CharacterBody body)
+        {
+            if (!body || !body.master || !Run.instance) return;
+            if (coinRun != Run.instance)
+            {
+                coinRun = Run.instance;
+                coinsEarned.Clear();
+                coinsSeen.Clear();
+            }
+            var master = body.master;
+            uint money = master.money;
+            if (!coinsSeen.TryGetValue(master, out uint seen))
+            {
+                coinsSeen[master] = money;
+                coinsEarned[master] = 0;
+                return;
+            }
+            coinsSeen[master] = money;
+            if (money <= seen) return;
+            coinsEarned[master] = coinsEarned[master] + (money - seen);
+            if (coinsEarned[master] >= LuigiCoins) Grant(body);
+        }
+
+        /// Grants Luigi to the local player who owns `body`, once 2401 coins have been collected
+        /// in this run (MarioDriver counts them). Safe to call every step: an owned unlock is a
+        /// no-op, so the log line happens once.
+        public static void Grant(CharacterBody body)
+        {
+            if (!luigiUnlock) return;
+            foreach (var user in LocalUserManager.readOnlyLocalUsersList)
+            {
+                if (user.userProfile == null) continue;
+                if (body && user.cachedBody && user.cachedBody != body) continue;
+                if (user.userProfile.HasUnlockable(luigiUnlock)) continue;
+                user.userProfile.GrantUnlockable(luigiUnlock);
+                user.userProfile.RequestEventualSave();
+                Plugin.Log.LogInfo($"Luigi unlocked: {LuigiCoins} coins collected in one run");
+            }
         }
 
         static SkinDef Def(string name, string nameToken, Transform root, CharacterModel character, Sprite icon)

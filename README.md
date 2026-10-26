@@ -9,6 +9,8 @@ normal-rate spin with a gentle 0.8-second descent, and ordinary jump landing.
 The portal returns to swirling colors; Luigi uses green cap particles and his
 existing pitched voice. The full cap-in-hand Sunshine sequence remains in the
 Rust viewer and original native playback API, but the game uses the short profile.
+Luigi is Mario's alt-skin and is unlocked by collecting 2401 coins (the HUD's gold)
+in a single run as Mario; the lock and that line show in the loadout until then.
 
 Portal animation is rendered once on the asset worker at 512 square and cached as
 256-square raw RGBA with antialiased edge coverage. The M is mirrored through its

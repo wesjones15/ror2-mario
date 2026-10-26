@@ -31,6 +31,11 @@ namespace MarioTest
         Native.Vec3 finalFeet;
         GameObject collision;
         Transform originalCamera, portalCamera;
+        [SerializeField] ParticleSystem descentFlames;
+        Vector3 fireLocal, originalFirePosition, originalFireScale;
+        ParticleSystemScalingMode originalFireScaling;
+        bool fireConfigured, luigiLoaded;
+        uint entranceSkin = uint.MaxValue;
         readonly Dictionary<Renderer, bool> stockRenderers = new Dictionary<Renderer, bool>();
         readonly List<Renderer> scanRenderers = new List<Renderer>();
         readonly List<ParticleSystem> scanParticles = new List<ParticleSystem>();
@@ -62,6 +67,12 @@ namespace MarioTest
             }
             var component = prefab.AddComponent<MarioStatuePod>();
             component.travel = travel;
+            // SurvivorPod/Base/mdlEscapePod/EscapePodArmature/Base/Flames:
+            // mesh-particle emitter -470276994286075641, donut5Mesh / matEntryBurn.
+            // Exact asset and 3.5x placement proven in portal_fast --descent-fire.
+            var baseBone = children.FindChild("Base");
+            var flames = baseBone ? baseBone.Find("Flames") : null;
+            component.descentFlames = flames ? flames.GetComponent<ParticleSystem>() : null;
             // The native landing ends 308.53 cm in front of the M. Anchor that end to the
             // stock exit point; no offset into the pedestal or displacement of the spawn.
             var forward = seat.exitPosition.forward; forward.y = 0;
@@ -111,12 +122,10 @@ namespace MarioTest
             try {
                 view = Native.sms_view_entrance_fast_new(NativeLib.CString(Plugin.AssetsDir), (byte)(Plugin.Sound.Value ? 1 : 0));
                 if (view == IntPtr.Zero) throw new InvalidOperationException("statue/portal assets unavailable");
-                // The rider's skin: Luigi lands from the gate as Luigi.
-                var rider = seat.currentPassengerBody;
-                if (rider && MarioSkin.Selected(rider) == MarioSkin.Luigi && MarioSkin.Load(view)) {
-                    Native.sms_view_skin(view, 1);
-                    Native.sms_view_set_voice_pitch(view, MarioSkin.VoicePitch);
-                }
+                // The seat/loadout may arrive after pod preparation. ModelView fixes its
+                // model table at creation, so preload Luigi and select the rider separately.
+                luigiLoaded = MarioSkin.Ready && MarioSkin.Load(view);
+                SyncRiderSkin();
                 models = ModelView.Create(new SmsViewSource(view), "Mario Sunshine statue", transform);
                 if (models == null) throw new InvalidOperationException("statue renderer unavailable");
                 // MarioFx uploads world-space vertices; keep its renderer at world identity.
@@ -141,6 +150,10 @@ namespace MarioTest
                     var box = collision.AddComponent<BoxCollider>();
                     box.center = new Vector3(-(lo.x + hi.x), lo.y + hi.y, lo.z + hi.z) * (.5f * UnityHost.Scale);
                     box.size = new Vector3(hi.x - lo.x, hi.y - lo.y, hi.z - lo.z) * UnityHost.Scale;
+                    // The source renderer's -1.2 Z pivot puts its luminous core well above
+                    // the emitter. Offset the whole system so that core sits below the base.
+                    fireLocal = new Vector3(-(lo.x + hi.x) * .5f, lo.y - 950f, (lo.z + hi.z) * .5f) * UnityHost.Scale;
+                    ConfigureDescentFire();
                 }
                 Plugin.Log.LogInfo("Mario stage-one statue entrance ready (05_gate01 / particle 0x40)");
             } catch (Exception e) {
@@ -154,6 +167,8 @@ namespace MarioTest
             using var timing = MarioPerformance.Measure(MarioPerformance.Part.Portal);
             Prepare();
             if (!custom || !travel || RunAudio.Ended) return;
+            if (!activated) SyncRiderSkin();
+            PlaceDescentFire();
             HideStockVisuals();
             if (!PauseManager.isPaused) idle += Time.deltaTime;
             float time = activated && machine.state is MarioPodExit exit ? exit.Elapsed : idle;
@@ -190,20 +205,65 @@ namespace MarioTest
         (Vector3, Quaternion)? Place(ViewDraw d) => (Origin + Rotation * new Vector3(-d.pos.x, d.pos.y, d.pos.z) * UnityHost.Scale,
             Rotation * new Quaternion(d.rot_x, d.rot_y, d.rot_z, d.rot_w));
 
+        void SyncRiderSkin()
+        {
+            var rider = seat.currentPassengerBody;
+            if (!rider || view == IntPtr.Zero) return;
+            uint selected = luigiLoaded ? MarioSkin.Selected(rider) : MarioSkin.Mario;
+            if (selected == entranceSkin) return;
+            entranceSkin = selected;
+            Native.sms_view_skin(view, (byte)selected);
+            Native.sms_view_set_voice_pitch(view, selected == MarioSkin.Luigi ? MarioSkin.VoicePitch : 1f);
+            Plugin.Log.LogInfo("Statue entrance rider: " + (selected == MarioSkin.Luigi ? "Luigi" : "Mario"));
+        }
+
+        void ConfigureDescentFire()
+        {
+            if (!descentFlames || fireConfigured) return;
+            var t = descentFlames.transform;
+            originalFirePosition = t.localPosition;
+            originalFireScale = t.localScale;
+            var main = descentFlames.main;
+            originalFireScaling = main.scalingMode;
+            // Local scaling ignored animated ancestor scale. Hierarchy scales the shape
+            // AND its mesh particles. Keep the authored rate, lifetime, material and lights.
+            main.scalingMode = ParticleSystemScalingMode.Hierarchy;
+            fireConfigured = true;
+            PlaceDescentFire();
+            // Discard particles emitted at the old pod position before the first LateUpdate.
+            descentFlames.Stop(false, ParticleSystemStopBehavior.StopEmittingAndClear);
+            if (machine.state is MarioPodDescent) descentFlames.Play(false);
+        }
+
+        void PlaceDescentFire()
+        {
+            if (!fireConfigured || !descentFlames) return;
+            descentFlames.transform.position = Origin + Rotation * fireLocal;
+            descentFlames.transform.localScale = originalFireScale * 3.5f;
+        }
+
+        bool IsDescentFire(Transform part) => descentFlames && part.IsChildOf(descentFlames.transform);
+
+        public void Landed()
+        {
+            if (fireConfigured && descentFlames)
+                descentFlames.Stop(false, ParticleSystemStopBehavior.StopEmitting);
+        }
+
         void HideStockVisuals()
         {
             if (Time.unscaledTime >= scanAt) {
                 scanAt = Time.unscaledTime + 0.25f;
                 GetComponentsInChildren(true, scanRenderers);
                 foreach (var r in scanRenderers) {
-                    if (!r || !IsStock(r.transform)) continue;
+                    if (!r || !IsStock(r.transform) || IsDescentFire(r.transform)) continue;
                     if (!stockRenderers.ContainsKey(r)) stockRenderers.Add(r, r.forceRenderingOff);
                 }
                 GetComponentsInChildren(true, scanParticles);
                 foreach (var ps in scanParticles) {
-                    if (!ps || !IsStock(ps.transform) || !stoppedParticles.Add(ps)) continue;
-                    // Remove the undersized descent fire and stock pod FX, retaining audio
-                    // on their objects. Do not deactivate hierarchy nodes used by the animator.
+                    if (!ps || !IsStock(ps.transform) || IsDescentFire(ps.transform) || !stoppedParticles.Add(ps)) continue;
+                    // Suppress other stock pod FX, retaining the resized Flames and audio.
+                    // Do not deactivate hierarchy nodes used by the animator.
                     var main = ps.main; main.stopAction = ParticleSystemStopAction.None;
                     var emission = ps.emission; emission.enabled = false;
                     ps.Stop(false, ParticleSystemStopBehavior.StopEmittingAndClear);
@@ -230,6 +290,7 @@ namespace MarioTest
 
         public void Activate()
         {
+            SyncRiderSkin();
             activated = true; idle = 0;
             passenger = seat.currentPassengerBody;
             if (seat.currentPassengerBody) SpawnMusic.PlayOnce(seat.currentPassengerBody);
@@ -258,6 +319,11 @@ namespace MarioTest
             if (pod && originalCamera) pod.cameraBone = originalCamera;
             if (portalCamera) Destroy(portalCamera.gameObject);
             if (collision) Destroy(collision);
+            if (fireConfigured && descentFlames) {
+                descentFlames.transform.localPosition = originalFirePosition;
+                descentFlames.transform.localScale = originalFireScale;
+                var main = descentFlames.main; main.scalingMode = originalFireScaling;
+            }
             foreach (var entry in stockRenderers) if (entry.Key) entry.Key.forceRenderingOff = entry.Value;
             foreach (var entry in stockColliders) if (entry.Key) entry.Key.enabled = entry.Value;
             fx?.Dispose(); fx = null; models?.Dispose(); models = null;
@@ -276,7 +342,8 @@ namespace MarioTest
     {
         public override void OnEnter() {
             base.OnEnter(); PlayAnimation("Base", "Idle");
-            GetComponent<MarioStatuePod>()?.AlignExit();
+            var statue = GetComponent<MarioStatuePod>();
+            if (statue) { statue.Landed(); statue.AlignExit(); }
             vehicleSeat.handleVehicleExitRequestServer.AddCallback(ExitRequest);
         }
         public override void FixedUpdate() { base.FixedUpdate(); survivorPodController.exitAllowed = true; }

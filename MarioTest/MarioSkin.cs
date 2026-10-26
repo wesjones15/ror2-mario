@@ -58,7 +58,16 @@ namespace MarioTest
         }
 
         /// The skin the body's loadout selected: 0 Mario, 1 Luigi (when available).
-        public static uint Selected(CharacterBody body) => ready && body && body.skinIndex >= 1 ? Luigi : Mario;
+        public static uint Selected(CharacterBody body)
+        {
+            if (!ready || !body) return Mario;
+            // During pod creation the body's SkinDef may not have applied yet. The owning
+            // master's per-body loadout already contains the selected skin, including remotely.
+            uint skin = body.skinIndex;
+            if (body.master && body.master.loadout != null && body.bodyIndex != BodyIndex.None)
+                skin = Math.Max(skin, body.master.loadout.bodyLoadoutManager.GetSkinIndex(body.bodyIndex));
+            return skin >= 1 ? Luigi : Mario;
+        }
 
         /// The skin the loadout has selected for Mario's body, for scenes with no live body yet
         /// (the character-select display): 0 Mario, 1 Luigi (when available).

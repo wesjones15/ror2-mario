@@ -171,7 +171,6 @@ static class Program
                 var melee = Path.GetFullPath(Path.Combine(assets, "..", "..", "libssbm", "assets"));
                 if (!Directory.Exists(melee)) { Console.WriteLine("SKIP: Luigi Melee cache absent"); return; }
                 Check(Native.sms_view_set_luigi(view, NativeLib.CString(melee)) != 0, "Luigi entrance mesh couldn't load");
-                Native.sms_view_skin(view, 1);
             }
             var camera = new Native.ViewFrame { forward = new Native.Vec3(0, 0, 1), up = new Native.Vec3(0, 1, 0) };
             var draws = new ViewDraw[32];
@@ -181,6 +180,14 @@ static class Program
             Native.sms_view_entrance_update(view, .26f, 0, ref camera, out _);
             Native.sms_view_positions(view, out var idleVertices);
             Check(idleVertices == 0, "idle statue rebuilt geometry");
+            if (luigi) {
+                // Pod preparation can precede its passenger. Preload the model table, then
+                // select Luigi after idle frames, as the adapter does when the rider arrives.
+                var modelCount = Native.sms_view_model_count(view);
+                Native.sms_view_skin(view, 1);
+                Native.sms_view_entrance_update(view, .27f, 0, ref camera, out _);
+                Check(Native.sms_view_model_count(view) == modelCount, "late rider selection changes the fixed model table");
+            }
             Native.sms_view_fx_texture(view, 0, out var paletteInfo, null, 0);
             var palette = new byte[paletteInfo.width * paletteInfo.height * 4];
             Native.sms_view_fx_texture(view, 0, out _, palette, (uint)palette.Length);
@@ -228,7 +235,7 @@ static class Program
             Native.sms_view_entrance_update(view, 3, 0, ref camera, out _);
             var idleImage = new byte[returned.Length]; Native.sms_view_texture(view, gateTexture, out _, idleImage, (uint)idleImage.Length);
             Check(returned.SequenceEqual(idleImage), "portal didn't return to original swirling colors");
-            Console.WriteLine("PASS: fast " + (luigi ? "Luigi/green" : "Mario/red") + " exit, static retention, timing, control handoff and portal reset");
+            Console.WriteLine("PASS: fast " + (luigi ? "late-selected Luigi/green" : "Mario/red") + " exit, static retention, timing, control handoff and portal reset");
         } finally { Native.sms_view_free(view); }
     }
 }

@@ -12,12 +12,16 @@ Rust viewer and original native playback API, but the game uses the short profil
 
 Portal animation is rendered once on the asset worker and cached under the user's
 ignored disc assets. The statue/gate geometry uploads once; hidden arrival Mario
-stops being processed after handoff. All stock pod renderer types and particles
-(including the undersized descent fire) are suppressed, and stock collision is
-removed after exit. Vanilla falling/crashing animation and sound events remain.
+stops being processed after handoff. Stock pod graphics are suppressed except the
+original descent fire: its mesh particles are 3.5x larger and lowered so the bright
+core sits beneath the pedestal. Its original material and emission rate remain.
+Stock collision is removed after exit. Vanilla falling/crashing sound events remain.
 The camera faces the M and the statue retains its own pedestal collision. The
 normal pod remains available if optional disc assets or rendering cannot load.
 The revised profile is viewer/build/boundary checked; RoR2 playtesting is pending.
+The entrance preloads Luigi's mesh and refreshes the seated rider's selection from
+the master's loadout before activation, so late passenger/skin initialization does
+not leave Mario in Luigi's portal sequence. Green particles and voice pitch follow.
 
 Mario's four approved skill portraits now render in Unity on first run after disc
 extraction, using the existing native models, moving effects and gameplay slide tuning.

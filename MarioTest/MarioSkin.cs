@@ -52,6 +52,9 @@ namespace MarioTest
         public const uint LuigiCoins = 2401;
         /// Luigi's voice is Mario's pitched up 14% with the line's length kept (the Melee trick).
         public const float VoicePitch = 1.14f;
+        /// Piantissimo's fallback lines (Mario's, where the game gives him no voice of his own) go the other
+        /// way: pitched down 14%, length kept. His own jump voice is an NPC cue and is left as it is.
+        public const float PiantissimoVoicePitch = 0.86f;
 
         /// Every skin, indexed by native id. Mario's row only carries his own name and quip.
         public static readonly SkinSpec[] Specs =
@@ -77,6 +80,7 @@ namespace MarioTest
                 Quip = "Fastest Pianta on Isle Delfino... On Vacation!",
                 // His jump voice replaces Mario's jump cues natively (the skin picks the voice set).
                 StrictVoice = () => Plugin.PiantissimoGameVoice.Value,
+                VoicePitch = PiantissimoVoicePitch,
                 // Available from the start: his model comes from the disc the plugin extracts.
             },
         };

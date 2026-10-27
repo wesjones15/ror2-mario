@@ -868,11 +868,10 @@ namespace MarioTest
             return true;
         }
 
-        /// Checks the local player's coin counter for Luigi's unlock: at least 2401 held at one
-        /// time, the plaque's number.
+        /// Checks the local player's Mario for Luigi's unlock: stage 4's teleporter event beaten.
         void CountCoins()
         {
-            if (Local) MarioSkin.CountCoins(body);
+            if (Local) MarioSkin.CheckStageUnlocks(body);
         }
 
         void Resync(bool keepRecovery = false)

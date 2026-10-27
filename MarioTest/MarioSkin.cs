@@ -20,8 +20,8 @@ namespace MarioTest
         public string Name, Token, Text, Title, Quip;
         /// Needs the Melee plugin's cache (Luigi's HSD mesh); otherwise only the Sunshine assets.
         public bool NeedsMelee;
-        /// Coins held at one time that unlock it; 0 means it is there from the start.
-        public uint UnlockCoins;
+        /// The stage (1-based) whose teleporter event, beaten as Mario, unlocks it; 0 means it is there from the start.
+        public uint UnlockStage;
         public string UnlockHint, UnlockedText;
         /// Voice pitch ratio with the line's length kept; 1 leaves Mario's voice alone.
         public float VoicePitch = 1f;
@@ -48,8 +48,8 @@ namespace MarioTest
     internal static class MarioSkin
     {
         public const uint Mario = 0, Luigi = 1, Piantissimo = 2;
-        /// Luigi's key, the plaque's number: coins held at one time (see CountCoins).
-        public const uint LuigiCoins = 2401;
+        /// Luigi's key: the teleporter event of this stage, beaten as Mario (see CheckStageUnlocks).
+        public const uint LuigiStage = 4;
         /// Luigi's voice is Mario's pitched up 14% with the line's length kept (the Melee trick).
         public const float VoicePitch = 1.14f;
         /// Piantissimo's fallback lines (Mario's, where the game gives him no voice of his own) go the other
@@ -68,9 +68,8 @@ namespace MarioTest
             {
                 Id = Luigi, Name = "MarioSkinLuigi", Token = "MARIOTEST_SKIN_LUIGI", Text = "Luigi", Title = "Luigi",
                 Quip = "Second Most Famous Mario Brother... On Vacation!",
-                NeedsMelee = true, UnlockCoins = LuigiCoins,
-                // Luigi's key, as the plaque says: 2401 coins held at once.
-                UnlockHint = "L is real 2401", UnlockedText = "Luigi unlocked.",
+                NeedsMelee = true, UnlockStage = LuigiStage,
+                UnlockHint = "Beat the stage 4 teleporter event as Mario.", UnlockedText = "Luigi unlocked.",
                 VoicePitch = VoicePitch, JumpScale = () => Plugin.LuigiJumpHeight.Value, EggLay = true,
             },
             new SkinSpec
@@ -216,10 +215,10 @@ namespace MarioTest
                 spec.Registered = Offered(spec);
                 if (!spec.Registered) continue;
                 spec.Def = Def(spec.Name, spec.Token, model, character, null);
-                if (spec.UnlockCoins > 0)
+                if (spec.UnlockStage > 0)
                 {
-                    // The loadout shows the lock and the hint until MarioDriver sees the coin
-                    // counter reach it.
+                    // The loadout shows the lock and the hint until MarioDriver sees that stage's
+                    // teleporter event beaten.
                     var unlock = ScriptableObject.CreateInstance<UnlockableDef>();
                     unlock.cachedName = "Skins.Mario." + spec.Text;
                     unlock.nameToken = spec.Def.nameToken;
@@ -248,20 +247,22 @@ namespace MarioTest
             }
         }
 
-        /// A skin's coin key: at least that many coins held at one time (the HUD's gold; Luigi's
-        /// is 2401, as the plaque says). Not a running total: spending the coins back down is
-        /// fine, but the counter itself has to reach it while playing Mario.
-        public static void CountCoins(CharacterBody body)
+        /// A skin's stage key: the teleporter event of that stage (the Nth, so `stageClearCount`
+        /// N-1) is beaten, its charge done and its boss dead, with this Mario still alive.
+        public static void CheckStageUnlocks(CharacterBody body)
         {
-            if (!body || !body.master || !Run.instance) return;
+            if (!body || !Run.instance || !body.healthComponent || !body.healthComponent.alive) return;
+            var tele = TeleporterInteraction.instance;
+            // ActivationState: Idle 0, IdleToCharging 1, Charging 2, Charged 3, Finished 4.
+            if (!tele || (int)tele.activationState < 3) return;
             foreach (var spec in Specs)
-                if (spec.Unlock && spec.UnlockCoins > 0 && body.master.money >= spec.UnlockCoins)
+                if (spec.Unlock && spec.UnlockStage > 0 && Run.instance.stageClearCount + 1 == spec.UnlockStage)
                     Grant(body, spec);
         }
 
-        /// Grants a skin to the local player who owns `body`, once its coin counter holds the
-        /// skin's key (MarioDriver checks it each step). Safe to call every step: an owned unlock
-        /// is a no-op, so the log line happens once.
+        /// Grants a skin to the local player who owns `body`, once its key is met (MarioDriver
+        /// checks it each step). Safe to call every step: an owned unlock is a no-op, so the log
+        /// line happens once.
         public static void Grant(CharacterBody body, SkinSpec spec)
         {
             if (!spec.Unlock) return;
@@ -272,7 +273,7 @@ namespace MarioTest
                 if (user.userProfile.HasUnlockable(spec.Unlock)) continue;
                 user.userProfile.GrantUnlockable(spec.Unlock);
                 user.userProfile.RequestEventualSave();
-                Plugin.Log.LogInfo($"{spec.Text} unlocked: {spec.UnlockCoins} coins held at one time");
+                Plugin.Log.LogInfo($"{spec.Text} unlocked: stage {spec.UnlockStage}'s teleporter event beaten as Mario");
             }
         }
 

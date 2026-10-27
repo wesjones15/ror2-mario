@@ -20,6 +20,7 @@ static class Program
         public void KnockDown(Native.Vec3 f, byte k) => calls.Add($"knock {f.x},{f.y},{f.z},{k}");
         public void SetAim(bool on, short yaw, float pitch) => calls.Add($"aim {on},{yaw},{pitch}");
         public void Down() => calls.Add("down");
+        public void Ignite() => calls.Add("ignite");
         public void ShineGet(Native.Vec3 p, short yaw) => calls.Add($"shine {p.x},{p.y},{p.z},{yaw}");
         public void ShineEnd() => calls.Add("shine end");
         public void ForeignWet(bool wet) => calls.Add($"wet {wet}");
@@ -50,6 +51,7 @@ static class Program
         rec.BoostJump(1.2f);
         rec.ShineGet(new Native.Vec3(5, 6, 7), -1234);
         rec.ShineEnd();
+        rec.Ignite();
         rec.End(new Native.Vec3(10, 20, 30));
         // Frame 1: unchanged limits and aim are deduped, only the step goes out.
         rec.Begin();
@@ -98,7 +100,7 @@ static class Program
         {
             "teleport 1,2,3", "tuning 1.6,1", "refill", "water 0.25", "limits 2,1.5", "aim True,1234,0.5",
             "launch 4,5,6", "pad 7,8,9,0.01", "knock 1,1,1,0", "wet True", "step a1 r200 mx0.5 cam-300", "boost 1.2",
-            "shine 5,6,7,-1234", "shine end",
+            "shine 5,6,7,-1234", "shine end", "ignite",
         };
         Check(log.calls.Count == expect0.Length, $"frame 0 has {log.calls.Count} calls");
         for (int i = 0; i < expect0.Length; i++) Check(log.calls[i] == expect0[i], $"call {i}: {log.calls[i]} != {expect0[i]}");

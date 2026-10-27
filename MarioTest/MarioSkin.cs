@@ -20,7 +20,9 @@ namespace MarioTest
         public string Name, Token, Text, Title, Quip;
         /// Needs the Melee plugin's cache (Luigi's HSD mesh); otherwise only the Sunshine assets.
         public bool NeedsMelee;
-        /// The stage (1-based) whose teleporter event, beaten as Mario, unlocks it; 0 means it is there from the start.
+        /// Coins held at once; 0 means this skin has no coin requirement.
+        public uint UnlockCoins;
+        /// The stage (1-based) whose teleporter event, beaten as Mario, unlocks it.
         public uint UnlockStage;
         public string UnlockHint, UnlockedText;
         /// Voice pitch ratio with the line's length kept; 1 leaves Mario's voice alone.
@@ -48,8 +50,8 @@ namespace MarioTest
     internal static class MarioSkin
     {
         public const uint Mario = 0, Luigi = 1, Piantissimo = 2;
-        /// Luigi's key: the teleporter event of this stage, beaten as Mario (see CheckStageUnlocks).
-        public const uint LuigiStage = 4;
+        public const uint LuigiCoins = 2401;
+        public const uint PiantissimoStage = 4;
         /// Luigi's voice is Mario's pitched up 14% with the line's length kept (the Melee trick).
         public const float VoicePitch = 1.14f;
         /// Piantissimo's fallback lines (Mario's, where the game gives him no voice of his own) go the other
@@ -68,8 +70,8 @@ namespace MarioTest
             {
                 Id = Luigi, Name = "MarioSkinLuigi", Token = "MARIOTEST_SKIN_LUIGI", Text = "Luigi", Title = "Luigi",
                 Quip = "Second Most Famous Mario Brother... On Vacation!",
-                NeedsMelee = true, UnlockStage = LuigiStage,
-                UnlockHint = "Beat the stage 4 teleporter event as Mario.", UnlockedText = "Luigi unlocked.",
+                NeedsMelee = true, UnlockCoins = LuigiCoins,
+                UnlockHint = "L is real 2401", UnlockedText = "Luigi unlocked.",
                 VoicePitch = VoicePitch, JumpScale = () => Plugin.LuigiJumpHeight.Value, EggLay = true,
             },
             new SkinSpec
@@ -77,10 +79,12 @@ namespace MarioTest
                 Id = Piantissimo, Name = "MarioSkinPiantissimo", Token = "MARIOTEST_SKIN_PIANTISSIMO",
                 Text = "Piantissimo", Title = "Piantissimo",
                 Quip = "Fastest Pianta on Isle Delfino... On Vacation!",
+                UnlockStage = PiantissimoStage,
+                UnlockHint = "Beat the stage 4 teleporter event as Mario.", UnlockedText = "Piantissimo unlocked.",
                 // His jump voice replaces Mario's jump cues natively (the skin picks the voice set).
                 StrictVoice = () => Plugin.PiantissimoGameVoice.Value,
                 VoicePitch = PiantissimoVoicePitch,
-                // Available from the start: his model comes from the disc the plugin extracts.
+                // His model comes from the Sunshine disc the plugin already extracts.
             },
         };
 
@@ -215,10 +219,9 @@ namespace MarioTest
                 spec.Registered = Offered(spec);
                 if (!spec.Registered) continue;
                 spec.Def = Def(spec.Name, spec.Token, model, character, null);
-                if (spec.UnlockStage > 0)
+                if (spec.UnlockCoins > 0 || spec.UnlockStage > 0)
                 {
-                    // The loadout shows the lock and the hint until MarioDriver sees that stage's
-                    // teleporter event beaten.
+                    // The loadout shows the lock and the hint until this skin's key is met.
                     var unlock = ScriptableObject.CreateInstance<UnlockableDef>();
                     unlock.cachedName = "Skins.Mario." + spec.Text;
                     unlock.nameToken = spec.Def.nameToken;
@@ -247,11 +250,15 @@ namespace MarioTest
             }
         }
 
-        /// A skin's stage key: the teleporter event of that stage (the Nth, so `stageClearCount`
-        /// N-1) is beaten, its charge done and its boss dead, with this Mario still alive.
-        public static void CheckStageUnlocks(CharacterBody body)
+        /// Luigi keeps his released 2401-held-coins key. Piantissimo uses stage four's
+        /// completed teleporter, with Mario still alive. Both grants remain profile-persistent.
+        public static void CheckUnlocks(CharacterBody body)
         {
-            if (!body || !Run.instance || !body.healthComponent || !body.healthComponent.alive) return;
+            if (!body || !Run.instance) return;
+            foreach (var spec in Specs)
+                if (spec.Unlock && spec.UnlockCoins > 0 && body.master && body.master.money >= spec.UnlockCoins)
+                    Grant(body, spec);
+            if (!body.healthComponent || !body.healthComponent.alive) return;
             var tele = TeleporterInteraction.instance;
             // ActivationState: Idle 0, IdleToCharging 1, Charging 2, Charged 3, Finished 4.
             if (!tele || (int)tele.activationState < 3) return;
@@ -273,7 +280,9 @@ namespace MarioTest
                 if (user.userProfile.HasUnlockable(spec.Unlock)) continue;
                 user.userProfile.GrantUnlockable(spec.Unlock);
                 user.userProfile.RequestEventualSave();
-                Plugin.Log.LogInfo($"{spec.Text} unlocked: stage {spec.UnlockStage}'s teleporter event beaten as Mario");
+                var key = spec.UnlockCoins > 0 ? $"{spec.UnlockCoins} coins held at one time"
+                    : $"stage {spec.UnlockStage}'s teleporter event beaten as Mario";
+                Plugin.Log.LogInfo($"{spec.Text} unlocked: {key}");
             }
         }
 

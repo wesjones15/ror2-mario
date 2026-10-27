@@ -185,7 +185,7 @@ namespace MarioTest
         {
             spawnAge += Time.fixedDeltaTime;
             MarioShipParts.Register(body);
-            CountCoins();
+            CheckSkinUnlocks();
             // A client's Mario on the server: what healing owes his tank goes to the client.
             if (NetworkServer.active && body && !body.hasEffectiveAuthority) Items.FlushRemote();
             if (!CanDrive)
@@ -868,10 +868,10 @@ namespace MarioTest
             return true;
         }
 
-        /// Checks the local player's Mario for Luigi's unlock: stage 4's teleporter event beaten.
-        void CountCoins()
+        /// Checks Luigi's held-coin key and Piantissimo's stage-four key for the local Mario.
+        void CheckSkinUnlocks()
         {
-            if (Local) MarioSkin.CheckStageUnlocks(body);
+            if (Local) MarioSkin.CheckUnlocks(body);
         }
 
         void Resync(bool keepRecovery = false)

@@ -27,7 +27,7 @@ replaying missed frames. Exit/control processing always runs, even offscreen. A 
 cut holds only the rider's pose until handoff; afterward the portal clock advances so the
 Plaza image closes back to colors. These changes are boundary/build checked, not yet played.
 Stock pod graphics are suppressed except the
-original descent fire: its mesh particles are 3.5x wider and 1.75x taller, with the emitter 600 cm
+original descent fire: its mesh particles are 3.5x wider and 1.75x taller, with the emitter 900 cm
 above the pedestal base and local simulation so existing particles follow the
 statue. Its original material and emission rate remain.
 The statue descends vertically above that same landing point: the C# adapter keeps
@@ -49,7 +49,7 @@ either order; it resolves the exact emitter on the spawned clone and logs
 collider and exit point use a fixed world anchor instead of the animated stock
 pod bone. The exit-position fix still needs an in-game check.
 The user's playtests confirmed the fire starts, but both -950 cm and zero offset
-left it too low. The new +600 cm offset, halved vertical scale and local simulation still need an in-game
+left it too low. +600 cm was also still low; the new +900 cm offset, halved vertical scale and local simulation still need an in-game
 check. The viewer's approximate pivot is not height proof.
 
 Mario's four approved skill portraits now render in Unity on first run after disc

@@ -208,8 +208,8 @@ namespace MarioTest
                     box.center = new Vector3(-(lo.x + hi.x), lo.y + hi.y, lo.z + hi.z) * (.5f * UnityHost.Scale);
                     box.size = new Vector3(hi.x - lo.x, hi.y - lo.y, hi.z - lo.z) * UnityHost.Scale;
                     // In-game feedback: the mesh's luminous region remains below its
-                    // emitter. Raise it 600 cm; the preview pivot is not Unity height proof.
-                    fireLocal = new Vector3(-(lo.x + hi.x) * .5f, lo.y + 600f, (lo.z + hi.z) * .5f) * UnityHost.Scale;
+                    // emitter. Raise it 900 cm (600 was still low in game); the preview pivot is not Unity height proof.
+                    fireLocal = new Vector3(-(lo.x + hi.x) * .5f, lo.y + 900f, (lo.z + hi.z) * .5f) * UnityHost.Scale;
                     ConfigureDescentFire();
                     // The podium alone is 8.0 x 5.2 x 8.0 m. The map's baked statue shadow
                     // and a floor triangle used to be selected with it and made this
@@ -465,7 +465,7 @@ namespace MarioTest
             if (renderer) { renderer.enabled = true; renderer.forceRenderingOff = false; }
             descentFlames.Play(false);
             fireStarted = true;
-            Plugin.Log.LogInfo("Statue descent fire started: Flames / matEntryBurn, width 3.5x / height 1.75x, emitter base Y + 600 cm, local particles (original space " + originalFireSpace + ")");
+            Plugin.Log.LogInfo("Statue descent fire started: Flames / matEntryBurn, width 3.5x / height 1.75x, emitter base Y + 900 cm, local particles (original space " + originalFireSpace + ")");
         }
 
         void PlaceDescentFire()

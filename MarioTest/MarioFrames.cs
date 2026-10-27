@@ -17,7 +17,7 @@ namespace MarioTest
     {
         Teleport = 1, Tuning = 2, Refill = 3, AddWater = 4, Limits = 5, BoostJump = 6, Launch = 7,
         LaunchPad = 8, KnockDown = 9, SetAim = 10, Down = 11, Step = 12, ShineGet = 13, ShineEnd = 14,
-        ForeignWet = 15,
+        ForeignWet = 15, Ignite = 16,
     }
 
     /// What replaying a frame does to a sim; MarioPuppet's implementation calls libsms.
@@ -32,6 +32,8 @@ namespace MarioTest
         void Launch(Native.Vec3 vel);
         void LaunchPad(Native.Vec3 vel, float gravity);
         void KnockDown(Native.Vec3 from, byte kind);
+        /// RoR2 set him on fire: the sim's FIRE_DOWN, the panicked run and the yelling.
+        void Ignite();
         void SetAim(bool on, short yaw, float pitch);
         void Down();
         void ShineGet(Native.Vec3 pos, short yaw);
@@ -66,6 +68,7 @@ namespace MarioTest
         public static void WriteLaunch(ByteWriter w, Native.Vec3 v) { w.U8((byte)Op.Launch); Vec(w, v); }
         public static void WriteLaunchPad(ByteWriter w, Native.Vec3 v, float g) { w.U8((byte)Op.LaunchPad); Vec(w, v); w.F32(g); }
         public static void WriteKnockDown(ByteWriter w, Native.Vec3 from, byte kind) { w.U8((byte)Op.KnockDown); Vec(w, from); w.U8(kind); }
+        public static void WriteIgnite(ByteWriter w) => w.U8((byte)Op.Ignite);
         public static void WriteSetAim(ByteWriter w, bool on, short yaw, float pitch) { w.U8((byte)Op.SetAim); w.Bool(on); w.I16(yaw); w.F32(pitch); }
         public static void WriteDown(ByteWriter w) => w.U8((byte)Op.Down);
         public static void WriteShineGet(ByteWriter w, Native.Vec3 pos, short yaw) { w.U8((byte)Op.ShineGet); Vec(w, pos); w.I16(yaw); }
@@ -97,6 +100,7 @@ namespace MarioTest
                     case Op.Launch: sink.Launch(Vec(r)); break;
                     case Op.LaunchPad: { var v = Vec(r); sink.LaunchPad(v, r.F32()); break; }
                     case Op.KnockDown: { var v = Vec(r); sink.KnockDown(v, r.U8()); break; }
+                    case Op.Ignite: sink.Ignite(); break;
                     case Op.SetAim: { bool on = r.Bool(); short yaw = r.I16(); sink.SetAim(on, yaw, r.F32()); break; }
                     case Op.Down: sink.Down(); break;
                     case Op.ShineGet: { var v = Vec(r); sink.ShineGet(v, r.I16()); break; }
@@ -212,6 +216,7 @@ namespace MarioTest
         public void Launch(Native.Vec3 v) => FrameCodec.WriteLaunch(ops, v);
         public void LaunchPad(Native.Vec3 v, float g) => FrameCodec.WriteLaunchPad(ops, v, g);
         public void KnockDown(Native.Vec3 from, byte kind) => FrameCodec.WriteKnockDown(ops, from, kind);
+        public void Ignite() => FrameCodec.WriteIgnite(ops);
         public void Down() => FrameCodec.WriteDown(ops);
         public void ShineGet(Native.Vec3 pos, short yaw) => FrameCodec.WriteShineGet(ops, pos, yaw);
         public void ShineEnd() => FrameCodec.WriteShineEnd(ops);

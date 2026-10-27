@@ -106,7 +106,7 @@ namespace MarioTest
         internal static ConfigEntry<int> CoinGold;
         internal static ConfigEntry<float> LockRange;
         internal static ConfigEntry<float> LifeX, LifeY, LifeScale, LockMarkerSize, LockMarkerSpin;
-        internal static ConfigEntry<bool> KnockdownEnabled, KnockdownGetUpEarly, KnockdownInterruptsPound;
+        internal static ConfigEntry<bool> KnockdownEnabled, KnockdownGetUpEarly, KnockdownInterruptsPound, BurnPanic;
         internal static ConfigEntry<float> KnockdownThreshold;
         internal static ConfigEntry<float> SlideSprayScale;
         internal static ConfigEntry<bool> SlideSplashes;
@@ -387,6 +387,10 @@ namespace MarioTest
             KnockdownInterruptsPound = Config.Bind("Knockdown", "InterruptsPound", true,
                 "A knock-down can take him out of a ground pound, as a hit does in Sunshine. Off: a hit " +
                 "during the pound only hurts.");
+            BurnPanic = Config.Bind("Knockdown", "BurnPanic", true,
+                "Catching fire (RoR2's burning) throws Mario up yelling, bounces him twice and sends him " +
+                "running about in a panic, as Sunshine's fire does (FIRE_DOWN, FIRE_DASH). You can still " +
+                "steer a little and hop. Off: burning only hurts.");
             SlideSplashes = Config.Bind("Look", "SlideSplashes", false,
                 "A wet belly slide also throws libsms's old stand-in splashes (a home-made effect, " +
                 "drawn like FLUDD's water) on top of Sunshine's own slide spray. Off: only the game's.");

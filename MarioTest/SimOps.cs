@@ -66,6 +66,13 @@ namespace MarioTest
             return result;
         }
 
+        public static byte Ignite(IntPtr sim)
+        {
+            byte result = Native.sms_sim_ignite(sim);
+            Rec?.Ignite();
+            return result;
+        }
+
         public static void SetAim(IntPtr sim, byte on, short yaw, float pitch)
         {
             Native.sms_sim_set_aim(sim, on, yaw, pitch);

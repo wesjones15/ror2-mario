@@ -232,6 +232,12 @@ namespace MarioTest
                 else SimOps.Launch(sim, ref v);
                 strictUntil = Time.time + 2f;
             }
+            // RoR2 sets him alight (the OnFire buff comes on): Sunshine's fire hit, with the yell and
+            // the panicked run. His own sim does it on his machine; a friend's copy gets it replayed.
+            bool burning = body.HasBuff(RoR2Content.Buffs.OnFire);
+            if (burning && !wasBurning && Plugin.BurnPanic.Value && pounding == 0)
+                SimOps.Ignite(sim);
+            wasBurning = burning;
             if (knockFrom.HasValue)
             {
                 var from = UnityHost.ToSim(knockFrom.Value);
@@ -525,7 +531,10 @@ namespace MarioTest
             float height = UnityHost.MarioHeight * UnityHost.Scale;
             // The game's flames when the disc's particles are there; RoR2's fire otherwise.
             view.Effects(feet);
-            flames.Set(Plugin.PoundFlames.Value && pounding == 2 && !view.HasEffects,
+            // RoR2's fire also burns on him while he is alight (the disc's own flames can't be asked
+            // to stay on, only to flare), so you see him burning as he runs about.
+            flames.Set((Plugin.PoundFlames.Value && pounding == 2 && !view.HasEffects)
+                    || (Plugin.BurnPanic.Value && body.HasBuff(RoR2Content.Buffs.OnFire)),
                 feet + Vector3.up * (height * 0.5f), height);
             view.Draw(feet);
             ShowMario(true);
@@ -737,6 +746,8 @@ namespace MarioTest
 
         // A powerful hit's source, for the next step to knock Mario down from.
         Vector3? knockFrom;
+        // Whether he was burning last step, so catching fire reacts once.
+        bool wasBurning;
 
         /// RoR2 landed a hit (server): one that takes Knockdown.Threshold of a Mario's health knocks him over
         /// on his next step. Falls, damage over time and his own hits don't.

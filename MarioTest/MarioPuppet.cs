@@ -237,6 +237,7 @@ namespace MarioTest
         public void Launch(Native.Vec3 vel) => Native.sms_sim_launch(sim, ref vel);
         public void LaunchPad(Native.Vec3 vel, float gravity) => Native.sms_sim_launch_pad(sim, ref vel, gravity);
         public void KnockDown(Native.Vec3 from, byte kind) => Native.sms_sim_knock_down(sim, ref from, kind);
+        public void Ignite() => Native.sms_sim_ignite(sim);
         public void SetAim(bool on, short yaw, float pitch) => Native.sms_sim_set_aim(sim, (byte)(on ? 1 : 0), yaw, pitch);
         public void Down() => Native.sms_sim_down(sim);
         public void ShineGet(Native.Vec3 pos, short yaw) => Native.sms_sim_shine_get(sim, ref pos, yaw);

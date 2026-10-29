@@ -388,6 +388,22 @@ namespace MarioTest
                 Native.sms_sim_state(sim, out st);
                 status = NativeLib.Utf8(Native.sms_sim_status_name(sim));
             }
+            // Standing or walking inside geometry (sunk into a log, jammed between rocks): the sim
+            // says he is fine, so neither check above fires. Two seconds wedged and he is put on
+            // clear ground nearby (ror2-common's Unstuck.Wedged). A ledge hang or climb rightly
+            // touches the ledge.
+            else if (unstuck.Wedged(UnityHost.ToUnity(st.pos), UnityHost.MarioHeight * UnityHost.Scale,
+                50f * UnityHost.Scale, MarioUnstuck.Climbing(status) || (native && native.Control() != NativeBody.Hold.None),
+                Time.fixedDeltaTime, UnityHost.RecoveryGround, out var unwedged))
+            {
+                Plugin.Log.LogInfo($"Mario was wedged in geometry at {UnityHost.ToUnity(st.pos)}; out at {unwedged}");
+                transform.position = unwedged + feetToOrigin;
+                Resync();
+                var rest = new Native.Vec3(0f, 0f, 0f);
+                SimOps.Launch(sim, ref rest);
+                Native.sms_sim_state(sim, out st);
+                status = NativeLib.Utf8(Native.sms_sim_status_name(sim));
+            }
             // The sim's wall rings can miss (a thin pole between rays, a corner, a step so long it
             // ends inside the wall, where a ray hits no back face), and Mario then walks out of the
             // map. Sweep the step itself; a wall crossed puts him back where he stood.

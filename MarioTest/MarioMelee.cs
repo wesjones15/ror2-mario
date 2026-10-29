@@ -157,7 +157,9 @@ namespace MarioTest
                 if (Has(target)) return target;
             }
             string own = System.IO.Path.Combine(melee, "assets");
-            return Has(own) ? own : null;
+            if (Has(own)) return own;
+            string shared = GameCubeLibrary.AssetsFor(Plugin.LibraryRoot, GameCubeLibrary.Melee);
+            return Has(shared) ? shared : null;
         }
 
         /// The running Melee plugin's resolved cache folder (its Plugin.AssetsDir), read by

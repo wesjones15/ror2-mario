@@ -29,6 +29,8 @@ namespace MarioTest
 
         internal static ManualLogSource Log;
         internal static string AssetsDir;
+        /// The shared GameCube library (GameCubeLibrary), or null.
+        internal static string LibraryRoot;
         static volatile bool assetsBusy, assetsReady;
         bool musicInitialized;
         internal static bool AssetsSettled => !assetsBusy;
@@ -142,7 +144,13 @@ namespace MarioTest
             var disc = Config.Bind("Paths", "Disc", "",
                 "Your Super Mario Sunshine (GameCube) disc image (.iso/.gcm/.ciso), used once to " +
                 "build AssetsDir if missing or incomplete. Empty: check $SMS_DISC, the plugin folder " +
-                "and next to AssetsDir. Any region is supported; convert RVZ/WIA/WBFS to ISO first.");
+                "and next to AssetsDir and in the GameCube library. Any region is supported; convert RVZ/WIA/WBFS to ISO first.");
+            var library = Config.Bind("Paths", "Library", "",
+                "A folder shared by the Olimar, Mario and Melee plugins: your disc images (any names, in it or its isos/ folder) " +
+                "and assets/Olimar, assets/Mario, assets/Melee for what they extract. Empty: gamecube_library.txt in this plugin's " +
+                "folder or the plugins folder, then $GAMECUBE_LIBRARY. An AssetsDir set above, assets_dir.txt, $SMS_ASSETS " +
+                "or an assets/ folder already beside the plugin still wins; the library's cache is used for a fresh install.");
+            LibraryRoot = GameCubeLibrary.Root(library.Value, here);
             var meleeAssets = Config.Bind("Paths", "MeleeAssets", "",
                 "The Melee plugin's extracted cache: Luigi's HSD mesh for the alt-skin, and " +
                 "Mario's A attacks on the empty FLUDD button (needs PlMr.dat). Empty: $SSBM_ASSETS, " +
@@ -515,7 +523,7 @@ namespace MarioTest
                 "The Piantissimo alt-skin swaps Mario's five jump voices for Piantissimo's own. " +
                 "The game gives him no other voice at all, so by default every other line stays Mario's; " +
                 "turn this on for the game's exact behaviour (his jump voice and silence otherwise).");
-            AssetsDir = ResolveAssets(assets.Value, here);
+            AssetsDir = GameCubeLibrary.ResolveAssets(assets.Value, here, "SMS_ASSETS", LibraryRoot, GameCubeLibrary.Mario, out string assetsFrom);
             MarioSkin.Discover(meleeAssets.Value, here);
             MarioMelee.Probe();
 
@@ -524,7 +532,8 @@ namespace MarioTest
                 Log.LogError(error);
                 return;
             }
-            Log.LogInfo($"libsms ABI {Native.sms_abi_version()}, assets {AssetsDir}");
+            Log.LogInfo($"libsms ABI {Native.sms_abi_version()}, assets {AssetsDir} ({assetsFrom})" +
+                        (LibraryRoot != null ? $", GameCube library {LibraryRoot}" : ""));
             PrepareAssets(disc.Value, here);
             gameObject.AddComponent<MarioPresentation>();
             MarioHeatHaze.Initialize();
@@ -551,20 +560,6 @@ namespace MarioTest
             });
             ContentProvider.Register(Guid, AddContent);
             Language.onCurrentLanguageChanged += AddTokens;
-        }
-
-        static string ResolveAssets(string configured, string here)
-        {
-            if (!string.IsNullOrWhiteSpace(configured)) return configured.Trim();
-            string file = Path.Combine(here, "assets_dir.txt");
-            if (File.Exists(file))
-            {
-                string pointer = File.ReadAllText(file).Trim();
-                if (!string.IsNullOrWhiteSpace(pointer)) return pointer;
-            }
-            string env = Environment.GetEnvironmentVariable("SMS_ASSETS");
-            if (!string.IsNullOrWhiteSpace(env)) return env.Trim();
-            return Path.Combine(here, "assets");
         }
 
         // Match Olimar's first-run flow: register content now, extract on a worker, and let
@@ -600,7 +595,7 @@ namespace MarioTest
             {
                 string parent = Path.GetDirectoryName(Path.GetFullPath(AssetsDir)) ?? here;
                 var found = new byte[32768];
-                if (Native.sms_find_disc(NativeLib.CString(here + ";" + parent), found, (uint)found.Length) != 0)
+                if (Native.sms_find_disc(NativeLib.CString(GameCubeLibrary.SearchList(LibraryRoot, here, parent)), found, (uint)found.Length) != 0)
                     disc = Utf8(found);
             }
             if (assetsReady && !needStings && !needPortalCache && (string.IsNullOrEmpty(disc) || !File.Exists(disc)))

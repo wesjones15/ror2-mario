@@ -144,7 +144,9 @@ namespace MarioTest
                 var target = File.ReadAllText(pointer).Trim();
                 if (!string.IsNullOrWhiteSpace(target) && HasCache(target)) return target;
             }
-            return null;
+            // The Melee plugin's cache in the shared GameCube library.
+            var shared = GameCubeLibrary.AssetsFor(Plugin.LibraryRoot, GameCubeLibrary.Melee);
+            return shared != null && HasCache(shared) ? shared : null;
         }
 
         /// Whether this skin can be offered right now.

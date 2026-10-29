@@ -266,23 +266,13 @@ namespace MarioTest
                 hold == NativeBody.Hold.None);
 
             Tune();
+            if (Local && MarioRadial.TakeTap()) TapFludd();
             if (Local && MarioRadial.TakeChoice(out var chosen))
                 chosen.Apply?.Invoke(this);
             if (pad.TakeRefill() && Plugin.DpadRefill.Value)
                 SimOps.Refill(sim);
             bool secret = pad.TakeUp();
-            // With the Melee Mario's A attack available, RT is that attack instead of the spray:
-            // the trigger's edge starts it and the analog value is kept from FLUDD all step.
-            // Without the provider nothing here runs and RT stays Sunshine's spray.
-            bool meleeAttack = Local && !MarioRadial.Open && MarioMeleeAttack.Available
-                && pad.TakeAttackPress();
             var step = pad.Take(move, hold == NativeBody.Hold.All, Local && MarioRadial.Open);
-            if (Local && MarioMeleeAttack.Available)
-            {
-                step.r = 0;
-                step.r_analog = 0;
-                if (meleeAttack) MarioMeleeAttack.TryAttack(body, AimDirection);
-            }
             // Facing from Mario toward the camera: the reverse of where the player aims.
             short cameraYaw = UnityHost.Yaw(-input.aimDirection);
             // The lock-on (LB; a keyboard's utility key; the brain's): FLUDD takes its aim, and
@@ -526,12 +516,51 @@ namespace MarioTest
             if (sim != IntPtr.Zero && !PauseManager.isPaused && localUser != null
                 && !localUser.isUIFocused)
             {
-                Native.sms_sim_state(sim, out var now);
                 var view = View;
                 MarioRadial.Update(pad.MenuHeld, pad.MenuDirection, !pad.MenuFromGamepad,
-                    MarioNozzleChoices.FromState(now), view != null ? view.Handle : IntPtr.Zero);
+                    view != null ? view.Handle : IntPtr.Zero);
             }
             else MarioRadial.Cancel();
+        }
+
+        /// RB tapped: swap Spray and the selected alternate. With No FLUDD selected the button
+        /// is empty, so it becomes the optional Melee Mario punch/kick; until that provider
+        /// exists the ability is omitted and a tap there does nothing. Hold RB to fit a nozzle.
+        void TapFludd()
+        {
+            if (sim == IntPtr.Zero) return;
+            Native.sms_sim_state(sim, out var now);
+            var current = MarioNozzleChoices.FromState(now);
+            if (current == MarioNozzleChoice.None)
+            {
+                if (MarioMeleeAttack.Available) MarioMeleeAttack.TryAttack(body, AimDirection);
+                return;
+            }
+            var target = current == MarioNozzleChoice.Spray
+                ? MarioRadial.SelectedAlt : MarioNozzleChoice.Spray;
+            SelectNozzle(target);
+        }
+
+        /// The radial menu chose the alternate. It is remembered for the next tap; if an
+        /// alternate is already fitted, the wheel changes it in place. On Spray only the memory
+        /// changes, so choosing an alternate does not disturb a spray.
+        internal void ChooseAlternative(MarioNozzleChoice choice)
+        {
+            if (sim == IntPtr.Zero) return;
+            MarioRadial.SetSelectedAlt(choice);
+            Plugin.Log.LogInfo(choice == MarioNozzleChoice.None
+                ? "FLUDD alternate: No FLUDD"
+                : $"FLUDD alternate: {choice}");
+            Native.sms_sim_state(sim, out var now);
+            var current = MarioNozzleChoices.FromState(now);
+            if (current == choice) return;
+            if (choice == MarioNozzleChoice.None)
+            {
+                if (now.has_fludd != 0) SelectNozzle(MarioNozzleChoice.None);
+                return;
+            }
+            if (current == MarioNozzleChoice.Spray) return;
+            SelectNozzle(choice);
         }
 
         /// Fits the nozzle chosen in the radial menu, recording it for the other players'

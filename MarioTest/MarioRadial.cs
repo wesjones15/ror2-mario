@@ -54,14 +54,15 @@ namespace MarioTest
         public Action<MarioDriver> Apply;
     }
 
-    // Hold the change-nozzle button to open, point the right stick (or the mouse on a keyboard)
-    // to choose a segment, release to fit it. The selector is a ring of the HUD's nozzle pictures
-    // with a dark hub; the menu does not pause the game. Built over IMGUI, like FLUDD's tank,
-    // because the mod already presents its HUD there and needs no prefab.
+    // Hold the change-nozzle button to open, tilt the right stick (or move the mouse on a
+    // keyboard) to choose the alternate nozzle, and push to full tilt to commit. A tap of the
+    // button swaps between Spray and the chosen alternate; when the alternate is No FLUDD, a tap
+    // on that empty button is the optional Melee Mario punch/kick. The wheel is anchored to the
+    // Air Pump cooldown picture and overlays it with the chosen alternate. Built over IMGUI,
+    // like FLUDD's tank, because the mod already presents its HUD there and needs no prefab.
     internal static class MarioRadial
     {
         static readonly List<MarioRadialEntry> entries = new List<MarioRadialEntry>();
-        static readonly Color SprayColor = new Color(0.14f, 0.48f, 0.95f);
         static readonly Color HoverColor = new Color(0.13f, 0.78f, 0.86f);
         static readonly Color RocketColor = new Color(0.96f, 0.48f, 0.13f);
         static readonly Color TurboColor = new Color(0.96f, 0.78f, 0.14f);
@@ -74,20 +75,21 @@ namespace MarioTest
         const float OpenHold = 0.5f;
         const int RingSize = 512;
 
-        static bool open, wasHeld, armed, abilitiesChecked, meleeAdded;
+        static bool open, wasHeld, armed, tapPending;
         static float heldSince;
-        static int hovered, current = -1, builtinEntries;
+        static int hovered, builtinEntries;
         static MarioRadialEntry pending;
+        static MarioNozzleChoice selectedAlt = MarioNozzleChoice.Hover;
         static Vector2 mouseAnchor;
         static IntPtr iconView;
         static Texture2D ring;
-        static int ringHovered = -1, ringCurrent = -1, ringCount = -1;
+        static int ringHovered = -1, ringCount = -1;
         static GUIStyle label, centerLabel, titleStyle;
         static float styleHeight = -1f;
 
         static MarioRadial()
         {
-            AddNozzle("SPRAY", SprayColor, MarioNozzleChoice.Spray, 0);
+            // Spray is the baseline and is reached by tapping, not from this wheel.
             AddNozzle("HOVER", HoverColor, MarioNozzleChoice.Hover, 1);
             AddNozzle("ROCKET", RocketColor, MarioNozzleChoice.Rocket, 2);
             AddNozzle("TURBO", TurboColor, MarioNozzleChoice.Turbo, 3);
@@ -99,7 +101,7 @@ namespace MarioTest
                 // The HUD has no "off" picture: the Spray's, struck through.
                 Icon = () => MarioNozzleIcons.Get(0, iconView),
                 CrossOut = true,
-                Apply = d => d.SelectNozzle(MarioNozzleChoice.None),
+                Apply = d => d.ChooseAlternative(MarioNozzleChoice.None),
             });
             builtinEntries = entries.Count;
         }
@@ -112,13 +114,13 @@ namespace MarioTest
                 Color = color,
                 Nozzle = choice,
                 Icon = () => MarioNozzleIcons.Get(icon, iconView),
-                Apply = d => d.SelectNozzle(choice),
+                Apply = d => d.ChooseAlternative(choice),
             });
         }
 
-        /// Appends an ability to the wheel. `apply` runs on release, inside the driver's step;
-        /// `icon` may be null (a coloured label is drawn instead). Call before the first frame
-        /// (Plugin.Awake is the natural place) so every player sees the same segments.
+        /// Appends an ability to the wheel. `apply` runs inside the driver's step when the
+        /// segment is committed; `icon` may be null (a coloured label is drawn instead). Call
+        /// before the first frame so every player sees the same segments.
         public static void RegisterAbility(string label, Color color, Func<Texture2D> icon,
             Action<MarioDriver> apply)
         {
@@ -130,18 +132,22 @@ namespace MarioTest
         /// The menu is up (a trigger pull while it is should not spray).
         public static bool Open => open;
 
-        /// Every frame for the local player: the button state, the stick, and the fitted nozzle.
-        /// `mouseFallback` lets a keyboard pick a segment by pointing at it.
-        public static void Update(bool held, Vector2 direction, bool mouseFallback,
-            MarioNozzleChoice currentChoice, IntPtr view)
+        /// The alternate nozzle RB taps to, or No FLUDD for the empty button.
+        public static MarioNozzleChoice SelectedAlt => selectedAlt;
+
+        public static void SetSelectedAlt(MarioNozzleChoice choice) => selectedAlt = choice;
+
+        /// Every frame for the local player: the button state and the stick. A release before
+        /// the hold is a tap (Spray/alternate swap); `mouseFallback` lets a keyboard pick a
+        /// segment by pointing at it.
+        public static void Update(bool held, Vector2 direction, bool mouseFallback, IntPtr view)
         {
-            EnsureAbilities();
             iconView = view;
-            current = IndexOf(currentChoice);
+            bool letGo = wasHeld && !held;
             if (held && !wasHeld)
             {
-                // RB only opens the wheel after a deliberate hold. A tap is not a nozzle
-                // change, and the trigger's normal spray is left alone until it opens.
+                // RB only opens the wheel after a deliberate hold. A shorter press becomes a
+                // tap, which the driver applies as the Spray/alternate swap.
                 open = false;
                 armed = false;
                 heldSince = Time.unscaledTime;
@@ -149,12 +155,17 @@ namespace MarioTest
             wasHeld = held;
             if (!open)
             {
-                if (!held || Time.unscaledTime - heldSince < OpenHold) return;
+                if (!held)
+                {
+                    if (letGo && Time.unscaledTime - heldSince < OpenHold) tapPending = true;
+                    return;
+                }
+                if (Time.unscaledTime - heldSince < OpenHold) return;
                 open = true;
                 // A stick already held over from the camera must be released before it counts:
                 // pressing RB during a turn should not pick that direction immediately.
                 armed = direction.sqrMagnitude < Commit * Commit;
-                hovered = current >= 0 ? current : 0;
+                hovered = Mathf.Max(0, IndexOf(selectedAlt));
                 mouseAnchor = Input.mousePosition;
             }
             if (!held)
@@ -166,7 +177,11 @@ namespace MarioTest
                 return;
             }
             var dir = direction;
-            if (dir.sqrMagnitude < Deadzone * Deadzone && mouseFallback) dir = MouseDirection();
+            if (dir.sqrMagnitude < Deadzone * Deadzone && mouseFallback)
+            {
+                float h = Mathf.Min(Screen.width, Screen.height);
+                dir = MouseDirection(WheelCentre(h * 0.18f, h));
+            }
             if (dir.sqrMagnitude < 0.6f * 0.6f) armed = true;
             if (dir.sqrMagnitude < Deadzone * Deadzone) return;
             int at = SegmentAt(dir);
@@ -178,6 +193,14 @@ namespace MarioTest
             open = false;
             armed = false;
             wasHeld = true;
+        }
+
+        /// A short press: the driver swaps Spray and the selected alternate.
+        public static bool TakeTap()
+        {
+            bool tap = tapPending;
+            tapPending = false;
+            return tap;
         }
 
         /// A segment was chosen as the button came up. The driver calls this inside its step.
@@ -194,6 +217,7 @@ namespace MarioTest
             open = false;
             armed = false;
             pending = null;
+            tapPending = false;
             wasHeld = true; // a held button must be released before the menu opens again
         }
 
@@ -201,27 +225,15 @@ namespace MarioTest
         {
             Cancel();
             wasHeld = false;
-            current = hovered = -1;
-            ringHovered = ringCurrent = ringCount = -1;
-            abilitiesChecked = meleeAdded = false;
+            selectedAlt = MarioNozzleChoice.Hover;
+            hovered = -1;
+            ringHovered = ringCount = -1;
             if (entries.Count > builtinEntries)
                 entries.RemoveRange(builtinEntries, entries.Count - builtinEntries);
             MarioMeleeAttack.Reset();
             if (ring) UnityEngine.Object.Destroy(ring);
             ring = null;
             MarioNozzleIcons.Reset();
-        }
-
-        // Adds abilities that another plugin makes available (the Melee Mario's A attack). It is
-        // omitted, not shown broken, when that provider is absent.
-        static void EnsureAbilities()
-        {
-            if (abilitiesChecked) return;
-            abilitiesChecked = true;
-            if (!MarioMeleeAttack.Available || meleeAdded) return;
-            meleeAdded = true;
-            RegisterAbility("A ATTACK", new Color(0.86f, 0.24f, 0.26f), null,
-                d => MarioMeleeAttack.TryAttack(d.Body, d.AimDirection));
         }
 
         static int IndexOf(MarioNozzleChoice choice)
@@ -241,27 +253,95 @@ namespace MarioTest
             return index >= 0 && index < entries.Count ? index : -1;
         }
 
-        static Vector2 MouseDirection()
+        static Vector2 MouseDirection(Vector2 center)
         {
             var mouse = new Vector2(Input.mousePosition.x, Input.mousePosition.y);
             // Opening the wheel must not count the mouse's resting place as a choice: it has to
             // move once before it points at a segment.
             if ((mouse - mouseAnchor).sqrMagnitude < 16f * 16f) return Vector2.zero;
-            var center = new Vector2(Screen.width * 0.5f, Screen.height * 0.5f);
             var d = mouse - center;
             float reach = Mathf.Min(Screen.width, Screen.height) * 0.25f;
             return d.magnitude < 12f ? Vector2.zero : d.normalized * Mathf.Clamp01(d.magnitude / reach);
         }
 
+        /// The Air Pump skill icon's screen rect (GUI coordinates), if the HUD is up.
+        static bool TrySkillIcon(out Rect gui)
+        {
+            gui = default;
+            var user = MarioPresentation.User;
+            if (user == null) return false;
+            foreach (var hud in RoR2.UI.HUD.readOnlyInstanceList)
+            {
+                if (!hud || hud.localUserViewer != user || hud.skillIcons == null
+                    || hud.skillIcons.Length < 2)
+                    continue;
+                var part = hud.skillIcons[1];
+                var rt = part ? part.transform as RectTransform : null;
+                if (!rt) continue;
+                var canvas = hud.mainContainerCanvas ? hud.mainContainerCanvas.rootCanvas : null;
+                var camera = canvas && canvas.renderMode != RenderMode.ScreenSpaceOverlay
+                    ? canvas.worldCamera : null;
+                var corners = new Vector3[4];
+                rt.GetWorldCorners(corners);
+                float x0 = float.MaxValue, y0 = float.MaxValue;
+                float x1 = float.MinValue, y1 = float.MinValue;
+                foreach (var c in corners)
+                {
+                    var p = RectTransformUtility.WorldToScreenPoint(camera, c);
+                    x0 = Mathf.Min(x0, p.x); x1 = Mathf.Max(x1, p.x);
+                    y0 = Mathf.Min(y0, p.y); y1 = Mathf.Max(y1, p.y);
+                }
+                if (x1 - x0 < 1f || y1 - y0 < 1f) continue;
+                // WorldToScreenPoint has y up; IMGUI has y down.
+                gui = Rect.MinMaxRect(x0, Screen.height - y1, x1, Screen.height - y0);
+                return true;
+            }
+            return false;
+        }
+
+        /// The wheel's centre: just above the Air Pump icon, or the screen's middle without it.
+        static Vector2 WheelCentre(float outer, float h)
+        {
+            var center = new Vector2(Screen.width * 0.5f, Screen.height * 0.5f);
+            if (TrySkillIcon(out var icon))
+                center = new Vector2(icon.center.x, icon.yMin - outer - h * 0.012f);
+            float edge = h * 0.012f;
+            center.x = Mathf.Clamp(center.x, outer + edge,
+                Mathf.Max(outer + edge, Screen.width - outer - edge));
+            center.y = Mathf.Clamp(center.y, outer + edge,
+                Mathf.Max(outer + edge, Screen.height - outer - edge));
+            return center;
+        }
+
+        /// From MarioPresentation.OnGUI: the chosen alternate's picture over the Air Pump icon.
+        public static void DrawAltIcon()
+        {
+            if (selectedAlt == MarioNozzleChoice.None || Event.current.type != EventType.Repaint)
+                return;
+            if (PauseManager.isPaused || !RoR2.UI.HUD.cvHudEnable.value) return;
+            var view = MarioView.Player;
+            if (view == null || !TrySkillIcon(out var icon)) return;
+            int index = selectedAlt == MarioNozzleChoice.Hover ? 1
+                : selectedAlt == MarioNozzleChoice.Rocket ? 2
+                : selectedAlt == MarioNozzleChoice.Turbo ? 3 : -1;
+            var tex = MarioNozzleIcons.Get(index, view.Handle);
+            if (!tex) return;
+            float size = Mathf.Min(icon.width, icon.height) * 0.68f;
+            var at = new Rect(icon.center.x - size * 0.5f, icon.center.y - size * 0.5f, size, size);
+            var old = GUI.color;
+            GUI.color = Color.white;
+            GUI.DrawTexture(at, tex, ScaleMode.ScaleToFit, true);
+            GUI.color = old;
+        }
+
         /// From MarioPresentation.OnGUI, after the HUD.
         public static void Draw()
         {
-            EnsureAbilities();
             if (!open || entries.Count == 0 || Event.current.type != EventType.Repaint) return;
             if (PauseManager.isPaused || !RoR2.UI.HUD.cvHudEnable.value) return;
             float h = Mathf.Min(Screen.width, Screen.height);
             float outer = h * 0.18f, inner = outer * 0.57f;
-            var center = new Vector2(Screen.width * 0.5f, Screen.height * 0.5f);
+            var center = WheelCentre(outer, h);
             EnsureStyles(h);
             EnsureRing();
             if (!ring) return;
@@ -299,8 +379,9 @@ namespace MarioTest
             DrawEntryIcon(at, hubRect, hub, 0f);
             var nameRect = new Rect(center.x - inner, center.y + hub * 0.55f, inner * 2f, h * 0.030f);
             Shadow(nameRect, at.Label, centerLabel);
-            var hintRect = new Rect(0f, Screen.height - h * 0.055f, Screen.width, h * 0.04f);
-            Shadow(hintRect, "FULL RS TILT TO FIT  -  RELEASE TO CANCEL", label);
+            var hintRect = new Rect(center.x - outer, center.y - outer - h * 0.052f,
+                outer * 2f, h * 0.04f);
+            Shadow(hintRect, "FULL RS TILT TO CHOOSE  -  RELEASE TO CANCEL", label);
             GUI.color = old;
         }
 
@@ -362,10 +443,8 @@ namespace MarioTest
 
         static void EnsureRing()
         {
-            if (ring && ringHovered == hovered && ringCurrent == current && ringCount == entries.Count)
-                return;
+            if (ring && ringHovered == hovered && ringCount == entries.Count) return;
             ringHovered = hovered;
-            ringCurrent = current;
             ringCount = entries.Count;
             if (ring) UnityEngine.Object.Destroy(ring);
             ring = BuildRing();
@@ -377,7 +456,7 @@ namespace MarioTest
             if (n == 0) return null;
             var px = new Color32[RingSize * RingSize];
             float c = (RingSize - 1) * 0.5f;
-            float outer = RingSize * 0.482f, inner = outer * 0.55f;
+            float outer = RingSize * 0.482f, inner = outer * 0.57f;
             float step = 360f / n;
             for (int y = 0; y < RingSize; y++)
             {

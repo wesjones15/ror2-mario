@@ -6,12 +6,13 @@ using UnityEngine;
 namespace MarioTest
 {
     // Optional hook for the Melee plugin's Mario, when that fighter exists: a contextual A attack
-    // (the same one the other Melee fighters have) on Mario's right trigger, replacing the spray.
-    // This file deliberately has no reference to the Melee assembly. The other plugin publishes
+    // (the same one the other Melee fighters have) on the empty FLUDD button. With No FLUDD
+    // selected, tapping RB asks this hook for a punch/kick; RT stays Sunshine's spray. This file
+    // deliberately has no reference to the Melee assembly. The other plugin publishes
     // `Mario.MarioContextualAttack.TryAttack(CharacterBody body, Vector3 aim)`; if it is absent,
-    // `Available` stays false: Mario keeps his normal RT spray and the radial menu omits the A
-    // attack segment. The reflection lookup runs once per load, so dropping the Melee plugin in
-    // (or out) changes the controls without either mod depending on the other.
+    // `Available` stays false and the empty-button tap is omitted. The reflection lookup runs
+    // once per load, so dropping the Melee plugin in (or out) changes the controls without
+    // either mod depending on the other.
     internal static class MarioMeleeAttack
     {
         static bool resolved;

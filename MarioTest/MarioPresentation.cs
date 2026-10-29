@@ -73,7 +73,8 @@ namespace MarioTest
         void OnGUI()
         {
             if (!Active) return;
-            MarioHud.Draw(); MarioLife.Draw(); MarioCoinHud.Draw(); MarioRadial.Draw();
+            MarioHud.Draw(); MarioLife.Draw(); MarioCoinHud.Draw();
+            MarioRadial.Draw(); MarioRadial.DrawAltIcon();
         }
 
         internal static void Clear()

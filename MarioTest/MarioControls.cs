@@ -53,7 +53,8 @@ namespace MarioTest
                 .Add(LT + " in air", "Ground Pound");
             sheet.Pad("F.L.U.D.D.")
                 .Add(RT, "Spray Water / Use Nozzle")
-                .Add("hold " + RB + " 0.5s", "Nozzle Radial (full RS tilt\n<pos=170>to fit, or No FLUDD)")
+                .Add(RB, "Tap: Spray <-> Alternate")
+                .Add("hold " + RB + " 0.5s", "Choose Alternate (No FLUDD,\n<pos=170>Hover, Rocket, Turbo)")
                 .Add("hold " + LB, "Lock on to Target")
                 .Add(LB + " + " + RT, "Spray Target")
                 .Add(LB + " + tap " + RB, "Cycle target");
@@ -68,7 +69,8 @@ namespace MarioTest
                 .Add(utility + " in air", "Ground Pound");
             sheet.Keys("F.L.U.D.D.")
                 .Add(primary, "Spray Water / Use Nozzle")
-                .Add("hold " + special + " 0.5s", "Nozzle Radial (full tilt at a\n<pos=170>segment to fit)")
+                .Add(special, "Tap: Spray <-> Alternate")
+                .Add("hold " + special + " 0.5s", "Choose Alternate (No FLUDD,\n<pos=170>Hover, Rocket, Turbo)")
                 .Add("hold " + utility, "Lock on to Target")
                 .Add(utility + " + " + primary, "Spray Target")
                 .Add(utility + " + tap " + special, "Cycle target");

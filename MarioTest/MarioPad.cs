@@ -8,11 +8,11 @@ namespace MarioTest
     // template, Sunshine's layout on an Xbox-style pad, whatever the player's RoR2 binds:
     // A jump, B dive, right trigger spray on the move at every pressure, left trigger
     // crouch / ground pound (L), left bumper the lock-on (RB then cycles the target), and
-    // right bumper opens the nozzle radial while held (release fits the pointed segment;
-    // Sunshine's X is no longer sent to the sim). X stays RoR2's interact and Y its
-    // equipment, and Mario uses neither, so pressing them never does a Mario move too. On
-    // keyboard and mouse the RoR2 binds stand in: jump A, primary half spray, sprint full
-    // spray, secondary B, utility L, special nozzle radial.
+    // right bumper taps between Spray and the selected alternate or, held 0.5 s, opens the
+    // alternate radial (Sunshine's X is no longer sent to the sim). X stays RoR2's interact
+    // and Y its equipment, and Mario uses neither, so pressing them never does a Mario move
+    // too. On keyboard and mouse the RoR2 binds stand in: jump A, primary half spray, sprint
+    // full spray, secondary B, utility L, special nozzle radial.
     //
     // Spray pressure (Fludd.SprayBursts): a light press is a short splash just ahead. On a
     // gamepad the trigger's travel is curved (Controls.TriggerCurve) so that's easier to hold;
@@ -44,9 +44,6 @@ namespace MarioTest
         // lasting until this time.
         bool primary;
         float primaryAt, lightUntil = -1f;
-        // Right trigger's rising edge, for the optional Melee Mario A attack; `triggerDown` is
-        // the previous frame's raw press.
-        bool attackTap, triggerDown;
         // A light press: raw R 15 of Sunshine's 0-255 (its light zone is 10 to about 27).
         const float Light = 15f / 255f;
         // Water takes the handles' 10 ticks and a light burst about 28 more: a tap holds the
@@ -86,7 +83,6 @@ namespace MarioTest
             MenuHeld = false;
             MenuFromGamepad = false;
             MenuDirection = Vector2.zero;
-            attackTap = triggerDown = false;
             // The D-pad refill (an AI would otherwise run its tank dry for good); an AI never does the secret.
             down = p.down;
             downTap |= down;
@@ -108,7 +104,6 @@ namespace MarioTest
                 MenuHeld = false;
                 MenuFromGamepad = false;
                 MenuDirection = Vector2.zero;
-                attackTap = triggerDown = false;
                 r = input.skill1.down ? 1f : 0f;
                 sprint = input.sprint.down;
                 Latch();
@@ -119,7 +114,6 @@ namespace MarioTest
                 a = b = l = x = down = up = sprint = LockHeld = false;
                 MenuHeld = MenuFromGamepad = false;
                 MenuDirection = Vector2.zero;
-                attackTap = triggerDown = false;
                 r = 0f;
                 return;
             }
@@ -148,8 +142,6 @@ namespace MarioTest
                 rb = bumper;
                 float t = Mathf.Clamp01(gp.rightTrigger.value);
                 r = t >= 0.98f ? 1f : Mathf.Pow(t, Mathf.Clamp(Plugin.TriggerCurve.Value, 0.2f, 5f));
-                attackTap |= r > 0.2f && !triggerDown;
-                triggerDown = r > 0.02f;
                 bool d = gp.dPad.down.value;
                 downTap |= d && !down;
                 down = d;
@@ -174,8 +166,6 @@ namespace MarioTest
                 x = false;
                 rb = special;
                 r = input.sprint.down ? 1f : Primary(input.skill1.down);
-                attackTap |= r > 0.2f && !triggerDown;
-                triggerDown = r > 0.02f;
             }
             Latch();
         }
@@ -219,7 +209,6 @@ namespace MarioTest
             {
                 aTap = bTap = lTap = xTap = false;
                 rMax = 0f;
-                attackTap = false;
                 return new Native.Pad { use_move = 1 };
             }
             // A trigger pull is not a spray while the nozzle wheel is up: RB and RT are both
@@ -244,17 +233,7 @@ namespace MarioTest
             };
             aTap = bTap = lTap = xTap = false;
             rMax = 0f;
-            attackTap = false;
             return pad;
-        }
-
-        /// The right trigger went down since the last sim step (the optional Melee Mario A
-        /// attack). Consumed even when no Melee provider is installed.
-        public bool TakeAttackPress()
-        {
-            bool t = attackTap;
-            attackTap = false;
-            return t;
         }
 
         /// A target cycle was asked for since the last call, toward `direction` on screen (the

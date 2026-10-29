@@ -1,14 +1,14 @@
 # FLUDD nozzle radial
 
 RB has two jobs. **Tap** swaps between Spray and the selected alternate (Hover by default).
-**Hold for 0.6 s** opens a compact wheel for changing that alternate. The wheel sits just above
+**Hold for 0.5 s** opens a compact wheel for changing that alternate. The wheel sits just above
 the Air Pump cooldown picture and the chosen alternate is overlaid on that picture; with No FLUDD
 selected the picture is left as it is.
 
 | Input | Action |
 | --- | --- |
 | Tap RB (pad) / Special (keyboard) | Spray ↔ selected alternate |
-| Hold RB / Special 0.6 s | Open the alternate wheel |
+| Hold RB / Special 0.5 s | Open the alternate wheel |
 | RS (pad) / mouse move (keyboard) | Highlight an alternate |
 | Full RS tilt / far mouse move | Choose it and close |
 | Release RB / Special, pause, UI focus | Cancel (the button must be released before opening again) |

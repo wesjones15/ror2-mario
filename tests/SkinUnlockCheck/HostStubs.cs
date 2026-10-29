@@ -5,7 +5,7 @@ namespace UnityEngine
 {
     public class Object { public string name; public static implicit operator bool(Object o) => o != null; }
     public class ScriptableObject : Object { public static T CreateInstance<T>() where T : new() => new T(); }
-    public class GameObject : Object { public T GetComponent<T>() where T : new() => new T(); public T AddComponent<T>() where T : new() => new T(); }
+    public class GameObject : Object { public object Component; public T GetComponent<T>() where T : new() => Component is T value ? value : new T(); public T AddComponent<T>() where T : new() => new T(); }
     public class Transform : Object { public GameObject gameObject = new GameObject(); public T GetComponent<T>() where T : new() => new T(); }
     public struct Color { public Color(float r,float g,float b) {} }
     public struct Color32 { public static explicit operator Color32(Color c) => default; }
@@ -19,17 +19,18 @@ namespace UnityEngine
 namespace RoR2
 {
     using UnityEngine;
-    public enum BodyIndex { None=-1, Mario=0 }
-    public static class BodyCatalog { public static BodyIndex FindBodyIndex(string n) => BodyIndex.Mario; }
+    public enum BodyIndex { None=-1, Mario=0, Brother=1, BrotherHurt=2 }
+    public static class BodyCatalog { public static BodyIndex FindBodyIndex(string n) => n == "BrotherHurtBody" ? BodyIndex.BrotherHurt : BodyIndex.Mario; }
     public class BodyLoadoutManager { public uint GetSkinIndex(BodyIndex i) => 0; }
     public class Loadout { public BodyLoadoutManager bodyLoadoutManager = new BodyLoadoutManager(); }
-    public class CharacterMaster : Object { public uint money; public Loadout loadout = new Loadout(); }
-    public class CharacterBody : Object { public uint skinIndex; public BodyIndex bodyIndex; public CharacterMaster master; public HealthComponent healthComponent; }
+    public class CharacterMaster : Object { public uint money; public GameObject bodyPrefab; public Loadout loadout = new Loadout(); }
+    public class CharacterBody : Object { public string baseNameToken; public uint skinIndex; public BodyIndex bodyIndex; public CharacterMaster master; public HealthComponent healthComponent; }
+    public class DamageReport { public CharacterBody victimBody; }
     public class HealthComponent : Object { public bool alive; }
-    public class Run : Object { public static Run instance; public int stageClearCount; }
+    public class Run : Object { public static Run instance; public int stageClearCount; public string Id="test-run"; public string GetUniqueId() => Id; }
     public class TeleporterInteraction : Object { public static TeleporterInteraction instance; public int activationState; }
     public class UserProfile { readonly HashSet<UnlockableDef> owned = new HashSet<UnlockableDef>(); public int Saves; public Loadout loadout = new Loadout(); public bool HasUnlockable(UnlockableDef u) => owned.Contains(u); public void GrantUnlockable(UnlockableDef u) => owned.Add(u); public void RequestEventualSave() => Saves++; }
-    public class LocalUser { public UserProfile userProfile; public CharacterBody cachedBody; }
+    public class LocalUser { public UserProfile userProfile; public CharacterBody cachedBody; public CharacterMaster cachedMaster; }
     public static class LocalUserManager { public static List<LocalUser> readOnlyLocalUsersList = new List<LocalUser>(); }
     public class UnlockableDef : Object { public string cachedName,nameToken; public Func<string> getHowToUnlockString,getUnlockedString; }
     public class SkinDef : Object { public string nameToken; public GameObject rootObject; public SkinDef[] baseSkins; public Sprite icon; public UnlockableDef unlockableDef; public SkinDefParams skinDefParams,optimizedSkinDefParams; }
@@ -39,6 +40,7 @@ namespace RoR2
     public class CharacterModel { public struct LightInfo {} public object baseRendererInfos; }
     public class Language { public void SetStringByToken(string a,string b) {} }
 }
+namespace UnityEngine.Networking { public static class NetworkServer { public static bool active=true; } }
 namespace RoR2.ContentManagement { public class Collection<T> { public void Add(T[] a) {} } public class ContentPack { public Collection<RoR2.UnlockableDef> unlockableDefs = new Collection<RoR2.UnlockableDef>(); } }
 namespace Ror2Common
 {
@@ -48,6 +50,7 @@ namespace Ror2Common
 }
 namespace MarioTest
 {
+    public static class MarioNet { public static int MithrixMessages; public static void SendMithrixDefeated(string runId) => MithrixMessages++; }
     public class ConfigValue<T> { public T Value; }
     public class Logger { public void LogInfo(string s) {} }
     public static class Plugin { public static ConfigValue<float> LuigiJumpHeight = new ConfigValue<float>(); public static ConfigValue<bool> PiantissimoGameVoice = new ConfigValue<bool>(); public static Logger Log = new Logger(); }

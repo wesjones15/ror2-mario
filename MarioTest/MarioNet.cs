@@ -30,6 +30,7 @@ namespace MarioTest
         /// A client's Mario touched a coin: client to server.
         public const short CoinTouchMsg = 0x4D07;
         public const short FireMsg = 0x4D08;
+        public const short MithrixDefeatedMsg = 0x4D09;
 
         /// One hit a client's Mario made, for the server to land.
         public struct HitRecord
@@ -56,6 +57,10 @@ namespace MarioTest
             Mp.Register(ShineMsg, OnShine, null);
             Mp.Register(CoinTouchMsg, OnCoinTouch, null);
             Mp.Register(FireMsg, null, OnFire);
+            Mp.Register(MithrixDefeatedMsg, null, (from, reader) => {
+                string runId = reader.Str();
+                if (!NetworkServer.active && !reader.Failed && reader.Done) MarioSkin.MithrixDefeated(runId);
+            });
             Run.onRunDestroyGlobal += run => queues.Clear();
         }
 
@@ -96,6 +101,13 @@ namespace MarioTest
             queues.TryGetValue(netId, out var q) ? q : null;
 
         public static void Drop(uint netId) => queues.Remove(netId);
+
+        internal static void SendMithrixDefeated(string runId)
+        {
+            var writer = new ByteWriter();
+            writer.Str(runId);
+            Mp.SendToAll(MithrixDefeatedMsg, writer.ToArray());
+        }
 
         static void Vec(ByteWriter w, Vector3 v) { w.F32(v.x); w.F32(v.y); w.F32(v.z); }
         static Vector3 Vec(ByteReader r) => new Vector3(r.F32(), r.F32(), r.F32());

@@ -532,6 +532,7 @@ namespace MarioTest
 
             ItemHooks.Install();
             GlobalEventManager.onServerDamageDealt += MarioDriver.OnServerDamage;
+            GlobalEventManager.onCharacterDeathServer += MarioSkin.OnCharacterDeath;
             gameObject.AddComponent<MarioCoins>();
             gameObject.AddComponent<MarioScreenFx>();
             gameObject.AddComponent<MarioShine>();

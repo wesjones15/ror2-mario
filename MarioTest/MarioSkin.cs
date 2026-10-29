@@ -24,6 +24,7 @@ namespace MarioTest
         public uint UnlockCoins;
         /// The stage (1-based) whose teleporter event, beaten as Mario, unlocks it.
         public uint UnlockStage;
+        public bool UnlockMithrix;
         public string UnlockHint, UnlockedText;
         /// Voice pitch ratio with the line's length kept; 1 leaves Mario's voice alone.
         public float VoicePitch = 1f;
@@ -52,8 +53,6 @@ namespace MarioTest
         public const uint Mario = 0, Luigi = 1, Piantissimo = 2, Yoshi = 3;
         public const uint LuigiCoins = 2401;
         public const uint PiantissimoStage = 4;
-        /// Yoshi hatches after the last teleporter event, as his egg does at the end of Sunshine.
-        public const uint YoshiStage = 5;
         /// Luigi's voice is Mario's pitched up 14% with the line's length kept (the Melee trick).
         public const float VoicePitch = 1.14f;
         /// Piantissimo's fallback lines (Mario's, where the game gives him no voice of his own) go the other
@@ -93,8 +92,8 @@ namespace MarioTest
                 Id = Yoshi, Name = "MarioSkinYoshi", Token = "MARIOTEST_SKIN_YOSHI",
                 Text = "Yoshi", Title = "Yoshi",
                 Quip = "Sunshine's favourite mount... On Vacation!",
-                UnlockStage = YoshiStage,
-                UnlockHint = "Beat the stage 5 teleporter event as Mario.", UnlockedText = "Yoshi unlocked.",
+                UnlockMithrix = true,
+                UnlockHint = "Defeat Mithrix as Mario.", UnlockedText = "Yoshi unlocked.",
                 VoicePitch = 1f,
                 // His own wait/walk/run clips and mid-air flutter (Sim option), Mario's jumps.
             },
@@ -240,21 +239,15 @@ namespace MarioTest
                 spec.Registered = Offered(spec);
                 if (!spec.Registered) continue;
                 spec.Def = Def(spec.Name, spec.Token, model, character, null);
-                if (spec.UnlockCoins > 0 || spec.UnlockStage > 0)
+                if (spec.UnlockCoins > 0 || spec.UnlockStage > 0 || spec.UnlockMithrix)
                 {
                     // The loadout shows the lock and the hint until this skin's key is met.
-                    var unlock = ScriptableObject.CreateInstance<UnlockableDef>();
                     // The key stays the native id's name, so renaming the display text (Il
                     // Piantissimo) does not take an earned unlock away.
-                    unlock.cachedName = "Skins.Mario." + spec.Name.Substring("MarioSkin".Length);
-                    unlock.nameToken = spec.Def.nameToken;
-                    var hint = spec.UnlockHint;
-                    var done = spec.UnlockedText;
-                    unlock.getHowToUnlockString = () => hint;
-                    unlock.getUnlockedString = () => done;
+                    var unlock = SkinUnlocks.Create(pack, "Skins.Mario." + spec.Name.Substring("MarioSkin".Length),
+                        spec.Def.nameToken, spec.UnlockHint, spec.UnlockedText);
                     spec.Def.unlockableDef = unlock;
                     spec.Unlock = unlock;
-                    pack.unlockableDefs.Add(new[] { unlock });
                 }
                 loadout.Add(spec);
                 defs.Add(spec.Def);
@@ -290,6 +283,30 @@ namespace MarioTest
                     Grant(body, spec);
         }
 
+        // BrotherBody dies between phases too. Only BrotherHurtBody is the final,
+        // item-stealing form; the server tells clients when that form has died.
+        internal static void OnCharacterDeath(DamageReport report)
+        {
+            if (!UnityEngine.Networking.NetworkServer.active || !Run.instance || report == null || !report.victimBody) return;
+            var finalForm = BodyCatalog.FindBodyIndex("BrotherHurtBody");
+            if (finalForm == BodyIndex.None || report.victimBody.bodyIndex != finalForm) return;
+            string runId = Run.instance.GetUniqueId().ToString();
+            MithrixDefeated(runId);
+            MarioNet.SendMithrixDefeated(runId);
+        }
+
+        internal static void MithrixDefeated(string runId)
+        {
+            if (!Run.instance || Run.instance.GetUniqueId().ToString() != runId) return;
+            foreach (var user in LocalUserManager.readOnlyLocalUsersList)
+            {
+                if (!SkinUnlocks.IsPlaying(user, "MARIOTEST_BODY_NAME")) continue;
+                foreach (var spec in Specs)
+                    if (spec.UnlockMithrix && SkinUnlocks.Grant(user, spec.Unlock))
+                        Plugin.Log.LogInfo(spec.UnlockedText);
+            }
+        }
+
         /// Grants a skin to the local player who owns `body`, once its key is met (MarioDriver
         /// checks it each step). Safe to call every step: an owned unlock is a no-op, so the log
         /// line happens once.
@@ -299,10 +316,8 @@ namespace MarioTest
             foreach (var user in LocalUserManager.readOnlyLocalUsersList)
             {
                 if (user.userProfile == null) continue;
-                if (body && user.cachedBody && user.cachedBody != body) continue;
-                if (user.userProfile.HasUnlockable(spec.Unlock)) continue;
-                user.userProfile.GrantUnlockable(spec.Unlock);
-                user.userProfile.RequestEventualSave();
+                if (!body || user.cachedBody != body) continue;
+                if (!SkinUnlocks.Grant(user, spec.Unlock)) continue;
                 var key = spec.UnlockCoins > 0 ? $"{spec.UnlockCoins} coins held at one time"
                     : $"stage {spec.UnlockStage}'s teleporter event beaten as Mario";
                 Plugin.Log.LogInfo($"{spec.Text} unlocked: {key}");

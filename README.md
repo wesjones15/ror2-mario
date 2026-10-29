@@ -82,8 +82,9 @@ Il Piantissimo is the second alt-skin, unlocked by beating the stage 4 teleporte
 event as Mario; his model comes from the Sunshine disc the plugin already extracts
 (`mamma4.szs`, `npc/monteman/`), and it shares Mario's skeleton, so Mario's own pose
 drives it, as the game does for him. He has Mario's voice and jump, no secret move.
-Yoshi is the third alt-skin, unlocked by beating the stage 5 teleporter event as
-Mario. He is Sunshine's `yoshi.szs` model on his own 38-joint rig: his wait, walk and
+Yoshi is the third alt-skin, unlocked by defeating Mithrix's final form as Mario
+(no escape or final hit required; dead Mario teammates also qualify). He is
+Sunshine's `yoshi.szs` model on his own 38-joint rig: his wait, walk and
 run clips play on the ground, Mario's jumps and moves retarget onto him in the air,
 and a fresh A press while airborne starts his flutter (`TYoshi::thinkHoldOut`,
 `MSD_SE_YV_FUNBARI`) once per airtime. FLUDD stays on his back; a front Spray leaves

@@ -10,12 +10,14 @@ static class Program
         var luigi = MarioSkin.Spec(MarioSkin.Luigi);
         var piantissimo = MarioSkin.Spec(MarioSkin.Piantissimo);
         var yoshi = MarioSkin.Spec(MarioSkin.Yoshi);
-        luigi.Unlock = new UnlockableDef(); piantissimo.Unlock = new UnlockableDef(); yoshi.Unlock = new UnlockableDef();
+        MarioSkin.Register(new UnityEngine.GameObject(), new RoR2.ContentManagement.ContentPack());
+        luigi.Unlock = new UnlockableDef(); // Optional Melee cache is absent in this headless test.
+        Check(yoshi.Unlock && yoshi.Def.unlockableDef == yoshi.Unlock && yoshi.Unlock.cachedName == "Skins.Mario.Yoshi", "Register Yoshi's persistent Mithrix key on his skin");
         Check(luigi.UnlockCoins == 2401 && luigi.UnlockStage == 0 && luigi.UnlockHint == "L is real 2401", "Luigi's released criterion changed");
         Check(piantissimo.UnlockStage == 4 && piantissimo.UnlockCoins == 0, "Il Piantissimo needs the stage-four key");
         Check(piantissimo.Text == "Il Piantissimo", "Il Piantissimo's name is spelled out");
-        Check(yoshi.UnlockStage == 5 && yoshi.UnlockCoins == 0, "Yoshi needs the stage-five key");
-        var body = new CharacterBody { master = new CharacterMaster(), healthComponent = new HealthComponent { alive = true } };
+        Check(yoshi.UnlockMithrix && yoshi.UnlockStage == 0 && yoshi.UnlockCoins == 0, "Yoshi needs the Mithrix key only");
+        var body = new CharacterBody { baseNameToken="MARIOTEST_BODY_NAME", master = new CharacterMaster(), healthComponent = new HealthComponent { alive = true } };
         var profile = new UserProfile();
         LocalUserManager.readOnlyLocalUsersList.Add(new LocalUser { cachedBody = body, userProfile = profile });
         Run.instance = new Run();
@@ -46,8 +48,28 @@ static class Program
         Check(profile.HasUnlockable(piantissimo.Unlock) && !profile.HasUnlockable(luigi.Unlock), "Stage-four key leaked into Luigi");
         Run.instance.stageClearCount = 4;
         MarioSkin.CheckUnlocks(body);
-        Check(profile.HasUnlockable(yoshi.Unlock), "The stage-five teleporter must hatch Yoshi");
-        Check(profile.Saves == 2, "Yoshi's grant must save once");
-        Console.WriteLine("PASS: Luigi 2401 held coins; Il Piantissimo living stage-four teleporter; Yoshi stage five; independent persistent grants.");
+        Check(!profile.HasUnlockable(yoshi.Unlock), "Stage five must not unlock Yoshi");
+        var other = new UserProfile();
+        LocalUserManager.readOnlyLocalUsersList.Add(new LocalUser { cachedBody = new CharacterBody { baseNameToken="OLIMARTEST_BODY_NAME" }, userProfile=other });
+        var deadMario = new UserProfile();
+        LocalUserManager.readOnlyLocalUsersList.Add(new LocalUser { cachedMaster = new CharacterMaster { bodyPrefab = new UnityEngine.GameObject { Component = new CharacterBody { baseNameToken="MARIOTEST_BODY_NAME" } } }, userProfile=deadMario });
+        MarioSkin.OnCharacterDeath(new DamageReport { victimBody = new CharacterBody { bodyIndex=BodyIndex.Brother } });
+        Check(!profile.HasUnlockable(yoshi.Unlock) && MarioNet.MithrixMessages == 0, "An earlier Mithrix phase unlocked Yoshi");
+        MarioSkin.MithrixDefeated("old-run");
+        Check(!profile.HasUnlockable(yoshi.Unlock), "A stale network message unlocked Yoshi");
+        UnityEngine.Networking.NetworkServer.active=false;
+        MarioSkin.OnCharacterDeath(new DamageReport { victimBody = new CharacterBody { bodyIndex=BodyIndex.BrotherHurt } });
+        Check(!profile.HasUnlockable(yoshi.Unlock), "A client death event bypassed server authority");
+        UnityEngine.Networking.NetworkServer.active=true;
+        MarioSkin.OnCharacterDeath(new DamageReport { victimBody = new CharacterBody { bodyIndex=BodyIndex.BrotherHurt } });
+        MarioSkin.MithrixDefeated(Run.instance.GetUniqueId());
+        Check(profile.HasUnlockable(yoshi.Unlock) && deadMario.HasUnlockable(yoshi.Unlock), "Defeating final Mithrix must reward living and dead Mario players");
+        Check(!other.HasUnlockable(yoshi.Unlock), "Another survivor unlocked Mario's Yoshi");
+        Check(profile.Saves == 2 && deadMario.Saves == 1 && MarioNet.MithrixMessages == 1, "Mithrix grant must save once and notify clients");
+        profile = new UserProfile(); LocalUserManager.readOnlyLocalUsersList[0].userProfile=profile;
+        UnityEngine.Networking.NetworkServer.active=false;
+        MarioSkin.MithrixDefeated(Run.instance.GetUniqueId());
+        Check(profile.HasUnlockable(yoshi.Unlock) && profile.Saves == 1, "A remote client's profile must earn the server's Mithrix reward");
+        Console.WriteLine("PASS: independent persistent Mario skins; Yoshi final Mithrix only, co-op profiles, dead players, stale messages and server authority.");
     }
 }

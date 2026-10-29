@@ -222,6 +222,7 @@ namespace MarioTest
             // held when a player picks a nozzle without letting go of the trigger by mistake.
             // Drop the latched peak too, so a tap during the menu does not fire on release.
             if (radial) rMax = 0f;
+            if (radial) rTap = false;
             float trigger = radial ? 0f : Mathf.Max(r, rMax);
             var pad = new Native.Pad
             {

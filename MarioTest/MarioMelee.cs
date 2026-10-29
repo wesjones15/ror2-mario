@@ -174,7 +174,12 @@ namespace MarioTest
                 var h = hitboxes[i];
                 if (!hitOnce.Add((h.serial, h.generation, h.id))) continue;
                 if (h.damage <= 0f || h.radius <= 0f) continue;
-                var at = body.footPosition + new Vector3(h.origin.x, h.origin.y, h.origin.z) * MeleeScale;
+                var local = new Vector3(h.local_position.x, h.local_position.y, h.local_position.z);
+                var facing = new Vector3(h.facing.x, 0f, h.facing.z);
+                var rotation = facing.sqrMagnitude > 1e-6f
+                    ? Quaternion.LookRotation(facing)
+                    : Quaternion.identity;
+                var at = body.footPosition + rotation * local * MeleeScale;
                 new BlastAttack
                 {
                     attacker = body.gameObject,

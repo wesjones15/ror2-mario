@@ -35,7 +35,7 @@ namespace MarioTest
         public IntPtr Handle => view;
         /// A host pose for the body (the Melee Mario A port), or null to use the sim's pose.
         public bool SetPose(float[] matrices, uint count) =>
-            Native.sms_view_set_pose(view, matrices, count) != 0;
+            view != IntPtr.Zero && Native.sms_view_set_pose(view, matrices, count) != 0;
         public ModelView Models => models;
         /// The game's own particles are drawn (else MarioFlames stands in).
         public bool HasEffects => fx != null;

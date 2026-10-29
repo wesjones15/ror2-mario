@@ -51,6 +51,24 @@ static class Program
             Native.sms_sim_wet(fire.sim);
             Check(!Marshal.PtrToStringAnsi(Native.sms_sim_status_name(fire.sim)).StartsWith("Fire"), "body water retained a fire phase");
             Check(Native.sms_sim_ignite(fire.sim) == 0, "body water allowed immediate re-ignition");
+            fire.Step(new Native.Pad(), 40);
+            Check(Native.sms_view_water_info(fire.view, out var runoff) != 0 && runoff.drop_quads > 0,
+                "vanilla WetWaterEmit droplets did not reach the native water renderer");
+        }
+        using (var hop = new Rig())
+        {
+            Check(Native.sms_sim_ignite(hop.sim) != 0, "burn hop did not start");
+            Native.sms_sim_state(hop.sim, out var launch);
+            Check(Math.Abs(launch.vel.y - 50f) < 0.01f, "burn hop must use disc mFireDownForce=50");
+            bool recovery = false;
+            for (int tick = 0; tick < 360; tick++)
+            {
+                hop.Step(new Native.Pad(), 1);
+                string status = Marshal.PtrToStringAnsi(Native.sms_sim_status_name(hop.sim));
+                Check(status != "FireDash", "native fire entered a panic run");
+                recovery |= status == "FireJumpEnd";
+            }
+            Check(recovery, "native burn hop skipped vanilla recovery");
         }
         using (var water = new Rig())
         {
@@ -63,7 +81,7 @@ static class Program
             Native.sms_sim_teleport(water.sim, ref far);
             Check(Native.sms_sim_water_touches_segment(water.sim, ref a, ref b, 1000) == 0, "teleport retained stale water contacts");
         }
-        Console.WriteLine("PASS: native fire flare, real FLUDD contact query, dry/far rejection and teleport cleanup");
+        Console.WriteLine("PASS: native burn hop/recovery, wet runoff, fire flare, real FLUDD contacts and cleanup");
         if (File.Exists(Path.Combine(assets, "heat_haze", "shimmerlow.bmd")))
         {
             var heat = Native.sms_heat_new(NativeLib.CString(assets));

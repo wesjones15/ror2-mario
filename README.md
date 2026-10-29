@@ -4,18 +4,23 @@
 
 Mario now reacts to RoR2 fire hits even without the normal burning buff, including
 stronger/percentage burns and fire elite trails. Each reaction plays one disc
-fire voice, alternating Fire 02 then Fire 01. Dash transitions and hops do not
-retrigger it. A five-second escape grace after recovery prevents chained fire
-runs without preventing RoR2 fire damage. The previously unloaded fire-damage particle (emitter 6,
+fire voice, alternating Fire 02 then Fire 01. The disc's burn hop launches him
+with `mFireDownForce` (50), keeps `ma_firejmp` through the fall and two 40% rebounds,
+then recovers with `ma_fjpend`. It never enters a panic run. A five-second escape
+grace prevents chained reactions without preventing RoR2 fire damage. The fire-damage particle (emitter 6,
 `ms_firedmg_a`) now follows Mario; Sunshine binds this flare to his position,
 not his head. Its flare and smoke fade out within about a third of a second after
 recovery. A separate head-flame effect has not been identified or added.
 
-Stage water and actual FLUDD droplets touching Mario's body end every phase of
-fire panic, including the initial bounce and airborne hops. His own spray and
-another Mario's spray both count. He stays wet for three seconds after contact;
-continued contact refreshes it. Wetness blocks panic ignition, and extinguishing
-keeps the five-second escape grace. RoR2 fire damage still applies normally.
+Stage water and actual FLUDD droplets touching Mario's body end the fire reaction.
+His own spray and another Mario's spray both count. Wetness uses Sunshine's
+120-tick runoff timer (one second), beginning on pool exit or body contact with spray.
+`checkWet` emits the disc's `WetWaterEmit.prm` water droplets every eight ticks at
+his feet, with 30% of his velocity. These use model-water type 1 (`WTP01_Wide`),
+not a JPA substitute. Applying the timer and extinguishing to FLUDD body hits is
+the host adaptation; the decomp starts runoff on leaving stage water. Wetness
+blocks ignition and quenching keeps the five-second escape grace. Runoff cannot
+re-wet its emitter. RoR2 fire damage still applies normally.
 
 FLUDD deals 5x damage to burning enemies, fire elites, wisps and Magma Worms
 (`Damage.FireWaterMultiplier`). The bonus applies once on the server to water

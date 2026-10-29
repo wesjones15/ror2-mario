@@ -400,8 +400,8 @@ namespace MarioTest
                 "during the pound only hurts.");
             BurnPanic = Config.Bind("Knockdown", "BurnPanic", true,
                 "Catching fire (RoR2's burning) throws Mario up yelling, bounces him twice and sends him " +
-                "running about in a panic, as Sunshine's fire does (FIRE_DOWN, FIRE_DASH). You can still " +
-                "steer a little and hop. Off: burning only hurts.");
+                "into Sunshine's landing recovery (FIRE_DOWN, FIRE_JUMP_END), without a panic run. " +
+                "Water contact extinguishes the reaction; five seconds of escape grace prevent chaining. Off: burning only hurts.");
             SlideSplashes = Config.Bind("Look", "SlideSplashes", false,
                 "A wet belly slide also throws libsms's old stand-in splashes (a home-made effect, " +
                 "drawn like FLUDD's water) on top of Sunshine's own slide spray. Off: only the game's.");

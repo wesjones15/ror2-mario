@@ -54,7 +54,7 @@ namespace MarioTest
             sheet.Pad("F.L.U.D.D.")
                 .Add(RT, "Spray Water / Use Nozzle")
                 .Add(RB, "Tap: Spray <-> Alternate")
-                .Add("hold " + RB + " 0.5s", "Choose Alternate (No FLUDD,\n<pos=170>Hover, Rocket, Turbo)")
+                .Add("hold " + RB + " 0.6s", "Choose Alternate (No FLUDD,\n<pos=170>Hover, Rocket, Turbo)")
                 .Add("hold " + LB, "Lock on to Target")
                 .Add(LB + " + " + RT, "Spray Target")
                 .Add(LB + " + tap " + RB, "Cycle target");
@@ -70,7 +70,7 @@ namespace MarioTest
             sheet.Keys("F.L.U.D.D.")
                 .Add(primary, "Spray Water / Use Nozzle")
                 .Add(special, "Tap: Spray <-> Alternate")
-                .Add("hold " + special + " 0.5s", "Choose Alternate (No FLUDD,\n<pos=170>Hover, Rocket, Turbo)")
+                .Add("hold " + special + " 0.6s", "Choose Alternate (No FLUDD,\n<pos=170>Hover, Rocket, Turbo)")
                 .Add("hold " + utility, "Lock on to Target")
                 .Add(utility + " + " + primary, "Spray Target")
                 .Add(utility + " + tap " + special, "Cycle target");

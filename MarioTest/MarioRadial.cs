@@ -72,7 +72,7 @@ namespace MarioTest
         /// A full right-stick tilt commits at once; a partial tilt only shows the highlight.
         const float Commit = 0.9f;
         /// RB must be held this long before the wheel opens; a tap does nothing.
-        const float OpenHold = 0.5f;
+        const float OpenHold = 0.6f;
         const int RingSize = 512;
 
         static bool open, wasHeld, armed, tapPending;

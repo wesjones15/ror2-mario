@@ -73,6 +73,7 @@ namespace MarioTest
         static bool open, wasHeld, engaged, abilitiesChecked, meleeAdded;
         static int hovered, current = -1, builtinEntries;
         static MarioRadialEntry pending;
+        static Vector2 mouseAnchor;
         static IntPtr iconView;
         static Texture2D ring;
         static int ringHovered = -1, ringCurrent = -1, ringCount = -1;
@@ -137,6 +138,7 @@ namespace MarioTest
                 open = true;
                 engaged = false;
                 hovered = current >= 0 ? current : 0;
+                mouseAnchor = Input.mousePosition;
             }
             wasHeld = held;
             if (!open) return;
@@ -221,6 +223,9 @@ namespace MarioTest
         static Vector2 MouseDirection()
         {
             var mouse = new Vector2(Input.mousePosition.x, Input.mousePosition.y);
+            // Opening the wheel must not count the mouse's resting place as a choice: it has to
+            // move once before it points at a segment.
+            if ((mouse - mouseAnchor).sqrMagnitude < 16f * 16f) return Vector2.zero;
             var center = new Vector2(Screen.width * 0.5f, Screen.height * 0.5f);
             var d = mouse - center;
             float reach = Mathf.Min(Screen.width, Screen.height) * 0.25f;

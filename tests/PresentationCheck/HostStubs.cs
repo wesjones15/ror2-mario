@@ -37,4 +37,5 @@ namespace MarioTest {
  static class MarioCoinHud { public static RoR2.CharacterMaster master; public static RoR2.LocalUser user; public static void Reset() { master = null; user = null; } public static void UpdateOwned(IntPtr v, RoR2.CharacterMaster m, RoR2.LocalUser u) { master=m; user=u; } public static void Draw() { } }
  static class MarioHudLayout { public static bool on; public static void Restore() { on=false; } public static void Update(bool active, RoR2.LocalUser u) { on=active; } }
  static class MarioHeatHaze { public static void Shutdown() { } }
+ static class MarioRadial { public static int resets; public static void Reset() { resets++; } public static void Draw() { } public static void DrawAltIcon() { } }
 }

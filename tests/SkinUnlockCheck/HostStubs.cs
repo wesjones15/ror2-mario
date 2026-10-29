@@ -47,13 +47,17 @@ namespace Ror2Common
     public static class NativeLib { public static byte[] CString(string s) => null; }
     public enum PortraitFraming { ThreeQuarter }
     public static class Portrait { public static void Request(UnityEngine.GameObject b,Func<object> f,Action<UnityEngine.Texture2D> a,PortraitFraming framing) {} }
+    // GameCubeLibrary (compiled in for MarioSkin's Melee cache lookup) logs through CommonLog.
+    public class CommonLogger { public void LogWarning(string s) {} }
+    public static class CommonLog { public static CommonLogger Log; }
 }
+namespace BepInEx { public static class Paths { public static string ConfigPath = ""; } }
 namespace MarioTest
 {
     public static class MarioNet { public static int MithrixMessages; public static void SendMithrixDefeated(string runId) => MithrixMessages++; }
     public class ConfigValue<T> { public T Value; }
     public class Logger { public void LogInfo(string s) {} }
-    public static class Plugin { public static ConfigValue<float> LuigiJumpHeight = new ConfigValue<float>(); public static ConfigValue<bool> PiantissimoGameVoice = new ConfigValue<bool>(); public static Logger Log = new Logger(); }
+    public static class Plugin { public static ConfigValue<float> LuigiJumpHeight = new ConfigValue<float>(); public static ConfigValue<bool> PiantissimoGameVoice = new ConfigValue<bool>(); public static Logger Log = new Logger(); public static string LibraryRoot; }
     public static class MarioDisplay { public static object Get(uint id) => null; }
     public static class Native { public static uint sms_view_load_skin(IntPtr v,uint s,byte[] d) => 1; public static void sms_view_skin(IntPtr v,uint s) {} public static void sms_view_set_voice_pitch(IntPtr v,float p) {} public static void sms_view_voice_set(IntPtr v,uint s) {} public static void sms_sim_set_yoshi_skin(IntPtr s,byte on) {} }
 }

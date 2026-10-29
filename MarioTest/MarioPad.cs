@@ -7,10 +7,12 @@ namespace MarioTest
     // Mario's buttons. On a gamepad they're read by position through Rewired's gamepad
     // template, Sunshine's layout on an Xbox-style pad, whatever the player's RoR2 binds:
     // A jump, B dive, right trigger spray on the move at every pressure, left trigger
-    // crouch / ground pound (L), left bumper the lock-on (RB then cycles
-    // the target), right bumper switch nozzle (Sunshine's X). X stays RoR2's interact and Y its equipment, and Mario uses neither, so
-    // pressing them never does a Mario move too. On keyboard and mouse the RoR2 binds stand in:
-    // jump A, primary half spray, sprint full spray, secondary B, utility L, special nozzle.
+    // crouch / ground pound (L), left bumper the lock-on (RB then cycles the target), and
+    // right bumper opens the nozzle radial while held (release fits the pointed segment;
+    // Sunshine's X is no longer sent to the sim). X stays RoR2's interact and Y its
+    // equipment, and Mario uses neither, so pressing them never does a Mario move too. On
+    // keyboard and mouse the RoR2 binds stand in: jump A, primary half spray, sprint full
+    // spray, secondary B, utility L, special nozzle radial.
     //
     // Spray pressure (Fludd.SprayBursts): a light press is a short splash just ahead. On a
     // gamepad the trigger's travel is curved (Controls.TriggerCurve) so that's easier to hold;
@@ -42,6 +44,9 @@ namespace MarioTest
         // lasting until this time.
         bool primary;
         float primaryAt, lightUntil = -1f;
+        // Right trigger's rising edge, for the optional Melee Mario A attack; `triggerDown` is
+        // the previous frame's raw press.
+        bool attackTap, triggerDown;
         // A light press: raw R 15 of Sunshine's 0-255 (its light zone is 10 to about 27).
         const float Light = 15f / 255f;
         // Water takes the handles' 10 ticks and a light burst about 28 more: a tap holds the
@@ -60,6 +65,13 @@ namespace MarioTest
         bool cycle, rb;
         Vector2 cycleDirection;
 
+        /// The nozzle radial menu is held (RB, or the special key on a keyboard): it opens until
+        /// the button comes up. `MenuFromGamepad` says the direction is the right stick; a
+        /// keyboard host then points at a segment with the mouse.
+        public bool MenuHeld { get; private set; }
+        public bool MenuFromGamepad { get; private set; }
+        public Vector2 MenuDirection { get; private set; }
+
         /// A brain's buttons for the next step.
         public void Press(in MarioBrain.Presses p)
         {
@@ -71,6 +83,10 @@ namespace MarioTest
             sprint = p.sprint;
             LockHeld = p.lockHeld;
             LockSharesL = false;
+            MenuHeld = false;
+            MenuFromGamepad = false;
+            MenuDirection = Vector2.zero;
+            attackTap = triggerDown = false;
             // The D-pad refill (an AI would otherwise run its tank dry for good); an AI never does the secret.
             down = p.down;
             downTap |= down;
@@ -89,6 +105,10 @@ namespace MarioTest
                 b = input.skill2.down;
                 l = input.skill3.down;
                 x = false;
+                MenuHeld = false;
+                MenuFromGamepad = false;
+                MenuDirection = Vector2.zero;
+                attackTap = triggerDown = false;
                 r = input.skill1.down ? 1f : 0f;
                 sprint = input.sprint.down;
                 Latch();
@@ -97,6 +117,9 @@ namespace MarioTest
             if (player == null || user.isUIFocused)
             {
                 a = b = l = x = down = up = sprint = LockHeld = false;
+                MenuHeld = MenuFromGamepad = false;
+                MenuDirection = Vector2.zero;
+                attackTap = triggerDown = false;
                 r = 0f;
                 return;
             }
@@ -107,7 +130,7 @@ namespace MarioTest
                 a = gp.a.value;
                 b = gp.b.value;
                 l = gp.leftTrigger.value > 0.5f;
-                // LB locks on; RB then cycles the target instead of switching nozzles.
+                // LB locks on; RB then cycles the target instead of opening the nozzle menu.
                 LockHeld = gp.leftBumper.value;
                 LockSharesL = false;
                 bool bumper = gp.rightBumper.value;
@@ -116,10 +139,17 @@ namespace MarioTest
                     cycle = true;
                     cycleDirection = gp.rightStick.value;
                 }
-                x = bumper && !LockHeld;
+                // The nozzle menu owns RB now. The sim's own X edge stays off: the host fits
+                // the nozzle the player releases the menu on.
+                MenuHeld = bumper && !LockHeld;
+                MenuFromGamepad = true;
+                MenuDirection = gp.rightStick.value;
+                x = false;
                 rb = bumper;
                 float t = Mathf.Clamp01(gp.rightTrigger.value);
                 r = t >= 0.98f ? 1f : Mathf.Pow(t, Mathf.Clamp(Plugin.TriggerCurve.Value, 0.2f, 5f));
+                attackTap |= r > 0.2f && !triggerDown;
+                triggerDown = r > 0.02f;
                 bool d = gp.dPad.down.value;
                 downTap |= d && !down;
                 down = d;
@@ -133,14 +163,19 @@ namespace MarioTest
                 b = input.skill2.down;
                 l = input.skill3.down;
                 // No spare key: the utility key locks on as well as being L, and the special
-                // key cycles the target while it's held.
+                // key cycles the target while it's held or opens the nozzle menu otherwise.
                 LockHeld = l;
                 LockSharesL = true;
                 bool special = input.skill4.down;
                 if (LockHeld && special && !rb) cycle = true;
-                x = special && !LockHeld;
+                MenuHeld = special && !LockHeld;
+                MenuFromGamepad = false;
+                MenuDirection = Vector2.zero;
+                x = false;
                 rb = special;
                 r = input.sprint.down ? 1f : Primary(input.skill1.down);
+                attackTap |= r > 0.2f && !triggerDown;
+                triggerDown = r > 0.02f;
             }
             Latch();
         }
@@ -176,16 +211,22 @@ namespace MarioTest
         }
 
         /// The pad for the next sim step, with `move` (world XZ); clears the latches. `held`
-        /// (stunned, frozen): nothing pressed.
-        public Native.Pad Take(Vector3 move, bool held = false)
+        /// (stunned, frozen): nothing pressed. `radial` (the local player's nozzle menu is up):
+        /// the trigger stays released, so a trigger held over from the menu does not spray.
+        public Native.Pad Take(Vector3 move, bool held = false, bool radial = false)
         {
             if (held)
             {
                 aTap = bTap = lTap = xTap = false;
                 rMax = 0f;
+                attackTap = false;
                 return new Native.Pad { use_move = 1 };
             }
-            float trigger = Mathf.Max(r, rMax);
+            // A trigger pull is not a spray while the nozzle wheel is up: RB and RT are both
+            // held when a player picks a nozzle without letting go of the trigger by mistake.
+            // Drop the latched peak too, so a tap during the menu does not fire on release.
+            if (radial) rMax = 0f;
+            float trigger = radial ? 0f : Mathf.Max(r, rMax);
             var pad = new Native.Pad
             {
                 use_move = 1,
@@ -203,7 +244,17 @@ namespace MarioTest
             };
             aTap = bTap = lTap = xTap = false;
             rMax = 0f;
+            attackTap = false;
             return pad;
+        }
+
+        /// The right trigger went down since the last sim step (the optional Melee Mario A
+        /// attack). Consumed even when no Melee provider is installed.
+        public bool TakeAttackPress()
+        {
+            bool t = attackTap;
+            attackTap = false;
+            return t;
         }
 
         /// A target cycle was asked for since the last call, toward `direction` on screen (the

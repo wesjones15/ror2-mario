@@ -73,7 +73,7 @@ namespace MarioTest
         void OnGUI()
         {
             if (!Active) return;
-            MarioHud.Draw(); MarioLife.Draw(); MarioCoinHud.Draw();
+            MarioHud.Draw(); MarioLife.Draw(); MarioCoinHud.Draw(); MarioRadial.Draw();
         }
 
         internal static void Clear()
@@ -81,7 +81,7 @@ namespace MarioTest
             user = null; networkUser = null; run = null; originalMaster = null;
             if (hudView != IntPtr.Zero) Native.sms_view_free(hudView);
             hudView = IntPtr.Zero; tried = false;
-            MarioHud.Reset(); MarioLife.Reset(); MarioCoinHud.Reset(); MarioHudLayout.Restore();
+            MarioHud.Reset(); MarioLife.Reset(); MarioCoinHud.Reset(); MarioRadial.Reset(); MarioHudLayout.Restore();
         }
 
         void OnDestroy()

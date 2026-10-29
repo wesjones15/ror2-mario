@@ -116,6 +116,9 @@ namespace MarioTest
         }
 
         internal CharacterBody Body => body;
+        /// Where the player aims (the camera's ray); the Melee Mario A attack's direction.
+        internal Vector3 AimDirection => input && input.aimDirection.sqrMagnitude > 1e-6f
+            ? input.aimDirection : transform.forward;
         internal bool Drawing => driving && View?.Models != null;
         internal LocalUser LocalUser => localUser;
         internal bool Alive => !health || health.alive;
@@ -263,10 +266,23 @@ namespace MarioTest
                 hold == NativeBody.Hold.None);
 
             Tune();
+            if (Local && MarioRadial.TakeChoice(out var chosen))
+                chosen.Apply?.Invoke(this);
             if (pad.TakeRefill() && Plugin.DpadRefill.Value)
                 SimOps.Refill(sim);
             bool secret = pad.TakeUp();
-            var step = pad.Take(move, hold == NativeBody.Hold.All);
+            // With the Melee Mario's A attack available, RT is that attack instead of the spray:
+            // the trigger's edge starts it and the analog value is kept from FLUDD all step.
+            // Without the provider nothing here runs and RT stays Sunshine's spray.
+            bool meleeAttack = Local && !MarioRadial.Open && MarioMeleeAttack.Available
+                && pad.TakeAttackPress();
+            var step = pad.Take(move, hold == NativeBody.Hold.All, Local && MarioRadial.Open);
+            if (Local && MarioMeleeAttack.Available)
+            {
+                step.r = 0;
+                step.r_analog = 0;
+                if (meleeAttack) MarioMeleeAttack.TryAttack(body, AimDirection);
+            }
             // Facing from Mario toward the camera: the reverse of where the player aims.
             short cameraYaw = UnityHost.Yaw(-input.aimDirection);
             // The lock-on (LB; a keyboard's utility key; the brain's): FLUDD takes its aim, and
@@ -498,10 +514,35 @@ namespace MarioTest
         {
             FindLocalUser();
             pad.Read(localUser, input);
-            if (!driving) return;
+            if (!driving)
+            {
+                if (Local) MarioRadial.Cancel();
+                return;
+            }
             smoother.Smooth();
             // The view poses Mario this far back too, so he doesn't ghost in fast moves.
             lagTicks = StepSmoother.LagTicks(Native.sms_tick_hz());
+            if (!Local) return;
+            if (sim != IntPtr.Zero && !PauseManager.isPaused && localUser != null
+                && !localUser.isUIFocused)
+            {
+                Native.sms_sim_state(sim, out var now);
+                var view = View;
+                MarioRadial.Update(pad.MenuHeld, pad.MenuDirection, !pad.MenuFromGamepad,
+                    MarioNozzleChoices.FromState(now), view != null ? view.Handle : IntPtr.Zero);
+            }
+            else MarioRadial.Cancel();
+        }
+
+        /// Fits the nozzle chosen in the radial menu, recording it for the other players'
+        /// puppets. Called from the step, so it lands before the sim reads the pad.
+        internal void SelectNozzle(MarioNozzleChoice choice)
+        {
+            if (sim == IntPtr.Zero) return;
+            SimOps.SelectNozzle(sim, choice.NativeSlot());
+            Plugin.Log.LogInfo(choice == MarioNozzleChoice.None
+                ? "FLUDD taken off"
+                : $"FLUDD nozzle: {choice}");
         }
 
         // Mario's models at the body's (smoothed) feet, facing as the sim says.
@@ -717,6 +758,7 @@ namespace MarioTest
 
         void StopDriving()
         {
+            if (Local) MarioRadial.Cancel();
             unstuck.Reset();
             guard.Reset();
             if (driving)

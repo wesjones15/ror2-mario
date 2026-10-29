@@ -4,7 +4,7 @@ using Ror2Common;
 
 namespace MarioTest
 {
-    // The libsms C ABI (libsms/crates/libsms-ffi, SMS_ABI_VERSION 32). Layouts mirror the
+    // The libsms C ABI (libsms/crates/libsms-ffi, SMS_ABI_VERSION 33). Layouts mirror the
     // #[repr(C)] structs there field for field; Load checks them with sms_struct_sizes. Sim
     // units: about 1 cm, Y up, a facing angle a (i16, 0x10000 per turn) points along
     // (sin a, 0, cos a). The view's structs are ror2-common's (ViewModelInfo...), which
@@ -12,7 +12,7 @@ namespace MarioTest
     internal static class Native
     {
         public const string Dll = "sms";
-        public const uint AbiVersion = 32;
+        public const uint AbiVersion = 33;
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern IntPtr sms_heat_new(byte[] dir);
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern void sms_heat_free(IntPtr heat);
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern byte sms_heat_texture(IntPtr heat, out ViewTexture texture, [Out] byte[] rgba, uint capacity);
@@ -371,6 +371,9 @@ namespace MarioTest
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern void sms_sim_teleport(IntPtr sim, ref Vec3 pos);
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern void sms_sim_set_tuning(IntPtr sim, ref Tuning tuning);
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern void sms_sim_refill(IntPtr sim);
+        /// Fits FLUDD's nozzle at once (0 no FLUDD, 1 Spray, 2 Hover, 3 Rocket, 4 Turbo); fitting
+        /// one while FLUDD is off gives it back. 0 for an unknown slot.
+        [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern byte sms_sim_select_nozzle(IntPtr sim, uint slot);
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern void sms_sim_set_limits(IntPtr sim, ref Limits limits);
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern void sms_sim_add_water(IntPtr sim, float share);
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern void sms_sim_launch(IntPtr sim, ref Vec3 vel);
@@ -430,6 +433,9 @@ namespace MarioTest
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern byte sms_view_fx_texture(IntPtr view, uint which, out ViewTexture info, [Out] byte[] rgba, uint len);
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern byte sms_view_hud_info(IntPtr view, out HudInfo info);
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern byte sms_view_hud_pixels(IntPtr view, [Out] byte[] rgba, uint len);
+        /// FLUDD's nozzle icons from the HUD (0 Spray, 1 Hover, 2 Rocket, 3 Turbo) for the radial menu.
+        [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern byte sms_view_nozzle_icon_info(IntPtr view, uint index, out HudInfo info);
+        [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern byte sms_view_nozzle_icon_pixels(IntPtr view, uint index, [Out] byte[] rgba, uint len);
         /// Mario's life meter `which` (0 the HUD's, with the splash and text; 1 the sun alone, ten rays):
         /// health and shield as shares of the meter, then its place and size and its pixels as the water gauge's.
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern byte sms_view_life_set(IntPtr view, byte which, float health, float shield);

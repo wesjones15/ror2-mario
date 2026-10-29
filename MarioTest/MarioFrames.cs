@@ -17,7 +17,7 @@ namespace MarioTest
     {
         Teleport = 1, Tuning = 2, Refill = 3, AddWater = 4, Limits = 5, BoostJump = 6, Launch = 7,
         LaunchPad = 8, KnockDown = 9, SetAim = 10, Down = 11, Step = 12, ShineGet = 13, ShineEnd = 14,
-        ForeignWet = 15, Ignite = 16,
+        ForeignWet = 15, Ignite = 16, SelectNozzle = 17,
     }
 
     /// What replaying a frame does to a sim; MarioPuppet's implementation calls libsms.
@@ -26,6 +26,8 @@ namespace MarioTest
         void Teleport(Native.Vec3 pos);
         void Tuning(in Native.Tuning tuning);
         void Refill();
+        /// Fit FLUDD's nozzle (0 none, 1 Spray, 2 Hover, 3 Rocket, 4 Turbo).
+        void SelectNozzle(byte slot);
         void AddWater(float share);
         void Limits(in Native.Limits limits);
         void BoostJump(float factor);
@@ -54,7 +56,7 @@ namespace MarioTest
     internal static class FrameCodec
     {
         /// Bumped whenever the wire format changes; a batch with another number is ignored.
-        public const byte Protocol = 4;
+        public const byte Protocol = 5;
 
         static void Vec(ByteWriter w, Native.Vec3 v) { w.F32(v.x); w.F32(v.y); w.F32(v.z); }
         static Native.Vec3 Vec(ByteReader r) => new Native.Vec3(r.F32(), r.F32(), r.F32());
@@ -62,6 +64,7 @@ namespace MarioTest
         public static void WriteTeleport(ByteWriter w, Native.Vec3 p) { w.U8((byte)Op.Teleport); Vec(w, p); }
         public static void WriteTuning(ByteWriter w, in Native.Tuning t) { w.U8((byte)Op.Tuning); w.Struct(t); }
         public static void WriteRefill(ByteWriter w) => w.U8((byte)Op.Refill);
+        public static void WriteSelectNozzle(ByteWriter w, byte slot) { w.U8((byte)Op.SelectNozzle); w.U8(slot); }
         public static void WriteAddWater(ByteWriter w, float share) { w.U8((byte)Op.AddWater); w.F32(share); }
         public static void WriteLimits(ByteWriter w, in Native.Limits l) { w.U8((byte)Op.Limits); w.Struct(l); }
         public static void WriteBoostJump(ByteWriter w, float f) { w.U8((byte)Op.BoostJump); w.F32(f); }
@@ -94,6 +97,7 @@ namespace MarioTest
                     case Op.Teleport: sink.Teleport(Vec(r)); break;
                     case Op.Tuning: { var t = r.Struct<Native.Tuning>(); if (!r.Failed) sink.Tuning(t); break; }
                     case Op.Refill: sink.Refill(); break;
+                    case Op.SelectNozzle: sink.SelectNozzle(r.U8()); break;
                     case Op.AddWater: sink.AddWater(r.F32()); break;
                     case Op.Limits: { var l = r.Struct<Native.Limits>(); if (!r.Failed) sink.Limits(l); break; }
                     case Op.BoostJump: sink.BoostJump(r.F32()); break;
@@ -211,6 +215,7 @@ namespace MarioTest
         public void Teleport(Native.Vec3 p) => FrameCodec.WriteTeleport(ops, p);
         public void Tuning(in Native.Tuning t) => FrameCodec.WriteTuning(ops, t);
         public void Refill() => FrameCodec.WriteRefill(ops);
+        public void SelectNozzle(byte slot) => FrameCodec.WriteSelectNozzle(ops, slot);
         public void AddWater(float share) => FrameCodec.WriteAddWater(ops, share);
         public void BoostJump(float f) => FrameCodec.WriteBoostJump(ops, f);
         public void Launch(Native.Vec3 v) => FrameCodec.WriteLaunch(ops, v);

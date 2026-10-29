@@ -1,8 +1,9 @@
 # FLUDD nozzle radial
 
-Hold the change-nozzle button to open a compact wheel of FLUDD's nozzles. A partial right-stick
-tilt highlights a segment; pushing the stick to full tilt fits it and closes the wheel at once.
-Releasing the button without a full tilt cancels. The wheel does not pause the game.
+Hold the change-nozzle button for 0.2 s to open a compact wheel of FLUDD's nozzles; a tap does
+nothing. A partial right-stick tilt highlights a segment; pushing the stick to full tilt fits it
+and closes the wheel at once. Releasing the button without a full tilt cancels. The wheel does
+not pause the game.
 
 | Input | Action |
 | --- | --- |

@@ -70,9 +70,12 @@ namespace MarioTest
         const float Deadzone = 0.32f;
         /// A full right-stick tilt commits at once; a partial tilt only shows the highlight.
         const float Commit = 0.9f;
+        /// RB must be held this long before the wheel opens; a tap does nothing.
+        const float OpenHold = 0.2f;
         const int RingSize = 512;
 
         static bool open, wasHeld, armed, abilitiesChecked, meleeAdded;
+        static float heldSince;
         static int hovered, current = -1, builtinEntries;
         static MarioRadialEntry pending;
         static Vector2 mouseAnchor;
@@ -137,6 +140,16 @@ namespace MarioTest
             current = IndexOf(currentChoice);
             if (held && !wasHeld)
             {
+                // RB only opens the wheel after a deliberate hold. A tap is not a nozzle
+                // change, and the trigger's normal spray is left alone until it opens.
+                open = false;
+                armed = false;
+                heldSince = Time.unscaledTime;
+            }
+            wasHeld = held;
+            if (!open)
+            {
+                if (!held || Time.unscaledTime - heldSince < OpenHold) return;
                 open = true;
                 // A stick already held over from the camera must be released before it counts:
                 // pressing RB during a turn should not pick that direction immediately.
@@ -144,8 +157,6 @@ namespace MarioTest
                 hovered = current >= 0 ? current : 0;
                 mouseAnchor = Input.mousePosition;
             }
-            wasHeld = held;
-            if (!open) return;
             if (!held)
             {
                 // Releasing without a full-tilt choice cancels; the wheel commits on the

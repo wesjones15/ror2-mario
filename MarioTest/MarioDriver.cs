@@ -64,8 +64,9 @@ namespace MarioTest
         bool lostShown;
         // Keeps Mario out of walls the sim let him into (ror2-common's WallGuard); strict for a
         // while after a hit or a launch, when he is thrown fast and the wall rings are likeliest
-        // to miss.
-        readonly WallGuard guard = new WallGuard();
+        // to miss. Sunshine finds his floor from 0.3 m up (checkGroundAtWalking), so the guard
+        // leaves lips lower than that to the sim's own step up.
+        readonly WallGuard guard = new WallGuard { StepHeight = 0.3f };
         float strictUntil;
         float sweepLogAt;
         readonly EnemyLock enemyLock = new EnemyLock();

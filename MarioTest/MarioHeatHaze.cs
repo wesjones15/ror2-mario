@@ -17,6 +17,10 @@ namespace MarioTest
         static readonly float[] frame = new float[8];
         static readonly Vector3[] positions = new Vector3[4];
         static readonly Vector2[] uvs = new Vector2[4];
+        // Sunshine's sheet is at 2425 units (24.25 m); RoR2's camera sits farther back,
+        // so that depth reads as mid-ground here. Push the sheet out without weakening
+        // the screen-space shimmer (the magnitude below uses the same distance).
+        const float DepthScale = 1.5f;
         static readonly Vector2[] sourceUvs = { new Vector2(0, 1), new Vector2(1, 1), new Vector2(1, 0), new Vector2(0, 0) };
 
         internal static void Initialize()
@@ -50,9 +54,9 @@ namespace MarioTest
             // The shader adds the offset to grab-screen position before dividing by
             // clip w, so its effective UV offset is normal * _Magnitude / distance.
             // The reciprocal gain alone leaves the sheet ~24x too weak (sub-pixel);
-            // include the authored distance to restore the source's screen offset.
+            // include the sheet distance to restore the source's screen offset.
             material = MarioWater.Refraction("Sunshine heat haze", texture, Texture2D.whiteTexture, frame[1],
-                frame[0] * UnityHost.Scale / frame[1]);
+                frame[0] * UnityHost.Scale * DepthScale / frame[1]);
             if (!material) return false;
             material.SetTextureScale("_BumpMap", Vector2.one);
             material.SetTextureOffset("_BumpMap", Vector2.zero);
@@ -74,7 +78,7 @@ namespace MarioTest
             if (!camera || !Plugin.HeatHaze.Value || !Plugin.AssetsReady || !MarioPresentation.Active
                 || camera != MarioPresentation.Camera || Ror2Common.GameSettings.CameraOverride) return;
             if (!Ensure() || Native.sms_heat_frame(native, Time.time, frame, 8) == 0) return;
-            float distance = frame[0] * UnityHost.Scale;
+            float distance = frame[0] * UnityHost.Scale * DepthScale;
             if (distance <= camera.nearClipPlane || distance >= camera.farClipPlane) return;
             float halfY = camera.orthographic ? camera.orthographicSize : Mathf.Tan(camera.fieldOfView * Mathf.Deg2Rad * 0.5f) * distance;
             float halfX = halfY * camera.aspect;

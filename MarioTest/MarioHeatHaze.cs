@@ -47,7 +47,12 @@ namespace MarioTest
             texture.SetPixelData(pixels, 0);
             texture.Apply(false, true);
             // Separate from WaterRefraction: that setting only controls FLUDD.
-            material = MarioWater.Refraction("Sunshine heat haze", texture, Texture2D.whiteTexture, frame[1], 1f / frame[1]);
+            // The shader adds the offset to grab-screen position before dividing by
+            // clip w, so its effective UV offset is normal * _Magnitude / distance.
+            // The reciprocal gain alone leaves the sheet ~24x too weak (sub-pixel);
+            // include the authored distance to restore the source's screen offset.
+            material = MarioWater.Refraction("Sunshine heat haze", texture, Texture2D.whiteTexture, frame[1],
+                frame[0] * UnityHost.Scale / frame[1]);
             if (!material) return false;
             material.SetTextureScale("_BumpMap", Vector2.one);
             material.SetTextureOffset("_BumpMap", Vector2.zero);

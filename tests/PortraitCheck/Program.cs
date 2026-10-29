@@ -170,7 +170,8 @@ static class Program
         CheckFastEntrance(true);
         CheckPortalPlayback();
         CheckSameRigSkin();
-        Console.WriteLine("PASS: Mario ABI, FLUDD, nozzle models, pound, slide and stage-one statue entrance handoff");
+        CheckYoshiSkin();
+        Console.WriteLine("PASS: Mario ABI, FLUDD, nozzle models, pound, slide, skins and stage-one statue entrance handoff");
     }
 
     // A same-rig alt-skin (Piantissimo, id 2) loads through the generic skin call and draws its own
@@ -196,6 +197,36 @@ static class Program
         n = Native.sms_view_draws(r.view, draws, 32);
         Check(draws.Take((int)n).Any(d => d.model == 0), "switching back must draw Mario's body");
         Check(Native.sms_view_load_skin(r.view, 99, null) == 1, "an unknown id is Mario, which is always loaded");
+    }
+
+    // Yoshi (id 3) is a different rig: his own model joins the table after the nozzles, and the
+    // draw list swaps Mario's body, cap and hands for it while FLUDD stays.
+    static void CheckYoshiSkin()
+    {
+        if (!File.Exists(Path.Combine(assets, "yoshi", "yoshi_model.bmd")))
+        { Console.WriteLine("SKIP: Yoshi's model absent"); return; }
+        using var r = new Rig();
+        uint before = Native.sms_view_model_count(r.view);
+        Check(Native.sms_view_load_skin(r.view, 3, null) != 0, "Yoshi's model should load from the Sunshine assets");
+        Check(Native.sms_view_load_skin(r.view, 3, null) != 0, "loading Yoshi twice must stay true and not add a second body");
+        Check(Native.sms_view_model_count(r.view) == before + 1, "Yoshi should add exactly one model");
+        Native.sms_view_skin(r.view, 3);
+        r.Step(new Native.Pad { stick_y = 1f }, 60);
+        var draws = new ViewDraw[32]; uint n = Native.sms_view_draws(r.view, draws, 32);
+        uint models = Native.sms_view_model_count(r.view);
+        var drawn = draws.Take((int)n).Select(d => d.model).ToArray();
+        Check(!drawn.Contains(0u), "Mario's own body drew under the Yoshi skin");
+        Check(drawn.Any(m => m >= 12 && m < models), "no Yoshi body in the draw list: " + string.Join(",", drawn));
+        Check(drawn.Contains(6u), "FLUDD should stay Mario's under the Yoshi skin");
+        Check(!drawn.Contains(5u), "Yoshi carries no cap of Mario's");
+        // A front Spray leaves the mouth, not FLUDD's nozzle (the mouth joint is ~116 up).
+        Native.sms_sim_set_yoshi_skin(r.sim, 1);
+        r.Step(new Native.Pad { r_analog = 255 }, 30);
+        Check(Native.sms_sim_last_spray(r.sim, out var spray) != 0, "no juice emit under the Yoshi skin");
+        Check(spray.pos.y > 80f, $"the juice left at y={spray.pos.y}, not the mouth");
+        Native.sms_view_skin(r.view, 0); r.Frame(0);
+        n = Native.sms_view_draws(r.view, draws, 32);
+        Check(draws.Take((int)n).Any(d => d.model == 0), "switching back must draw Mario's body");
     }
 
     static void CheckEntrance()

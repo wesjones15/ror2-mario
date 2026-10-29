@@ -49,9 +49,11 @@ namespace MarioTest
     // complete; Piantissimo's from the Sunshine disc the plugin already extracts.
     internal static class MarioSkin
     {
-        public const uint Mario = 0, Luigi = 1, Piantissimo = 2;
+        public const uint Mario = 0, Luigi = 1, Piantissimo = 2, Yoshi = 3;
         public const uint LuigiCoins = 2401;
         public const uint PiantissimoStage = 4;
+        /// Yoshi hatches after the last teleporter event, as his egg does at the end of Sunshine.
+        public const uint YoshiStage = 5;
         /// Luigi's voice is Mario's pitched up 14% with the line's length kept (the Melee trick).
         public const float VoicePitch = 1.14f;
         /// Piantissimo's fallback lines (Mario's, where the game gives him no voice of his own) go the other
@@ -77,14 +79,24 @@ namespace MarioTest
             new SkinSpec
             {
                 Id = Piantissimo, Name = "MarioSkinPiantissimo", Token = "MARIOTEST_SKIN_PIANTISSIMO",
-                Text = "Piantissimo", Title = "Piantissimo",
+                Text = "Il Piantissimo", Title = "Il Piantissimo",
                 Quip = "Fastest Pianta on Isle Delfino... On Vacation!",
                 UnlockStage = PiantissimoStage,
-                UnlockHint = "Beat the stage 4 teleporter event as Mario.", UnlockedText = "Piantissimo unlocked.",
+                UnlockHint = "Beat the stage 4 teleporter event as Mario.", UnlockedText = "Il Piantissimo unlocked.",
                 // His jump voice replaces Mario's jump cues natively (the skin picks the voice set).
                 StrictVoice = () => Plugin.PiantissimoGameVoice.Value,
                 VoicePitch = PiantissimoVoicePitch,
                 // His model comes from the Sunshine disc the plugin already extracts.
+            },
+            new SkinSpec
+            {
+                Id = Yoshi, Name = "MarioSkinYoshi", Token = "MARIOTEST_SKIN_YOSHI",
+                Text = "Yoshi", Title = "Yoshi",
+                Quip = "Sunshine's favourite mount... On Vacation!",
+                UnlockStage = YoshiStage,
+                UnlockHint = "Beat the stage 5 teleporter event as Mario.", UnlockedText = "Yoshi unlocked.",
+                VoicePitch = 1f,
+                // His own wait/walk/run clips and mid-air flutter (Sim option), Mario's jumps.
             },
         };
 
@@ -200,6 +212,12 @@ namespace MarioTest
             if (spec.StrictVoice()) Native.sms_view_voice_set(view, 2);
         }
 
+        /// Tells the sim which body it drives: Yoshi's skin brings his mid-air flutter and juice.
+        public static void ApplySim(IntPtr sim, uint skin)
+        {
+            if (sim != IntPtr.Zero) Native.sms_sim_set_yoshi_skin(sim, (byte)(skin == Yoshi ? 1 : 0));
+        }
+
         /// Registers Mario's skins on the body (Mario default, then each offered one) and starts
         /// the first-run Portrait jobs that render them and hand the textures back as the skins'
         /// icons. Mario's own portrait (the body's) is requested elsewhere, unchanged.
@@ -226,7 +244,9 @@ namespace MarioTest
                 {
                     // The loadout shows the lock and the hint until this skin's key is met.
                     var unlock = ScriptableObject.CreateInstance<UnlockableDef>();
-                    unlock.cachedName = "Skins.Mario." + spec.Text;
+                    // The key stays the native id's name, so renaming the display text (Il
+                    // Piantissimo) does not take an earned unlock away.
+                    unlock.cachedName = "Skins.Mario." + spec.Name.Substring("MarioSkin".Length);
                     unlock.nameToken = spec.Def.nameToken;
                     var hint = spec.UnlockHint;
                     var done = spec.UnlockedText;

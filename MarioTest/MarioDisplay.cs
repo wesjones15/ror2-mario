@@ -99,6 +99,7 @@ namespace MarioTest
                 MarioSkin.Apply(view, skin);
             }
             var sim = Native.sms_sim_new(NativeLib.CString(Plugin.AssetsDir), ref start, 0);
+            MarioSkin.ApplySim(sim, skin);
             var models = sim != IntPtr.Zero ? ModelView.Create(new SmsViewSource(view), MarioSkin.Spec(skin).Text + " (lobby)") : null;
             if (models == null)
             {

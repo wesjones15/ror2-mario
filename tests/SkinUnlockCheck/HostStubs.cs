@@ -52,5 +52,5 @@ namespace MarioTest
     public class Logger { public void LogInfo(string s) {} }
     public static class Plugin { public static ConfigValue<float> LuigiJumpHeight = new ConfigValue<float>(); public static ConfigValue<bool> PiantissimoGameVoice = new ConfigValue<bool>(); public static Logger Log = new Logger(); }
     public static class MarioDisplay { public static object Get(uint id) => null; }
-    public static class Native { public static uint sms_view_load_skin(IntPtr v,uint s,byte[] d) => 1; public static void sms_view_skin(IntPtr v,uint s) {} public static void sms_view_set_voice_pitch(IntPtr v,float p) {} public static void sms_view_voice_set(IntPtr v,uint s) {} }
+    public static class Native { public static uint sms_view_load_skin(IntPtr v,uint s,byte[] d) => 1; public static void sms_view_skin(IntPtr v,uint s) {} public static void sms_view_set_voice_pitch(IntPtr v,float p) {} public static void sms_view_voice_set(IntPtr v,uint s) {} public static void sms_sim_set_yoshi_skin(IntPtr s,byte on) {} }
 }

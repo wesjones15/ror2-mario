@@ -9,9 +9,12 @@ static class Program
     {
         var luigi = MarioSkin.Spec(MarioSkin.Luigi);
         var piantissimo = MarioSkin.Spec(MarioSkin.Piantissimo);
-        luigi.Unlock = new UnlockableDef(); piantissimo.Unlock = new UnlockableDef();
+        var yoshi = MarioSkin.Spec(MarioSkin.Yoshi);
+        luigi.Unlock = new UnlockableDef(); piantissimo.Unlock = new UnlockableDef(); yoshi.Unlock = new UnlockableDef();
         Check(luigi.UnlockCoins == 2401 && luigi.UnlockStage == 0 && luigi.UnlockHint == "L is real 2401", "Luigi's released criterion changed");
-        Check(piantissimo.UnlockStage == 4 && piantissimo.UnlockCoins == 0, "Piantissimo needs the stage-four key");
+        Check(piantissimo.UnlockStage == 4 && piantissimo.UnlockCoins == 0, "Il Piantissimo needs the stage-four key");
+        Check(piantissimo.Text == "Il Piantissimo", "Il Piantissimo's name is spelled out");
+        Check(yoshi.UnlockStage == 5 && yoshi.UnlockCoins == 0, "Yoshi needs the stage-five key");
         var body = new CharacterBody { master = new CharacterMaster(), healthComponent = new HealthComponent { alive = true } };
         var profile = new UserProfile();
         LocalUserManager.readOnlyLocalUsersList.Add(new LocalUser { cachedBody = body, userProfile = profile });
@@ -41,7 +44,10 @@ static class Program
         body.healthComponent.alive = true;
         MarioSkin.CheckUnlocks(body); MarioSkin.CheckUnlocks(body);
         Check(profile.HasUnlockable(piantissimo.Unlock) && !profile.HasUnlockable(luigi.Unlock), "Stage-four key leaked into Luigi");
-        Check(profile.Saves == 1, "Repeated checks must not grant or save twice");
-        Console.WriteLine("PASS: Luigi 2401 held coins; Piantissimo living stage-four teleporter; independent persistent grants.");
+        Run.instance.stageClearCount = 4;
+        MarioSkin.CheckUnlocks(body);
+        Check(profile.HasUnlockable(yoshi.Unlock), "The stage-five teleporter must hatch Yoshi");
+        Check(profile.Saves == 2, "Yoshi's grant must save once");
+        Console.WriteLine("PASS: Luigi 2401 held coins; Il Piantissimo living stage-four teleporter; Yoshi stage five; independent persistent grants.");
     }
 }

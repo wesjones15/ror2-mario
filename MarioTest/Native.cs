@@ -370,6 +370,8 @@ namespace MarioTest
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern IntPtr sms_sim_clip_name(IntPtr sim);
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern void sms_sim_teleport(IntPtr sim, ref Vec3 pos);
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern void sms_sim_set_tuning(IntPtr sim, ref Tuning tuning);
+        /// 1 for a Yoshi skin: his mid-air flutter (fresh A press in the air) and orange juice.
+        [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern void sms_sim_set_yoshi_skin(IntPtr sim, byte on);
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern void sms_sim_refill(IntPtr sim);
         /// Fits FLUDD's nozzle at once (0 no FLUDD, 1 Spray, 2 Hover, 3 Rocket, 4 Turbo); fitting
         /// one while FLUDD is off gives it back. 0 for an unknown slot.

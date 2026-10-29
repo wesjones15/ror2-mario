@@ -49,7 +49,7 @@ next-segment update. `tests/PortraitCheck` covers the native fire flare and wate
 contact query. These are build/boundary checks; not yet played in RoR2.
 
 `Look.HeatHaze` (default true) draws Sunshine's scrolling distant heat shimmer
-for Mario, Luigi and Piantissimo. Set it to false to disable immediately. It
+for Mario, Luigi, Il Piantissimo and Yoshi. Set it to false to disable immediately. It
 uses the disc's ShimmerLow model/BTK/indirect map and the existing refraction
 backend, separately from FLUDD's `Look.WaterRefraction`. Nearby scene geometry
 and the HUD stay clear. See `libsms/docs/heat-haze.md` for source evidence and
@@ -77,15 +77,20 @@ normal-rate spin with a gentle 0.8-second descent, and ordinary jump landing.
 The portal returns to swirling colors; Luigi uses green cap particles and his
 existing pitched voice. The full cap-in-hand Sunshine sequence remains in the
 Rust viewer and original native playback API, but the game uses the short profile.
-Luigi is Mario's alt-skin and is unlocked by beating the stage 4 teleporter event
-as Mario (the charge finished and its boss dead, with Mario alive); the lock and that
-line show in the loadout until then.
-Piantissimo is the second alt-skin, available from the start: his model comes from the
-Sunshine disc the plugin already extracts (`mamma4.szs`, `npc/monteman/`), and it shares
-Mario's skeleton, so Mario's own pose drives it, as the game does for him. He has Mario's
-voice and jump, no secret move, and the same lobby, entrance, portrait and pause-sheet
-treatment as Luigi. Skins are table rows (`MarioSkin.Specs` here, `Skin` in libsms-present;
-`libsms/docs/skins.md`), so adding another is a row and not a code path.
+Luigi is Mario's alt-skin and is unlocked by holding 2401 coins at one time.
+Il Piantissimo is the second alt-skin, unlocked by beating the stage 4 teleporter
+event as Mario; his model comes from the Sunshine disc the plugin already extracts
+(`mamma4.szs`, `npc/monteman/`), and it shares Mario's skeleton, so Mario's own pose
+drives it, as the game does for him. He has Mario's voice and jump, no secret move.
+Yoshi is the third alt-skin, unlocked by beating the stage 5 teleporter event as
+Mario. He is Sunshine's `yoshi.szs` model on his own 38-joint rig: his wait, walk and
+run clips play on the ground, Mario's jumps and moves retarget onto him in the air,
+and a fresh A press while airborne starts his flutter (`TYoshi::thinkHoldOut`,
+`MSD_SE_YV_FUNBARI`) once per airtime. FLUDD stays on his back; a front Spray leaves
+his mouth while FLUDD rests, the water is drawn in his juice colour, and the pack's
+belt is widened for his hips. All three get the same lobby, entrance, portrait and
+pause-sheet treatment as Mario. Skins are table rows (`MarioSkin.Specs` here, `Skin` in
+libsms-present; `libsms/docs/skins.md`), so adding another is a row and not a code path.
 
 Portal animation is rendered once on the asset worker at 512 square and cached as
 256-square raw RGBA with antialiased edge coverage. The M is mirrored through its

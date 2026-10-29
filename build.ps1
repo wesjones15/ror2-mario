@@ -22,22 +22,18 @@ Push-Location $LibSms
 try { & $cargo build -p libsms-ffi --release; if ($LASTEXITCODE) { throw "cargo failed" } }
 finally { Pop-Location }
 
-Write-Host "== libssbm-ffi (ssbm.dll, the Melee Mario A attacks)"
-Push-Location $LibSsbm
-try { & $cargo build -p libssbm-ffi --release; if ($LASTEXITCODE) { throw "cargo failed" } }
-finally { Pop-Location }
-
 Write-Host "== MarioTest.dll"
 dotnet build (Join-Path $PSScriptRoot "MarioTest\MarioTest.csproj") -c Release "-p:RoR2Dir=$RoR2Dir"
 if ($LASTEXITCODE) { throw "dotnet build failed" }
 
 $dist = Join-Path $PSScriptRoot "dist\MarioTest"
 New-Item -ItemType Directory -Force $dist | Out-Null
+# Do not carry stale files (old stings, an old bundled ssbm.dll) into the plugin folder.
+Get-ChildItem $dist -File -ErrorAction SilentlyContinue | Remove-Item -Force
 # The first-run worker renders the arrival/death stings into the user's asset cache.
 # A clean build needs no extracted Nintendo files.
 Copy-Item (Join-Path $PSScriptRoot "MarioTest\bin\Release\netstandard2.1\MarioTest.dll") $dist -Force
 Copy-Item (Join-Path $LibSms "target\release\sms.dll") $dist -Force
-Copy-Item (Join-Path $LibSsbm "target\release\ssbm.dll") $dist -Force
 $assets = [System.IO.Path]::GetFullPath((Join-Path $LibSms "assets"))
 [System.IO.File]::WriteAllText((Join-Path $dist "assets_dir.txt"), $assets)
 # The Melee Mario A attacks need PlMr.dat from the Melee cache; point at this checkout's
@@ -54,7 +50,7 @@ Write-Host "built $dist (assets: $assets; melee: $meleeAssets)"
 if (-not $NoInstall) {
     $plugins = Join-Path $InstallDir "BepInEx\plugins\MarioTest"
     New-Item -ItemType Directory -Force $plugins | Out-Null
-    $files = @("sms.dll","ssbm.dll","MarioTest.dll","assets_dir.txt")
+    $files = @("sms.dll","MarioTest.dll","assets_dir.txt")
     if (Test-Path $meleePointer) { $files += "melee_assets_dir.txt" }
     Copy-Item ($files | ForEach-Object { Join-Path $dist $_ }) $plugins -Force
     Write-Host "installed into $plugins"

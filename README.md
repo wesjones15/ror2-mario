@@ -20,12 +20,12 @@ Tap RB to swap between Spray and the selected alternate; hold RB for 0.6 s to ch
 No FLUDD, Hover, Rocket or Turbo from a wheel anchored to the Air Pump cooldown picture. The
 chosen alternate is overlaid on that picture, or left as-is for No FLUDD. Nozzle choices are
 recorded in the multiplayer frame. With No FLUDD, tapping RB or RT plays one of Melee Mario's
-contextual A attacks (jab, tilts, smashes, dash and aerials) on the Sunshine body, using
-`ssbm.dll` and the Melee cache's `PlMr.dat`. The owner records the clip/frame in the frame stream
-so other players' puppets show the same attack; damage goes through `MarioCombat`'s client→server
-hit message. Without `PlMr.dat` (or `ssbm.dll`) the empty FLUDD button does nothing; Sunshine's B
-dive, FLUDD and every other control are unchanged. See `docs/radial-menu.md` for the controls and
-the Melee A details.
+contextual A attacks (jab, tilts, smashes, dash and aerials) on the Sunshine body, using the
+Melee plugin's `ssbm.dll` and the Melee cache's `PlMr.dat`. The owner records the clip/frame in
+the frame stream so other players' puppets show the same attack; damage goes through
+`MarioCombat`'s client→server hit message. Without `PlMr.dat` (or `ssbm.dll`) the empty FLUDD
+button does nothing; Sunshine's B dive, FLUDD and every other control are unchanged. See
+`docs/radial-menu.md` for the controls and the Melee A details.
 
 `tests/FireCheck` patches the installed game's actual DamageTrail IL headlessly
 and checks that the extinguish branch skips overlap/damage while retaining the
@@ -291,14 +291,14 @@ time; the plugin can build its cache from your own disc on first run.
 powershell -ExecutionPolicy Bypass -File build.ps1
 ```
 
-The script builds `sms.dll`, `ssbm.dll` (the Melee Mario A attacks) and `MarioTest.dll`, then
-copies them, plus an `assets_dir.txt` pointing at `libsms/assets`, into
-`<game>/BepInEx/plugins/MarioTest/`. It compiles against the game's own DLLs, so no NuGet game
-libraries are involved. The pointer can name a folder that does not exist yet; first run creates
-it. The install copies only these four files, and stings load from the cache. Use `-RoR2Dir` for
-another install and `-NoInstall` to only build into `dist/`. For the Melee A attacks, point
-`Paths.MeleeAssets` at a Melee cache with `PlMr.dat` (this checkout's `libssbm/assets` has it after
-`ssbm-extract … mario`), or set `$SSBM_ASSETS`.
+The script builds `sms.dll` and `MarioTest.dll`, then copies them, plus an `assets_dir.txt`
+pointing at `libsms/assets`, into `<game>/BepInEx/plugins/MarioTest/`. It compiles against the
+game's own DLLs, so no NuGet game libraries are involved. The pointer can name a folder that
+does not exist yet; first run creates it. The install copies only these three files, and stings
+load from the cache. Use `-RoR2Dir` for another install and `-NoInstall` to only build into
+`dist/`. For Melee Mario's A attacks, the Melee plugin's `ssbm.dll` must be new enough to export
+`ssbm_mario_pose_*` and a Melee cache must have `PlMr.dat` (`Paths.MeleeAssets`/`$SSBM_ASSETS`,
+or the staged `melee_assets_dir.txt`); `ssbm.dll` is not copied into `MarioTest`.
 
 The log, `BepInEx/LogOutput.log`, should show `libsms ABI 34`, `Mario is 1.xx m tall`, then
 `Mario registered`.

@@ -76,8 +76,10 @@ namespace MarioTest
                     Plugin.Log.LogInfo("Melee Mario A attacks are off: no PlMr.dat in Paths.MeleeAssets or a melee_assets_dir.txt cache");
                     return;
                 }
-                string dll = System.IO.Path.Combine(here ?? cache, "ssbm.dll");
-                if (!File.Exists(dll))
+                // ssbm.dll belongs to the Melee plugin, not this one. Prefer its plugin
+                // folder; fall back to the native library beside the Melee cache.
+                string dll = here == null ? null : System.IO.Path.Combine(here, "..", "Melee", "ssbm.dll");
+                if (string.IsNullOrEmpty(dll) || !File.Exists(dll))
                 {
                     dll = System.IO.Path.Combine(System.IO.Path.GetDirectoryName(cache) ?? cache, "ssbm.dll");
                 }

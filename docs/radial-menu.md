@@ -27,8 +27,9 @@ selects jab, tilt, smash, dash or aerial from the stick and aim, and the clip is
 Sunshine's `ma_mdl1.bmd` for the body. In the air the same tap picks an aerial (neutral, forward,
 back, up or down) from the stick and camera. The disc hitbox's percent / 3 is applied as RoR2
 damage through `MarioCombat`, so a client's punch is sent to the server and lands as his damage.
-This needs `ssbm.dll` and `PlMr.dat` in the Melee cache (`Paths.MeleeAssets`); without them the
-tap does nothing. A Melee plugin provider (`Mario.MarioContextualAttack.TryAttack`) is still
+This needs the Melee plugin's `ssbm.dll` and `PlMr.dat` in the Melee cache
+(`Paths.MeleeAssets`); without them the tap does nothing. `ssbm.dll` is not copied into
+`MarioTest`. A Melee plugin provider (`Mario.MarioContextualAttack.TryAttack`) is still
 accepted as a fallback, so MarioTest never references the Melee assembly. With FLUDD fitted RT
 sprays and RB changes nozzles as before. Without the Melee cache/`ssbm.dll` the empty FLUDD
 button does nothing; Sunshine's B dive and every other control are unchanged.

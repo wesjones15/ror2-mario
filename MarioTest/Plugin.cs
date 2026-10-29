@@ -515,6 +515,7 @@ namespace MarioTest
                 "turn this on for the game's exact behaviour (his jump voice and silence otherwise).");
             AssetsDir = ResolveAssets(assets.Value, here);
             MarioSkin.Discover(meleeAssets.Value, here);
+            MarioMelee.Probe();
 
             if (!Native.Load(Path.Combine(here, "sms.dll"), out string error))
             {

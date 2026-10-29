@@ -117,18 +117,22 @@ namespace MarioTest
             if (!string.IsNullOrWhiteSpace(configured)) return configured.Trim();
             string env = Environment.GetEnvironmentVariable("SSBM_ASSETS");
             if (!string.IsNullOrWhiteSpace(env)) return env.Trim();
-            // The Melee plugin's own cache, beside its plugin folder (BepInEx/plugins/Melee/assets).
+            // A cache written beside this plugin by build.ps1. It may hold only Mario's
+            // files (PlMr.dat) for the A attacks, without Luigi's mesh for the alt-skin.
+            bool HasCache(string p) =>
+                File.Exists(Path.Combine(p, "PlLgNr.dat")) || File.Exists(Path.Combine(p, "PlMr.dat"));
             foreach (var rel in new[] { "../Melee/assets", "assets", "Melee/assets" })
             {
                 var p = Path.GetFullPath(Path.Combine(here, rel));
-                if (File.Exists(Path.Combine(p, "PlLgNr.dat"))) return p;
+                if (HasCache(p)) return p;
             }
-            // The Melee plugin's pointer file, wherever its cache actually lives.
-            var pointer = Path.GetFullPath(Path.Combine(here, "../Melee/assets_dir.txt"));
-            if (File.Exists(pointer))
+            // This plugin's own pointer, then the Melee plugin's.
+            foreach (var name in new[] { "melee_assets_dir.txt", "../Melee/assets_dir.txt" })
             {
+                var pointer = Path.GetFullPath(Path.Combine(here, name));
+                if (!File.Exists(pointer)) continue;
                 var target = File.ReadAllText(pointer).Trim();
-                if (!string.IsNullOrWhiteSpace(target) && File.Exists(Path.Combine(target, "PlLgNr.dat"))) return target;
+                if (!string.IsNullOrWhiteSpace(target) && HasCache(target)) return target;
             }
             return null;
         }

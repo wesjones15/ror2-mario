@@ -40,11 +40,22 @@ Copy-Item (Join-Path $LibSms "target\release\sms.dll") $dist -Force
 Copy-Item (Join-Path $LibSsbm "target\release\ssbm.dll") $dist -Force
 $assets = [System.IO.Path]::GetFullPath((Join-Path $LibSms "assets"))
 [System.IO.File]::WriteAllText((Join-Path $dist "assets_dir.txt"), $assets)
-Write-Host "built $dist (assets: $assets)"
+# The Melee Mario A attacks need PlMr.dat from the Melee cache; point at this checkout's
+# cache when it has it, so the staged plugin works without hand-editing Paths.MeleeAssets.
+$meleeAssets = [System.IO.Path]::GetFullPath((Join-Path $LibSsbm "assets"))
+$meleePointer = Join-Path $dist "melee_assets_dir.txt"
+if (Test-Path (Join-Path $meleeAssets "PlMr.dat")) {
+    [System.IO.File]::WriteAllText($meleePointer, $meleeAssets)
+} else {
+    Remove-Item $meleePointer -ErrorAction SilentlyContinue
+}
+Write-Host "built $dist (assets: $assets; melee: $meleeAssets)"
 
 if (-not $NoInstall) {
     $plugins = Join-Path $InstallDir "BepInEx\plugins\MarioTest"
     New-Item -ItemType Directory -Force $plugins | Out-Null
-    Copy-Item (Join-Path $dist "sms.dll"),(Join-Path $dist "ssbm.dll"),(Join-Path $dist "MarioTest.dll"),(Join-Path $dist "assets_dir.txt") $plugins -Force
+    $files = @("sms.dll","ssbm.dll","MarioTest.dll","assets_dir.txt")
+    if (Test-Path $meleePointer) { $files += "melee_assets_dir.txt" }
+    Copy-Item ($files | ForEach-Object { Join-Path $dist $_ }) $plugins -Force
     Write-Host "installed into $plugins"
 }

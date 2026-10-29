@@ -13,7 +13,7 @@ FLUDD deals 20x damage to burning enemies, fire elites, wisps and Magma Worms
 from any nozzle. `Fludd.ExtinguishFireTrails` makes actual droplet sweeps put out
 individual trail sections, removing their damage and segment visuals for their
 remaining lifetime without joining dry sections across the gap. New sections
-laid later can still burn. Network protocol is now 5; install matching builds
+laid later can still burn. Network protocol is now 6; install matching builds
 on all peers. Pair the updated `sms.dll` with `MarioTest.dll`.
 
 Tap RB to swap between Spray and the selected alternate; hold RB for 0.6 s to choose
@@ -21,8 +21,11 @@ No FLUDD, Hover, Rocket or Turbo from a wheel anchored to the Air Pump cooldown 
 chosen alternate is overlaid on that picture, or left as-is for No FLUDD. Nozzle choices are
 recorded in the multiplayer frame. With No FLUDD, tapping RB or RT plays one of Melee Mario's
 contextual A attacks (jab, tilts, smashes, dash and aerials) on the Sunshine body, using
-`ssbm.dll` and the Melee cache's `PlMr.dat`; damage is the disc hitbox's percent / 3. See
-`docs/radial-menu.md` for the controls and the Melee A details.
+`ssbm.dll` and the Melee cache's `PlMr.dat`. The owner records the clip/frame in the frame stream
+so other players' puppets show the same attack; damage goes through `MarioCombat`'s client→server
+hit message. Without `PlMr.dat` (or `ssbm.dll`) the empty FLUDD button does nothing; Sunshine's B
+dive, FLUDD and every other control are unchanged. See `docs/radial-menu.md` for the controls and
+the Melee A details.
 
 `tests/FireCheck` patches the installed game's actual DamageTrail IL headlessly
 and checks that the extinguish branch skips overlap/damage while retaining the

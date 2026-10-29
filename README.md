@@ -16,10 +16,11 @@ remaining lifetime without joining dry sections across the gap. New sections
 laid later can still burn. Network protocol is now 5; install matching builds
 on all peers. Pair the updated `sms.dll` with `MarioTest.dll`.
 
-Hold RB to open FLUDD's nozzle radial and full-tilt RS at a segment to fit it. The
-segments use the disc HUD's own `nz01..04` nozzle pictures; **No FLUDD** takes the tank away and
-fitting any nozzle afterwards brings it back. Nozzle choices are recorded in the multiplayer
-frame. See `docs/radial-menu.md` for the controls and the optional Melee Mario A attack hook.
+Tap RB to swap between Spray and the selected alternate; hold RB for 0.5 s to choose
+No FLUDD, Hover, Rocket or Turbo from a wheel anchored to the Air Pump cooldown picture. The
+chosen alternate is overlaid on that picture, or left as-is for No FLUDD. Nozzle choices are
+recorded in the multiplayer frame. See `docs/radial-menu.md` for the controls and the optional
+Melee Mario A attack on the empty FLUDD button.
 
 `tests/FireCheck` patches the installed game's actual DamageTrail IL headlessly
 and checks that the extinguish branch skips overlap/damage while retaining the

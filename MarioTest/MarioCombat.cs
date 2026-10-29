@@ -155,7 +155,7 @@ namespace MarioTest
                 var at = sum / drops;
                 Hit(body, kv.Key, weight * Plugin.WaterDamage.Value, at,
                     Flat(at - mario).normalized * (40f * drops),
-                    waterProcs.Coefficient(kv.Key, Plugin.WaterProc.Value), DamageType.Generic, DamageSource.Primary);
+                    waterProcs.Coefficient(kv.Key, Plugin.WaterProc.Value), DamageType.Generic, DamageSource.Primary, true);
             }
             // Water hitting counts as the primary in use, for Shuriken: a throw at most every
             // half second while it keeps hitting.
@@ -188,7 +188,7 @@ namespace MarioTest
         internal static void DealFromClient(CharacterBody body, HealthComponent victim, in MarioNet.HitRecord hit)
         {
             Hit(body, victim, hit.coefficient, hit.at, hit.force, hit.proc,
-                hit.ignite ? DamageType.IgniteOnHit : DamageType.Generic, (DamageSource)hit.source);
+                hit.ignite ? DamageType.IgniteOnHit : DamageType.Generic, (DamageSource)hit.source, hit.water);
         }
 
         /// The super pound's landing (Sunshine's MS_M_SPHIPD_HIT_*): RoR2's ignite burst.
@@ -203,7 +203,7 @@ namespace MarioTest
         /// `source`: the skill it came from, for the items that only answer skill hits (Breaching
         /// Fin, Luminous Shot, Infernal Mark, Nightmare Demon, Vile Censer).
         static void Hit(CharacterBody body, HealthComponent victim, float coefficient, Vector3 at, Vector3 force,
-            float proc, DamageType type = DamageType.Generic, DamageSource source = DamageSource.Primary)
+            float proc, DamageType type = DamageType.Generic, DamageSource source = DamageSource.Primary, bool waterHit = false)
         {
             if (!victim || !victim.alive || coefficient <= 0f) return;
             if (!NetworkServer.active)
@@ -214,10 +214,15 @@ namespace MarioTest
                     {
                         victim = victim.body.netId.Value, coefficient = coefficient, at = at, force = force,
                         proc = proc, ignite = (type & DamageType.IgniteOnHit) != 0, source = (byte)source,
+                        water = waterHit,
                     });
                 return;
             }
             DamageTypeCombo combo = type;
+            // Classify on the server, including client-owned Mario's hits. Never multiply a
+            // client coefficient twice, and never grant the water bonus to stomps/pounds.
+            if (waterHit && MarioFire.Vulnerable(victim.body))
+                coefficient *= Mathf.Max(1f, Plugin.FireWaterMultiplier.Value);
             combo.damageSource = source;
             var spec = new NativeHitSpec
             {

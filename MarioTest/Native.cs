@@ -381,6 +381,7 @@ namespace MarioTest
         /// A hit from `from` knocks Mario down (damage kind 0: the common enemy's) without touching the sim's health.
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern byte sms_sim_knock_down(IntPtr sim, ref Vec3 from, byte kind);
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern byte sms_sim_ignite(IntPtr sim);
+        [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern uint sms_sim_water_touches_segment(IntPtr sim, ref Vec3 a, ref Vec3 b, float radius);
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern void sms_sim_boost_jump(IntPtr sim, float factor);
         /// Mario touches a Shine at `pos`, turned `yaw`: the win pose. 1 if he took it.
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern byte sms_sim_shine_get(IntPtr sim, ref Vec3 pos, short yaw);
@@ -459,6 +460,16 @@ namespace MarioTest
         public static bool Load(string path, out string error)
         {
             if (!NativeLib.Load(path, out error)) return false;
+            try
+            {
+                var zero = new Vec3();
+                sms_sim_water_touches_segment(IntPtr.Zero, ref zero, ref zero, 0f);
+            }
+            catch (EntryPointNotFoundException)
+            {
+                error = $"{path} lacks FLUDD's fire-contact query; update sms.dll with MarioTest.dll";
+                return false;
+            }
             uint v = sms_abi_version();
             if (v != AbiVersion)
             {

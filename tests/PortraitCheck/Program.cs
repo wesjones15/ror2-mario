@@ -39,6 +39,28 @@ static class Program
         var handle = NativeLibrary.Load(Path.GetFullPath(args[0]));
         NativeLibrary.SetDllImportResolver(typeof(Native).Assembly, (name, assembly, search) => name == Native.Dll ? handle : IntPtr.Zero);
         Check(Native.Load(args[0], out var error), error);
+        using (var fire = new Rig())
+        {
+            Check(Native.sms_sim_ignite(fire.sim) != 0, "fire state failed to start");
+            fire.Step(new Native.Pad(), 36);
+            Native.sms_view_fx_vertices(fire.view, out uint corners);
+            Check(corners > 0, "emitter 6 fire damage was not drawn through the C ABI");
+            var a = new Native.Vec3(0, 100, 0);
+            var b = new Native.Vec3(0, 100, 500);
+            Check(Native.sms_sim_water_touches_segment(fire.sim, ref a, ref b, 1000) == 0, "fire alone manufactured water contacts");
+        }
+        using (var water = new Rig())
+        {
+            water.Step(new Native.Pad { r_analog = 255 }, 60);
+            var a = new Native.Vec3(0, 100, 0);
+            var b = new Native.Vec3(0, 100, 500);
+            Check(Native.sms_sim_water_touches_segment(water.sim, ref a, ref b, 1000) != 0, "spray did not expose real water contacts");
+            var far = new Native.Vec3(100000, 100000, 100000);
+            Check(Native.sms_sim_water_touches_segment(water.sim, ref far, ref far, 1) == 0, "distant fire extinguished");
+            Native.sms_sim_teleport(water.sim, ref far);
+            Check(Native.sms_sim_water_touches_segment(water.sim, ref a, ref b, 1000) == 0, "teleport retained stale water contacts");
+        }
+        Console.WriteLine("PASS: native fire flare, real FLUDD contact query, dry/far rejection and teleport cleanup");
         if (File.Exists(Path.Combine(assets, "heat_haze", "shimmerlow.bmd")))
         {
             var heat = Native.sms_heat_new(NativeLib.CString(assets));

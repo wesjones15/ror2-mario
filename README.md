@@ -2,6 +2,25 @@
 
 # ror2-mario
 
+Mario now reacts to RoR2 fire hits even without the normal burning buff, including
+stronger/percentage burns and fire elite trails. The panic run repeats the disc's
+fire voice. The previously unloaded fire-damage particle (emitter 6,
+`ms_firedmg_a`) now follows Mario; Sunshine binds this flare to his position,
+not his head. A separate head-flame effect has not been identified or added.
+
+FLUDD deals 20x damage to burning enemies, fire elites, wisps and Magma Worms
+(`Damage.FireWaterMultiplier`). The bonus applies once on the server to water
+from any nozzle. `Fludd.ExtinguishFireTrails` makes actual droplet sweeps put out
+individual trail sections, removing their damage and segment visuals for their
+remaining lifetime without joining dry sections across the gap. New sections
+laid later can still burn. Network protocol is now 4; install matching builds
+on all peers. Pair the updated `sms.dll` with `MarioTest.dll`.
+
+`tests/FireCheck` patches the installed game's actual DamageTrail IL headlessly
+and checks that the extinguish branch skips overlap/damage while retaining the
+next-segment update. `tests/PortraitCheck` covers the native fire flare and water
+contact query. These are build/boundary checks; not yet played in RoR2.
+
 `Look.HeatHaze` (default true) draws Sunshine's scrolling distant heat shimmer
 for Mario, Luigi and Piantissimo. Set it to false to disable immediately. It
 uses the disc's ShimmerLow model/BTK/indirect map and the existing refraction

@@ -16,6 +16,16 @@ namespace MarioTest
         public static void Remove(IntPtr sim) => live.Remove(sim);
         public static void Clear() => live.Clear();
 
+        public static bool WaterTouches(UnityEngine.Vector3 a, UnityEngine.Vector3 b, float radius)
+        {
+            var from = UnityHost.ToSim(a);
+            var to = UnityHost.ToSim(b);
+            foreach (var sim in live)
+                if (Native.sms_sim_water_touches_segment(sim, ref from, ref to, radius / UnityHost.Scale) != 0)
+                    return true;
+            return false;
+        }
+
         /// Whether another Mario's water has wetted the ground where `sim`'s Mario stands.
         public static bool OthersWet(IntPtr sim)
         {

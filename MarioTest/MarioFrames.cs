@@ -54,7 +54,7 @@ namespace MarioTest
     internal static class FrameCodec
     {
         /// Bumped whenever the wire format changes; a batch with another number is ignored.
-        public const byte Protocol = 3;
+        public const byte Protocol = 4;
 
         static void Vec(ByteWriter w, Native.Vec3 v) { w.F32(v.x); w.F32(v.y); w.F32(v.z); }
         static Native.Vec3 Vec(ByteReader r) => new Native.Vec3(r.F32(), r.F32(), r.F32());

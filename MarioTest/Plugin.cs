@@ -66,6 +66,8 @@ namespace MarioTest
         internal static ConfigEntry<float> PoundRadius;
         internal static ConfigEntry<float> DiveDamage, CorkscrewDamage, SuperCorkscrewDamage, SuperCorkscrewRecoil, RocketSpinDamage;
         internal static ConfigEntry<float> WaterDamage;
+        internal static ConfigEntry<float> FireWaterMultiplier;
+        internal static ConfigEntry<bool> ExtinguishFireTrails;
         internal static ConfigEntry<bool> FallDamageEnabled;
         internal static ConfigEntry<float> FallSafeHeight, DiveSafeHeight, FallPerHeight, DiveFallMultiplier;
         internal static ConfigEntry<float> BurstMultiplier, SpinSprayMultiplier;
@@ -321,6 +323,11 @@ namespace MarioTest
                 "fires about 93 a second, so 0.0484 is about 450% a second on one enemy. A burst and a spin " +
                 "jump's spray count for more (BurstMultiplier, SpinSprayMultiplier): 667% is Commando's Double Tap " +
                 "(100% a bullet, one every 0.15 s).");
+            FireWaterMultiplier = Config.Bind("Damage", "FireWaterMultiplier", 20f,
+                "FLUDD damage against burning enemies, fire elites and fiery bodies (wisps, Magma Worms). " +
+                "20 deals twenty times normal water damage. These bonuses do not stack.");
+            ExtinguishFireTrails = Config.Bind("Fludd", "ExtinguishFireTrails", true,
+                "Actual water droplets put out the sections of fire elite trails they touch.");
             // Older defaults (0.035, about 330% a second; 0.0717, a build in between), and a config file
             // keeps the default it was written with: a player who never changed it gets the new one.
             if (Mathf.Approximately(WaterDamage.Value, 0.035f) || Mathf.Approximately(WaterDamage.Value, 0.0717f))
@@ -517,6 +524,7 @@ namespace MarioTest
             PrepareAssets(disc.Value, here);
             gameObject.AddComponent<MarioPresentation>();
             MarioHeatHaze.Initialize();
+            MarioFire.Initialize();
 
             ItemHooks.Install();
             GlobalEventManager.onServerDamageDealt += MarioDriver.OnServerDamage;

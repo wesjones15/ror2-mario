@@ -501,7 +501,8 @@ namespace MarioTest
             lang.SetStringByToken("MARIOTEST_FLUDD_NAME", "FLUDD");
             lang.SetStringByToken("MARIOTEST_FLUDD_DESC",
                 "<style=cIsUtility>Hold RT</style> to spray. <style=cIsUtility>Tap RT</style> for a splash burst. " +
-                "<style=cIsUtility>Press RB</style> to switch nozzle; <style=cIsUtility>hold LB</style> to lock on.");
+                "<style=cIsUtility>Press RB</style> to switch nozzle; <style=cIsUtility>hold LB</style> to lock on. " +
+                "<style=cIsDamage>Melts burning enemies and fire elites.</style> Water puts out fire trail sections it touches.");
             lang.SetStringByToken("MARIOTEST_AIR_NAME", "Air Pump");
             lang.SetStringByToken("MARIOTEST_AIR_DESC",
                 "<style=cIsUtility>Hold RT in mid-air</style> to use FLUDD. Hover, Rocket and Turbo each spend a charge, " +

@@ -234,10 +234,10 @@ namespace MarioTest
             }
             // RoR2 sets him alight (the OnFire buff comes on): Sunshine's fire hit, with the yell and
             // the panicked run. His own sim does it on his machine; a friend's copy gets it replayed.
-            bool burning = body.HasBuff(RoR2Content.Buffs.OnFire);
+            bool burning = MarioFire.Burning(body) || Time.time < fireUntil;
             if (burning && !wasBurning && Plugin.BurnPanic.Value && pounding == 0)
-                SimOps.Ignite(sim);
-            wasBurning = burning;
+                wasBurning = SimOps.Ignite(sim) != 0;
+            if (!burning) wasBurning = false;
             if (knockFrom.HasValue)
             {
                 var from = UnityHost.ToSim(knockFrom.Value);
@@ -534,7 +534,7 @@ namespace MarioTest
             // RoR2's fire also burns on him while he is alight (the disc's own flames can't be asked
             // to stay on, only to flare), so you see him burning as he runs about.
             flames.Set((Plugin.PoundFlames.Value && pounding == 2 && !view.HasEffects)
-                    || (Plugin.BurnPanic.Value && body.HasBuff(RoR2Content.Buffs.OnFire)),
+                    || (Plugin.BurnPanic.Value && (MarioFire.Burning(body) || Time.time < fireUntil)),
                 feet + Vector3.up * (height * 0.5f), height);
             view.Draw(feet);
             ShowMario(true);
@@ -748,14 +748,39 @@ namespace MarioTest
         Vector3? knockFrom;
         // Whether he was burning last step, so catching fire reacts once.
         bool wasBurning;
+        float fireUntil, nextFireNotice;
+
+        internal void CaughtFire()
+        {
+            fireUntil = Time.time + 1.5f;
+            knockFrom = null;
+        }
 
         /// RoR2 landed a hit (server): one that takes Knockdown.Threshold of a Mario's health knocks him over
         /// on his next step. Falls, damage over time and his own hits don't.
         internal static void OnServerDamage(DamageReport report)
         {
-            if (!Plugin.KnockdownEnabled.Value || report == null || !report.victimBody) return;
+            if (report == null || !report.victimBody) return;
             var info = report.damageInfo;
-            if (info == null || (info.damageType & (DamageType.FallDamage | DamageType.DoT)) != 0
+            if (info == null || info.rejected || report.damageDealt <= 0f) return;
+            if (Plugin.BurnPanic.Value && report.attackerBody != report.victimBody
+                && (info.IsConsideredFire(report.attackerBody) || MarioFire.FireDot(info.dotIndex)))
+            {
+                foreach (var d in all)
+                {
+                    if (!d || d.body != report.victimBody) continue;
+                    if (d.driving) d.CaughtFire();
+                    else if (Time.time >= d.nextFireNotice)
+                    {
+                        d.nextFireNotice = Time.time + 0.5f;
+                        MarioNet.SendFire(d.body);
+                    }
+                    break;
+                }
+                return; // Fire has its own bounce; a threshold knock-down would replace it.
+            }
+            if (!Plugin.KnockdownEnabled.Value) return;
+            if ((info.damageType & (DamageType.FallDamage | DamageType.DoT)) != 0
                 || report.attackerBody == report.victimBody) return;
             var hc = report.victim;
             if (!hc || hc.fullCombinedHealth <= 0f

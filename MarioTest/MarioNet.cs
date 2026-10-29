@@ -29,6 +29,7 @@ namespace MarioTest
 
         /// A client's Mario touched a coin: client to server.
         public const short CoinTouchMsg = 0x4D07;
+        public const short FireMsg = 0x4D08;
 
         /// One hit a client's Mario made, for the server to land.
         public struct HitRecord
@@ -37,6 +38,7 @@ namespace MarioTest
             public float coefficient, proc;
             public Vector3 at, force;
             public bool ignite;
+            public bool water;
             /// The skill it came from (RoR2's DamageSource).
             public byte source;
         }
@@ -53,6 +55,7 @@ namespace MarioTest
             Mp.Register(CoinMsg, null, OnCoin);
             Mp.Register(ShineMsg, OnShine, null);
             Mp.Register(CoinTouchMsg, OnCoinTouch, null);
+            Mp.Register(FireMsg, null, OnFire);
             Run.onRunDestroyGlobal += run => queues.Clear();
         }
 
@@ -113,7 +116,7 @@ namespace MarioTest
             for (int i = 0; i < hits.Count && i < 255; i++)
             {
                 var h = hits[i];
-                w.U32(h.victim); w.F32(h.coefficient); w.F32(h.proc); Vec(w, h.at); Vec(w, h.force); w.Bool(h.ignite); w.U8(h.source);
+                w.U32(h.victim); w.F32(h.coefficient); w.F32(h.proc); Vec(w, h.at); Vec(w, h.force); w.Bool(h.ignite); w.U8(h.source); w.Bool(h.water);
             }
             w.U8((byte)Mathf.Min(blasts.Count, 8));
             for (int i = 0; i < blasts.Count && i < 8; i++) { Vec(w, blasts[i].at); w.F32(blasts[i].radius); }
@@ -137,7 +140,7 @@ namespace MarioTest
             {
                 var hit = new HitRecord
                 {
-                    victim = r.U32(), coefficient = r.F32(), proc = r.F32(), at = Vec(r), force = Vec(r), ignite = r.Bool(), source = r.U8(),
+                    victim = r.U32(), coefficient = r.F32(), proc = r.F32(), at = Vec(r), force = Vec(r), ignite = r.Bool(), source = r.U8(), water = r.Bool(),
                 };
                 if (r.Failed) return;
                 if (!valid || !Finite(hit.at) || !Finite(hit.force) || !(hit.coefficient > 0f) || !(hit.proc >= 0f)) continue;
@@ -181,6 +184,25 @@ namespace MarioTest
             if (r.Failed || !go || !Finite(from)) return;
             var body = go.GetComponent<CharacterBody>();
             if (body && body.hasEffectiveAuthority) go.GetComponent<MarioDriver>()?.KnockFrom(from);
+        }
+
+        internal static void SendFire(CharacterBody body)
+        {
+            var user = body && body.master && body.master.playerCharacterMasterController
+                ? body.master.playerCharacterMasterController.networkUser : null;
+            var conn = user ? user.connectionToClient : null;
+            if (conn == null || body.hasEffectiveAuthority) return;
+            var w = new ByteWriter(4);
+            w.U32(body.netId.Value);
+            Mp.SendTo(conn, FireMsg, w.ToArray());
+        }
+
+        static void OnFire(NetworkConnection unused, ByteReader r)
+        {
+            var go = Mp.Find(r.U32());
+            if (r.Failed || !go) return;
+            var body = go.GetComponent<CharacterBody>();
+            if (body && body.hasEffectiveAuthority) go.GetComponent<MarioDriver>()?.CaughtFire();
         }
 
         /// The server tells a client's Mario what his tank is owed (healing into water, Bandolier).

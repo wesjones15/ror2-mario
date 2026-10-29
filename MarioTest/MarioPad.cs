@@ -35,6 +35,9 @@ namespace MarioTest
         bool a, b, l, x, aTap, bTap, lTap, xTap;
         // 0..1.
         float r, rMax;
+        // The trigger's press edge (the empty FLUDD button's second Melee tap), and whether it
+        // was down at the previous read.
+        bool rTap, rDown;
         // D-pad down (refill the tank), and up (the secret Egg Lay): held, and pressed since the
         // last step.
         bool down, downTap, up, upTap;
@@ -178,6 +181,9 @@ namespace MarioTest
             xTap |= x;
             sprintTap |= sprint;
             rMax = Mathf.Max(rMax, r);
+            bool down = r > 0.5f;
+            rTap |= down && !rDown;
+            rDown = down;
         }
 
         // The keyboard primary as a trigger: light at first, full once held past the tap time.
@@ -208,6 +214,7 @@ namespace MarioTest
             if (held)
             {
                 aTap = bTap = lTap = xTap = false;
+                rTap = false;
                 rMax = 0f;
                 return new Native.Pad { use_move = 1 };
             }
@@ -259,6 +266,16 @@ namespace MarioTest
         {
             bool t = upTap;
             upTap = false;
+            return t;
+        }
+
+        /// The trigger was pressed since the last call. With FLUDD off it is the second Melee
+        /// attack button (RB is the first); with FLUDD on the driver ignores it and the trigger
+        /// sprays as usual.
+        public bool TakeTriggerTap()
+        {
+            bool t = rTap;
+            rTap = false;
             return t;
         }
 

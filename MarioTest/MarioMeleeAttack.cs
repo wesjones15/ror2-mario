@@ -22,6 +22,7 @@ namespace MarioTest
         {
             get
             {
+                if (MarioMelee.Available) return true;
                 if (!resolved)
                 {
                     resolved = true;
@@ -50,7 +51,11 @@ namespace MarioTest
         /// refused (a move already playing, for example).
         public static bool TryAttack(CharacterBody body, Vector3 aim)
         {
-            if (!Available || !body) return false;
+            if (!body) return false;
+            // This plugin's own Melee Mario first (libssbm's A selector plus the ported
+            // Sunshine animation); the Melee plugin's provider is the older optional path.
+            if (MarioMelee.TryAttack(body, aim)) return true;
+            if (!Available) return false;
             try
             {
                 return method.Invoke(null, new object[] { body, aim }) is bool started && started;
@@ -64,6 +69,7 @@ namespace MarioTest
 
         public static void Reset()
         {
+            MarioMelee.Reset();
             resolved = false;
             method = null;
         }

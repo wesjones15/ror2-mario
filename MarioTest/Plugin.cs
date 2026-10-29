@@ -144,8 +144,9 @@ namespace MarioTest
                 "build AssetsDir if missing or incomplete. Empty: check $SMS_DISC, the plugin folder " +
                 "and next to AssetsDir. Any region is supported; convert RVZ/WIA/WBFS to ISO first.");
             var meleeAssets = Config.Bind("Paths", "MeleeAssets", "",
-                "The Melee plugin's extracted cache (for the Luigi alt-skin, which reads Luigi's HSD mesh " +
-                "from it). Empty: $SSBM_ASSETS, then Melee/assets, assets, or libssbm/assets next to the plugin.");
+                "The Melee plugin's extracted cache: Luigi's HSD mesh for the alt-skin, and " +
+                "Mario's A attacks on the empty FLUDD button (needs PlMr.dat). Empty: $SSBM_ASSETS, " +
+                "then Melee/assets, assets, or libssbm/assets next to the plugin.");
             Height = Config.Bind("Look", "Height", 0f,
                 "Mario's height in metres; everything he does scales with it (his speed, jumps " +
                 "and FLUDD's reach). 0: as tall as Commando.");

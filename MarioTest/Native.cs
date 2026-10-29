@@ -12,7 +12,7 @@ namespace MarioTest
     internal static class Native
     {
         public const string Dll = "sms";
-        public const uint AbiVersion = 33;
+        public const uint AbiVersion = 34;
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern IntPtr sms_heat_new(byte[] dir);
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern void sms_heat_free(IntPtr heat);
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern byte sms_heat_texture(IntPtr heat, out ViewTexture texture, [Out] byte[] rgba, uint capacity);
@@ -398,6 +398,8 @@ namespace MarioTest
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern IntPtr sms_view_new_look(byte[] assetsDirUtf8, byte sound, byte look);
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern void sms_view_free(IntPtr view);
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern void sms_view_skin(IntPtr view, uint skin);
+        /// One column-major 4x4 per Sunshine joint, or `count` 0 to clear the override.
+        [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern byte sms_view_set_pose(IntPtr view, float[] matrices, uint count);
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern byte sms_view_set_luigi(IntPtr view, byte[] meleeDirUtf8);
         /// Makes a skin drawable (see MarioSkin): `dirUtf8` is the Melee cache for Luigi, null for
         /// a skin that comes from the Sunshine assets. 1 when its files were there.
@@ -536,6 +538,10 @@ namespace MarioTest
         /// Whose body the view draws: 0 Mario, 1 Luigi (an alt-skin whose HSD mesh comes from the
         /// Melee cache), 2 Piantissimo (a model on Mario's rig).
         public void SetSkin(uint skin) => Native.sms_view_skin(Handle, skin);
+
+        /// Draws the body with a host pose (one model-space matrix per joint); null clears it.
+        public bool SetPose(float[] matrices, uint count) =>
+            Native.sms_view_set_pose(Handle, matrices, count) != 0;
 
         /// Loads Luigi's HSD mesh from the Melee cache; false when the cache is incomplete.
         public bool LoadLuigi(byte[] meleeDirUtf8) => Native.sms_view_set_luigi(Handle, meleeDirUtf8) != 0;

@@ -327,6 +327,7 @@ namespace MarioTest
             var view = View;
             SimOps.Step(sim, ref host, ref step, cameraYaw, Time.fixedDeltaTime,
                 view != null ? view.Handle : IntPtr.Zero);
+            if (Local) MarioMelee.Step(body, AimDirection);
             MarioCombat.End();
             Native.sms_sim_state(sim, out var st);
             winDemo = st.win_demo;
@@ -594,6 +595,8 @@ namespace MarioTest
                 ShowMario(false);
                 return;
             }
+            if (Local) MarioMelee.Draw(view);
+            else view.SetPose(null, 0);
             view.Update(sim, lagTicks);
             if (view.Models == null) return;
             var feet = transform.position - feetToOrigin;

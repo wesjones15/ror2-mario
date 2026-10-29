@@ -19,8 +19,10 @@ on all peers. Pair the updated `sms.dll` with `MarioTest.dll`.
 Tap RB to swap between Spray and the selected alternate; hold RB for 0.6 s to choose
 No FLUDD, Hover, Rocket or Turbo from a wheel anchored to the Air Pump cooldown picture. The
 chosen alternate is overlaid on that picture, or left as-is for No FLUDD. Nozzle choices are
-recorded in the multiplayer frame. See `docs/radial-menu.md` for the controls and the optional
-Melee Mario A attack on the empty FLUDD button.
+recorded in the multiplayer frame. With No FLUDD, tapping RB or RT plays one of Melee Mario's
+contextual A attacks (jab, tilts, smashes, dash and aerials) on the Sunshine body, using
+`ssbm.dll` and the Melee cache's `PlMr.dat`; damage is the disc hitbox's percent / 3. See
+`docs/radial-menu.md` for the controls and the Melee A details.
 
 `tests/FireCheck` patches the installed game's actual DamageTrail IL headlessly
 and checks that the extinguish branch skips overlap/damage while retaining the
@@ -32,7 +34,7 @@ for Mario, Luigi and Piantissimo. Set it to false to disable immediately. It
 uses the disc's ShimmerLow model/BTK/indirect map and the existing refraction
 backend, separately from FLUDD's `Look.WaterRefraction`. Nearby scene geometry
 and the HUD stay clear. See `libsms/docs/heat-haze.md` for source evidence and
-the headless proof. The updated plugin requires native ABI 33.
+the headless proof. The updated plugin requires native ABI 34.
 
 Sunshine presentation now belongs to the local Mario player's run, so death,
 spectator mode and Remote Operation drone control keep the coin counters,

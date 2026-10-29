@@ -20,12 +20,17 @@ it calls `sms_sim_select_nozzle(0)` and hides the tank. Choosing Hover/Rocket/Tu
 alternate is fitted changes it in place; while Spray is fitted it is only remembered for the next
 tap. From No FLUDD, choosing a nozzle gives FLUDD back.
 
-With No FLUDD selected the button is empty. A tap there is reserved for the optional Melee Mario
-punch/kick (`Mario.MarioContextualAttack.TryAttack`). Until that provider exists the ability is
-omitted and the tap does nothing; hold RB and choose a nozzle to bring FLUDD back.
+With No FLUDD selected the button is empty. Tapping **RB or RT** there plays Melee Mario's
+contextual A attack: libssbm's Mario fighter (`FighterKind::Mario`, `PlMr.dat`/`PlMrAJ.dat`)
+selects jab, tilt, smash, dash or aerial from the stick and aim, and the clip is retargeted onto
+Sunshine's `ma_mdl1.bmd` for the body. The disc hitbox's percent / 3 is applied as RoR2 damage.
+This needs `ssbm.dll` and `PlMr.dat` in the Melee cache (`Paths.MeleeAssets`); without them the
+tap does nothing. A Melee plugin provider (`Mario.MarioContextualAttack.TryAttack`) is still
+accepted as a fallback, so MarioTest never references the Melee assembly. With FLUDD fitted RT
+sprays and RB changes nozzles as before.
 
 The selection is a host operation (`SimOps.SelectNozzle`), so it is recorded in the same
-multiplayer frame as the step. Network protocol 5 and native ABI 33 are required on every peer.
+multiplayer frame as the step. Network protocol 5 and native ABI 34 are required on every peer.
 
 ## Adding an ability
 
@@ -34,8 +39,6 @@ inside the driver's physics step when the segment is committed, so any sim call 
 through `SimOps` to be recorded for puppets. It is currently used by the alternate entries;
 the wheel no longer adds a Melee A segment. The menu rebuilds its ring for the new segment count.
 
-The empty FLUDD button also discovers an optional Melee Mario A attack through reflection:
-`Mario.MarioContextualAttack.TryAttack(CharacterBody body, Vector3 aim)`. When that type is
-loaded, tapping RB with No FLUDD fitted is the punch/kick; when it is absent the tap simply does
-nothing. MarioTest does not reference the Melee assembly. RT remains Sunshine's spray in either
-case.
+The empty FLUDD button's attack is `MarioMelee` (this plugin) first; if it is unavailable the
+old reflection provider `Mario.MarioContextualAttack.TryAttack(CharacterBody body, Vector3 aim)`
+is tried. RT is only a second Melee button when No FLUDD is fitted.

@@ -8,6 +8,7 @@ param(
     [string]$RoR2Dir = (Join-Path $PSScriptRoot "..\2026 Mod Stuff\RiskOfRain2_DLC4"),
     [string]$InstallDir = $RoR2Dir,
     [string]$LibSms = (Join-Path $PSScriptRoot "..\libsms"),
+    [string]$LibSsbm = (Join-Path $PSScriptRoot "..\libssbm"),
     [switch]$NoInstall
 )
 if (-not (Test-Path (Join-Path $InstallDir "BepInEx"))) { $InstallDir = $RoR2Dir }
@@ -21,6 +22,11 @@ Push-Location $LibSms
 try { & $cargo build -p libsms-ffi --release; if ($LASTEXITCODE) { throw "cargo failed" } }
 finally { Pop-Location }
 
+Write-Host "== libssbm-ffi (ssbm.dll, the Melee Mario A attacks)"
+Push-Location $LibSsbm
+try { & $cargo build -p libssbm-ffi --release; if ($LASTEXITCODE) { throw "cargo failed" } }
+finally { Pop-Location }
+
 Write-Host "== MarioTest.dll"
 dotnet build (Join-Path $PSScriptRoot "MarioTest\MarioTest.csproj") -c Release "-p:RoR2Dir=$RoR2Dir"
 if ($LASTEXITCODE) { throw "dotnet build failed" }
@@ -31,6 +37,7 @@ New-Item -ItemType Directory -Force $dist | Out-Null
 # A clean build needs no extracted Nintendo files.
 Copy-Item (Join-Path $PSScriptRoot "MarioTest\bin\Release\netstandard2.1\MarioTest.dll") $dist -Force
 Copy-Item (Join-Path $LibSms "target\release\sms.dll") $dist -Force
+Copy-Item (Join-Path $LibSsbm "target\release\ssbm.dll") $dist -Force
 $assets = [System.IO.Path]::GetFullPath((Join-Path $LibSms "assets"))
 [System.IO.File]::WriteAllText((Join-Path $dist "assets_dir.txt"), $assets)
 Write-Host "built $dist (assets: $assets)"
@@ -38,6 +45,6 @@ Write-Host "built $dist (assets: $assets)"
 if (-not $NoInstall) {
     $plugins = Join-Path $InstallDir "BepInEx\plugins\MarioTest"
     New-Item -ItemType Directory -Force $plugins | Out-Null
-    Copy-Item (Join-Path $dist "sms.dll"),(Join-Path $dist "MarioTest.dll"),(Join-Path $dist "assets_dir.txt") $plugins -Force
+    Copy-Item (Join-Path $dist "sms.dll"),(Join-Path $dist "ssbm.dll"),(Join-Path $dist "MarioTest.dll"),(Join-Path $dist "assets_dir.txt") $plugins -Force
     Write-Host "installed into $plugins"
 }

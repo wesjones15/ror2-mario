@@ -36,22 +36,16 @@ Copy-Item (Join-Path $PSScriptRoot "MarioTest\bin\Release\netstandard2.1\MarioTe
 Copy-Item (Join-Path $LibSms "target\release\sms.dll") $dist -Force
 $assets = [System.IO.Path]::GetFullPath((Join-Path $LibSms "assets"))
 [System.IO.File]::WriteAllText((Join-Path $dist "assets_dir.txt"), $assets)
-# The Melee Mario A attacks need PlMr.dat from the Melee cache; point at this checkout's
-# cache when it has it, so the staged plugin works without hand-editing Paths.MeleeAssets.
-$meleeAssets = [System.IO.Path]::GetFullPath((Join-Path $LibSsbm "assets"))
-$meleePointer = Join-Path $dist "melee_assets_dir.txt"
-if (Test-Path (Join-Path $meleeAssets "PlMr.dat")) {
-    [System.IO.File]::WriteAllText($meleePointer, $meleeAssets)
-} else {
-    Remove-Item $meleePointer -ErrorAction SilentlyContinue
-}
-Write-Host "built $dist (assets: $assets; melee: $meleeAssets)"
+# The Melee Mario A attacks find PlMr.dat through the installed Melee plugin (its cache, which
+# it extracts Mario into on first run), so nothing Melee-related is staged here.
+Write-Host "built $dist (assets: $assets)"
 
 if (-not $NoInstall) {
     $plugins = Join-Path $InstallDir "BepInEx\plugins\MarioTest"
     New-Item -ItemType Directory -Force $plugins | Out-Null
+    # An older build staged a separate Melee cache pointer here; it is no longer read.
+    Remove-Item (Join-Path $plugins "melee_assets_dir.txt") -ErrorAction SilentlyContinue
     $files = @("sms.dll","MarioTest.dll","assets_dir.txt")
-    if (Test-Path $meleePointer) { $files += "melee_assets_dir.txt" }
     Copy-Item ($files | ForEach-Object { Join-Path $dist $_ }) $plugins -Force
     Write-Host "installed into $plugins"
 }

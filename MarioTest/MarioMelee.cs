@@ -12,8 +12,8 @@ namespace MarioTest
     // smashes and aerials use their disc timing and hitboxes. The Sunshine body is only posed
     // with the Melee clip: `ssbm_mario_pose_sample` retargets the clip onto `ma_mdl1.bmd`, and
     // `sms_view_set_pose` draws that pose for the frame. Nothing here is compiled against the
-    // Melee plugin: `ssbm.dll` and the Melee cache are found at runtime, and if either is absent
-    // the empty button stays a no-op (the ability is omitted).
+    // Melee plugin: its `ssbm.dll` and its cache (which it extracts PlMr.dat into on first run)
+    // are found at runtime, and if either is absent the empty button stays a no-op.
     internal static class MarioMelee
     {
         const uint AttackButton = 2; // libssbm ATTACK
@@ -41,6 +41,13 @@ namespace MarioTest
         static float activeFrame;
         static byte sentMove;
         static float sentFrame;
+        // The lab sim's own mixer voices the attacks: the subaction scripts' sound commands
+        // (ftAction_80071B50 / ftAction_80071FC8) carry Mario's "hoo"/"wah" grunts and swing
+        // sounds from main.ssm. The lab also walks and lands with RoR2, so it is heard only
+        // while an attack plays and for this long after, letting a voice line finish.
+        const float VoiceTail = 0.8f;
+        static MeleeAudio audio;
+        static float voiceUntil;
 
         public static bool Available
         {
@@ -55,37 +62,37 @@ namespace MarioTest
         /// empty FLUDD button has Melee A attacks.
         public static void Probe() => _ = Available;
 
+        /// The Melee plugin extracts PlMr.dat on its first run, after this plugin has loaded;
+        /// a missing cache is looked for again this often instead of turning the attacks off.
+        const float RetrySeconds = 5f;
+        static float retryAt;
+
         static void Load()
         {
+            if (Time.realtimeSinceStartup < retryAt) return;
             tried = true;
             try
             {
-                string cache = MarioSkin.MeleeDir;
                 string here = System.IO.Path.GetDirectoryName(typeof(MarioMelee).Assembly.Location);
-                if (string.IsNullOrEmpty(cache) || !File.Exists(System.IO.Path.Combine(cache, "PlMr.dat")))
+                string cache = FindCache(here);
+                if (cache == null)
                 {
-                    cache = Environment.GetEnvironmentVariable("SSBM_ASSETS");
-                }
-                if (string.IsNullOrEmpty(cache) && !string.IsNullOrEmpty(here))
-                {
-                    string pointer = System.IO.Path.Combine(here, "melee_assets_dir.txt");
-                    if (File.Exists(pointer)) cache = File.ReadAllText(pointer).Trim();
-                }
-                if (string.IsNullOrEmpty(cache) || !File.Exists(System.IO.Path.Combine(cache, "PlMr.dat")))
-                {
-                    Plugin.Log.LogInfo("Melee Mario A attacks are off: no PlMr.dat in Paths.MeleeAssets or a melee_assets_dir.txt cache");
+                    // Not latched: the Melee plugin may still be extracting from the disc.
+                    tried = false;
+                    retryAt = Time.realtimeSinceStartup + RetrySeconds;
+                    if (!loggedMissing)
+                    {
+                        loggedMissing = true;
+                        Plugin.Log.LogInfo("Melee Mario A attacks are waiting for the Melee plugin's cache (PlMr.dat); "
+                            + "install the Melee plugin and set its Paths.Disc, or set Paths.MeleeAssets");
+                    }
                     return;
                 }
-                // ssbm.dll belongs to the Melee plugin, not this one. Prefer its plugin
-                // folder; fall back to the native library beside the Melee cache.
-                string dll = here == null ? null : System.IO.Path.Combine(here, "..", "Melee", "ssbm.dll");
+                // ssbm.dll belongs to the Melee plugin, not this one: load it from there.
+                string dll = here == null ? null : System.IO.Path.GetFullPath(System.IO.Path.Combine(here, "..", "Melee", "ssbm.dll"));
                 if (string.IsNullOrEmpty(dll) || !File.Exists(dll))
                 {
-                    dll = System.IO.Path.Combine(System.IO.Path.GetDirectoryName(cache) ?? cache, "ssbm.dll");
-                }
-                if (!File.Exists(dll))
-                {
-                    Plugin.Log.LogInfo($"Melee Mario: {dll} is missing; the empty FLUDD button stays empty");
+                    Plugin.Log.LogInfo("Melee Mario: the Melee plugin's ssbm.dll is missing; the empty FLUDD button stays empty");
                     return;
                 }
                 MeleeNative.Load(dll);
@@ -114,6 +121,8 @@ namespace MarioTest
                     collide = Marshal.GetFunctionPointerForDelegate(collide),
                     evt = Marshal.GetFunctionPointerForDelegate(eventFn),
                 };
+                audio = new MeleeAudio(sim);
+                MeleeAudio.SetGain(sim, 0f);
                 poseJoints = MeleeNative.ssbm_mario_pose_sample(pose, NativeLib.CString("Wait"), 0f, matrices, (uint)MaxJoints);
                 ready = poseJoints > 0 && poseJoints <= MaxJoints;
                 if (ready) Plugin.Log.LogInfo($"Melee Mario ready: {poseJoints} Sunshine joints, A attacks from {cache}");
@@ -124,6 +133,46 @@ namespace MarioTest
                 ready = false;
                 Plugin.Log.LogWarning("Melee Mario unavailable: " + e.Message);
             }
+        }
+
+        static bool loggedMissing;
+
+        /// The Melee cache holding PlMr.dat. Nothing is staged beside this plugin for it: an
+        /// explicit Paths.MeleeAssets / $SSBM_ASSETS wins, then whatever folder the installed
+        /// Melee plugin uses (its config, its assets_dir.txt, or its own assets/ folder).
+        static string FindCache(string here)
+        {
+            bool Has(string dir) => !string.IsNullOrEmpty(dir) && File.Exists(System.IO.Path.Combine(dir, "PlMr.dat"));
+            if (Has(MarioSkin.MeleeDir)) return MarioSkin.MeleeDir;
+            string env = Environment.GetEnvironmentVariable("SSBM_ASSETS");
+            if (Has(env)) return env.Trim();
+            string loaded = MeleePluginAssets();
+            if (Has(loaded)) return loaded;
+            if (string.IsNullOrEmpty(here)) return null;
+            string melee = System.IO.Path.GetFullPath(System.IO.Path.Combine(here, "..", "Melee"));
+            string pointer = System.IO.Path.Combine(melee, "assets_dir.txt");
+            if (File.Exists(pointer))
+            {
+                string target = File.ReadAllText(pointer).Trim();
+                if (Has(target)) return target;
+            }
+            string own = System.IO.Path.Combine(melee, "assets");
+            return Has(own) ? own : null;
+        }
+
+        /// The running Melee plugin's resolved cache folder (its Plugin.AssetsDir), read by
+        /// reflection so this plugin never compiles against it. Null when it is not loaded.
+        static string MeleePluginAssets()
+        {
+            try
+            {
+                if (!BepInEx.Bootstrap.Chainloader.PluginInfos.TryGetValue("com.libssbm.melee", out var info)
+                    || info.Instance == null) return null;
+                var field = info.Instance.GetType().GetField("AssetsDir",
+                    System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic);
+                return field?.GetValue(null) as string;
+            }
+            catch { return null; }
         }
 
         /// The empty FLUDD button's tap. True when a Mario A attack started.
@@ -166,6 +215,7 @@ namespace MarioTest
             if (clip != activeClip) hitOnce.Clear();
             activeClip = clip;
             activeFrame = clip == null ? 0f : MeleeNative.ssbm_sim_motion_frame(sim);
+            if (activeMove != 0) voiceUntil = Time.time + VoiceTail;
             // Puppets draw the same clip without running a second Melee sim. Only a changed
             // pose is recorded, so idle frames stay the same size as before.
             if (activeMove != sentMove || activeFrame != sentFrame)
@@ -224,7 +274,13 @@ namespace MarioTest
         }
 
         /// Gives the Sunshine view the active Melee clip's pose. Call before the view draws.
-        public static void Draw(MarioView view) => ApplyPose(view, (byte)activeMove, activeFrame);
+        public static void Draw(MarioView view)
+        {
+            ApplyPose(view, (byte)activeMove, activeFrame);
+            if (audio == null || sim == IntPtr.Zero) return;
+            MeleeAudio.SetGain(sim, activeMove != 0 || Time.time < voiceUntil ? 1f : 0f);
+            audio.Update();
+        }
 
         /// Applies a recorded Melee move/frame to any Mario view (the local player's, or a
         /// puppet replaying the owner's `Melee` op). `move` 0 clears the override.
@@ -256,10 +312,13 @@ namespace MarioTest
             sentMove = 0;
             sentFrame = 0f;
             hitOnce.Clear();
-            if (sim != IntPtr.Zero) { MeleeNative.ssbm_sim_free(sim); sim = IntPtr.Zero; }
+            voiceUntil = 0f;
+            audio?.Dispose(); audio = null;
+            if (sim != IntPtr.Zero) { MeleeAudio.SetGain(sim, 1f); MeleeNative.ssbm_sim_free(sim); sim = IntPtr.Zero; }
             if (pose != IntPtr.Zero) { MeleeNative.ssbm_mario_pose_free(pose); pose = IntPtr.Zero; }
             tried = false;
             ready = false;
+            retryAt = 0f;
         }
 
         static void Floor(IntPtr user, in MeleeNative.Vec3 from, in MeleeNative.Vec3 to, out MeleeNative.Collision c)

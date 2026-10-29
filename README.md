@@ -13,8 +13,13 @@ FLUDD deals 20x damage to burning enemies, fire elites, wisps and Magma Worms
 from any nozzle. `Fludd.ExtinguishFireTrails` makes actual droplet sweeps put out
 individual trail sections, removing their damage and segment visuals for their
 remaining lifetime without joining dry sections across the gap. New sections
-laid later can still burn. Network protocol is now 4; install matching builds
+laid later can still burn. Network protocol is now 5; install matching builds
 on all peers. Pair the updated `sms.dll` with `MarioTest.dll`.
+
+Hold RB to open FLUDD's nozzle radial, point RS at a segment and release to fit it. The
+segments use the disc HUD's own `nz01..04` nozzle pictures; **No FLUDD** takes the tank away and
+fitting any nozzle afterwards brings it back. Nozzle choices are recorded in the multiplayer
+frame. See `docs/radial-menu.md` for the controls and the optional Melee Mario A attack hook.
 
 `tests/FireCheck` patches the installed game's actual DamageTrail IL headlessly
 and checks that the extinguish branch skips overlap/damage while retaining the
@@ -26,7 +31,7 @@ for Mario, Luigi and Piantissimo. Set it to false to disable immediately. It
 uses the disc's ShimmerLow model/BTK/indirect map and the existing refraction
 backend, separately from FLUDD's `Look.WaterRefraction`. Nearby scene geometry
 and the HUD stay clear. See `libsms/docs/heat-haze.md` for source evidence and
-the headless proof. The updated plugin requires native ABI 32.
+the headless proof. The updated plugin requires native ABI 33.
 
 Sunshine presentation now belongs to the local Mario player's run, so death,
 spectator mode and Remote Operation drone control keep the coin counters,

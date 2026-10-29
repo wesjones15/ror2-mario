@@ -68,9 +68,11 @@ namespace MarioTest
         static readonly Color NoneColor = new Color(0.55f, 0.56f, 0.62f);
 
         const float Deadzone = 0.32f;
+        /// A full right-stick tilt commits at once; a partial tilt only shows the highlight.
+        const float Commit = 0.9f;
         const int RingSize = 512;
 
-        static bool open, wasHeld, engaged, abilitiesChecked, meleeAdded;
+        static bool open, wasHeld, armed, abilitiesChecked, meleeAdded;
         static int hovered, current = -1, builtinEntries;
         static MarioRadialEntry pending;
         static Vector2 mouseAnchor;
@@ -136,7 +138,9 @@ namespace MarioTest
             if (held && !wasHeld)
             {
                 open = true;
-                engaged = false;
+                // A stick already held over from the camera must be released before it counts:
+                // pressing RB during a turn should not pick that direction immediately.
+                armed = direction.sqrMagnitude < Commit * Commit;
                 hovered = current >= 0 ? current : 0;
                 mouseAnchor = Input.mousePosition;
             }
@@ -144,19 +148,25 @@ namespace MarioTest
             if (!open) return;
             if (!held)
             {
-                if (engaged && hovered >= 0 && hovered < entries.Count)
-                    pending = entries[hovered];
+                // Releasing without a full-tilt choice cancels; the wheel commits on the
+                // first full-tilt selection instead.
                 open = false;
-                engaged = false;
+                armed = false;
                 return;
             }
             var dir = direction;
             if (dir.sqrMagnitude < Deadzone * Deadzone && mouseFallback) dir = MouseDirection();
+            if (dir.sqrMagnitude < 0.6f * 0.6f) armed = true;
             if (dir.sqrMagnitude < Deadzone * Deadzone) return;
             int at = SegmentAt(dir);
             if (at < 0) return;
-            engaged = true;
             hovered = at;
+            if (!armed || dir.sqrMagnitude < Commit * Commit) return;
+            // Commit on the first full tilt and close at once; the step applies it.
+            pending = entries[at];
+            open = false;
+            armed = false;
+            wasHeld = true;
         }
 
         /// A segment was chosen as the button came up. The driver calls this inside its step.
@@ -171,7 +181,7 @@ namespace MarioTest
         public static void Cancel()
         {
             open = false;
-            engaged = false;
+            armed = false;
             pending = null;
             wasHeld = true; // a held button must be released before the menu opens again
         }
@@ -239,7 +249,7 @@ namespace MarioTest
             if (!open || entries.Count == 0 || Event.current.type != EventType.Repaint) return;
             if (PauseManager.isPaused || !RoR2.UI.HUD.cvHudEnable.value) return;
             float h = Mathf.Min(Screen.width, Screen.height);
-            float outer = h * 0.25f, inner = outer * 0.55f;
+            float outer = h * 0.18f, inner = outer * 0.57f;
             var center = new Vector2(Screen.width * 0.5f, Screen.height * 0.5f);
             EnsureStyles(h);
             EnsureRing();
@@ -254,7 +264,7 @@ namespace MarioTest
                 ring, ScaleMode.StretchToFill, true);
 
             float step = 360f / entries.Count;
-            float iconSize = Mathf.Clamp(h * 0.072f, 36f, 96f);
+            float iconSize = Mathf.Clamp(h * 0.055f, 28f, 72f);
             for (int i = 0; i < entries.Count; i++)
             {
                 // Math coordinates here (y up); the screen is turned over below.
@@ -263,49 +273,51 @@ namespace MarioTest
                 var iconAt = center + new Vector2(radial.x, -radial.y) * (outer * 0.74f);
                 var iconRect = new Rect(iconAt.x - iconSize * 0.5f, iconAt.y - iconSize * 0.5f,
                     iconSize, iconSize);
-                DrawEntryIcon(entries[i], iconRect, iconSize);
+                // The nozzle picture turns with its segment, so its top points out of the wheel.
+                DrawEntryIcon(entries[i], iconRect, iconSize, i * step);
                 // Outside the ring, so a long label (NO FLUDD) cannot sit on its icon.
-                var textAt = center + new Vector2(radial.x, -radial.y) * (outer * 1.03f);
-                var textRect = new Rect(textAt.x - outer * 0.5f, textAt.y - h * 0.016f,
-                    outer, h * 0.032f);
+                var textAt = center + new Vector2(radial.x, -radial.y) * (outer * 1.04f);
+                var textRect = new Rect(textAt.x - outer * 0.55f, textAt.y - h * 0.014f,
+                    outer * 1.1f, h * 0.028f);
                 Shadow(textRect, entries[i].Label, i == hovered ? titleStyle : label);
             }
 
             var at = entries[Mathf.Clamp(hovered, 0, entries.Count - 1)];
-            float hub = Mathf.Clamp(h * 0.075f, 38f, 96f);
-            var hubRect = new Rect(center.x - hub * 0.5f, center.y - hub * 0.5f - h * 0.008f, hub, hub);
-            DrawEntryIcon(at, hubRect, hub);
-            var nameRect = new Rect(center.x - inner, center.y + hub * 0.55f, inner * 2f, h * 0.035f);
+            float hub = Mathf.Clamp(h * 0.055f, 30f, 68f);
+            var hubRect = new Rect(center.x - hub * 0.5f, center.y - hub * 0.5f - h * 0.006f, hub, hub);
+            DrawEntryIcon(at, hubRect, hub, 0f);
+            var nameRect = new Rect(center.x - inner, center.y + hub * 0.55f, inner * 2f, h * 0.030f);
             Shadow(nameRect, at.Label, centerLabel);
             var hintRect = new Rect(0f, Screen.height - h * 0.055f, Screen.width, h * 0.04f);
-            Shadow(hintRect, "POINT RS TO CHOOSE  -  RELEASE TO FIT", label);
+            Shadow(hintRect, "FULL RS TILT TO FIT  -  RELEASE TO CANCEL", label);
             GUI.color = old;
         }
 
-        static void DrawEntryIcon(MarioRadialEntry entry, Rect rect, float size)
+        static void DrawEntryIcon(MarioRadialEntry entry, Rect rect, float size, float rotation)
         {
             var icon = entry.Icon != null ? entry.Icon() : null;
-            if (icon)
-            {
-                GUI.color = Color.white;
-                GUI.DrawTexture(rect, icon, ScaleMode.ScaleToFit, true);
-            }
-            else
+            if (!icon)
             {
                 GUI.color = entry.Color;
                 GUI.DrawTexture(new Rect(rect.x + size * 0.12f, rect.y + size * 0.12f,
                     size * 0.76f, size * 0.76f), Texture2D.whiteTexture);
                 GUI.color = Color.white;
                 Shadow(rect, entry.Label.Substring(0, 1), centerLabel);
+                return;
             }
-            if (!entry.CrossOut) return;
             var pivot = rect.center;
-            float length = size * 0.95f, thickness = Mathf.Max(3f, size * 0.09f);
             var matrix = GUI.matrix;
-            GUI.color = new Color(0.95f, 0.12f, 0.12f, 0.95f);
-            GUIUtility.RotateAroundPivot(-45f, pivot);
-            GUI.DrawTexture(new Rect(pivot.x - length * 0.5f, pivot.y - thickness * 0.5f,
-                length, thickness), Texture2D.whiteTexture);
+            GUI.color = Color.white;
+            if (rotation != 0f) GUIUtility.RotateAroundPivot(rotation, pivot);
+            GUI.DrawTexture(rect, icon, ScaleMode.ScaleToFit, true);
+            if (entry.CrossOut)
+            {
+                float length = size * 0.95f, thickness = Mathf.Max(3f, size * 0.09f);
+                GUI.color = new Color(0.95f, 0.12f, 0.12f, 0.95f);
+                GUIUtility.RotateAroundPivot(-45f, pivot);
+                GUI.DrawTexture(new Rect(pivot.x - length * 0.5f, pivot.y - thickness * 0.5f,
+                    length, thickness), Texture2D.whiteTexture);
+            }
             GUI.matrix = matrix;
         }
 

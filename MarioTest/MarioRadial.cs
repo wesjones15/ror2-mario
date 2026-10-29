@@ -246,10 +246,12 @@ namespace MarioTest
         static int SegmentAt(Vector2 direction)
         {
             if (entries.Count == 0) return -1;
-            // 0 at the top, clockwise, matching the ring's layout.
+            // 0 at the top, clockwise. The half-segment offset puts each segment's centre on
+            // an axis, so up/right/down/left pick the four nozzles instead of the diagonals.
             float angle = Mathf.Atan2(direction.y, direction.x) * Mathf.Rad2Deg;
-            float fromTop = Mathf.Repeat(90f - angle, 360f);
-            int index = Mathf.FloorToInt(fromTop / (360f / entries.Count));
+            float step = 360f / entries.Count;
+            float fromTop = Mathf.Repeat(90f - angle + step * 0.5f, 360f);
+            int index = Mathf.FloorToInt(fromTop / step);
             return index >= 0 && index < entries.Count ? index : -1;
         }
 
@@ -476,7 +478,9 @@ namespace MarioTest
                     else if (r <= outer + 1f)
                     {
                         float angle = Mathf.Atan2(dy, dx) * Mathf.Rad2Deg;
-                        float fromTop = Mathf.Repeat(90f - angle, 360f);
+                        // Centre each segment on a cardinal axis (up/right/down/left), matching
+                        // the icons and SegmentAt's half-segment offset.
+                        float fromTop = Mathf.Repeat(90f - angle + step * 0.5f, 360f);
                         int index = Mathf.Min(n - 1, Mathf.FloorToInt(fromTop / step));
                         float frac = (fromTop - index * step) / step;
                         // Gaps between the segments, and a dark outline at both edges.

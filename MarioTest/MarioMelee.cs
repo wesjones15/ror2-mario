@@ -17,6 +17,10 @@ namespace MarioTest
     internal static class MarioMelee
     {
         const uint AttackButton = 2; // libssbm ATTACK
+        // Melee unit -> world metres (the Melee plugin's MetresPerUnit default). Sunshine's
+        // UnityHost.Scale is 0.01 for its 160-unit body; Melee's fighter is ~11 units, so the
+        // hitbox positions and radii must use this scale instead.
+        const float MeleeScale = 0.1f;
         const int MaxJoints = 64;
         static bool tried, ready;
         static IntPtr sim, pose;
@@ -170,7 +174,7 @@ namespace MarioTest
                 var h = hitboxes[i];
                 if (!hitOnce.Add((h.serial, h.generation, h.id))) continue;
                 if (h.damage <= 0f || h.radius <= 0f) continue;
-                var at = body.footPosition + new Vector3(h.origin.x, h.origin.y, h.origin.z) * UnityHost.Scale;
+                var at = body.footPosition + new Vector3(h.origin.x, h.origin.y, h.origin.z) * MeleeScale;
                 new BlastAttack
                 {
                     attacker = body.gameObject,
@@ -180,7 +184,7 @@ namespace MarioTest
                     damageType = DamageType.Generic,
                     procCoefficient = 1f,
                     position = at,
-                    radius = h.radius * UnityHost.Scale,
+                    radius = h.radius * MeleeScale,
                     falloffModel = BlastAttack.FalloffModel.None,
                     baseForce = 0f,
                 }.Fire();

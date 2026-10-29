@@ -288,14 +288,16 @@ time; the plugin can build its cache from your own disc on first run.
 powershell -ExecutionPolicy Bypass -File build.ps1
 ```
 
-The script builds `sms.dll` and `MarioTest.dll`, then copies them, plus an `assets_dir.txt`
-pointing at `libsms/assets`, into `<game>/BepInEx/plugins/MarioTest/`. It compiles against the
-game's own DLLs, so no NuGet game libraries are involved. The pointer can name a folder
-that does not exist yet; first run creates it. The install copies only these three files,
-and stings load from the cache. Use `-RoR2Dir` for another install and `-NoInstall` to
-only build into `dist/`.
+The script builds `sms.dll`, `ssbm.dll` (the Melee Mario A attacks) and `MarioTest.dll`, then
+copies them, plus an `assets_dir.txt` pointing at `libsms/assets`, into
+`<game>/BepInEx/plugins/MarioTest/`. It compiles against the game's own DLLs, so no NuGet game
+libraries are involved. The pointer can name a folder that does not exist yet; first run creates
+it. The install copies only these four files, and stings load from the cache. Use `-RoR2Dir` for
+another install and `-NoInstall` to only build into `dist/`. For the Melee A attacks, point
+`Paths.MeleeAssets` at a Melee cache with `PlMr.dat` (this checkout's `libssbm/assets` has it after
+`ssbm-extract … mario`), or set `$SSBM_ASSETS`.
 
-The log, `BepInEx/LogOutput.log`, should show `libsms ABI 21`, `Mario is 1.xx m tall`, then
+The log, `BepInEx/LogOutput.log`, should show `libsms ABI 34`, `Mario is 1.xx m tall`, then
 `Mario registered`.
 In a run it should show `Mario's sim started`, `Mario's view: 12 models, 26 textures; sound
 ...`, and one line per status change (turn that off with `Debug.LogStatus`).

@@ -3,12 +3,21 @@
 # ror2-mario
 
 Mario now reacts to RoR2 fire hits even without the normal burning buff, including
-stronger/percentage burns and fire elite trails. The panic run repeats the disc's
-fire voice. The previously unloaded fire-damage particle (emitter 6,
+stronger/percentage burns and fire elite trails. Each reaction plays one disc
+fire voice, alternating Fire 02 then Fire 01. Dash transitions and hops do not
+retrigger it. A five-second escape grace after recovery prevents chained fire
+runs without preventing RoR2 fire damage. The previously unloaded fire-damage particle (emitter 6,
 `ms_firedmg_a`) now follows Mario; Sunshine binds this flare to his position,
-not his head. A separate head-flame effect has not been identified or added.
+not his head. Its flare and smoke fade out within about a third of a second after
+recovery. A separate head-flame effect has not been identified or added.
 
-FLUDD deals 20x damage to burning enemies, fire elites, wisps and Magma Worms
+Stage water and actual FLUDD droplets touching Mario's body end every phase of
+fire panic, including the initial bounce and airborne hops. His own spray and
+another Mario's spray both count. He stays wet for three seconds after contact;
+continued contact refreshes it. Wetness blocks panic ignition, and extinguishing
+keeps the five-second escape grace. RoR2 fire damage still applies normally.
+
+FLUDD deals 5x damage to burning enemies, fire elites, wisps and Magma Worms
 (`Damage.FireWaterMultiplier`). The bonus applies once on the server to water
 from any nozzle. `Fludd.ExtinguishFireTrails` makes actual droplet sweeps put out
 individual trail sections, removing their damage and segment visuals for their
@@ -23,7 +32,7 @@ recorded in the multiplayer frame. With No FLUDD, tapping RB or RT plays one of 
 contextual A attacks (jab, tilts, smashes, dash and aerials) on the Sunshine body, using the
 Melee plugin's `ssbm.dll` and the Melee cache's `PlMr.dat`. The owner records the clip/frame in
 the frame stream so other players' puppets show the same attack; damage goes through
-`MarioCombat`'s client→server hit message. Without `PlMr.dat` (or `ssbm.dll`) the empty FLUDD
+`MarioCombat`'s clientâ†’server hit message. Without `PlMr.dat` (or `ssbm.dll`) the empty FLUDD
 button does nothing; Sunshine's B dive, FLUDD and every other control are unchanged. See
 `docs/radial-menu.md` for the controls and the Melee A details.
 
@@ -194,7 +203,7 @@ How it works:
   - Each material's TEV is baked into one texture, which ror2-common's `ModelView` draws with
     RoR2's own shader and lighting. Commando's model is hidden meanwhile.
   - The game's sounds (voice, footsteps, FLUDD) play on our own audio output, since RoR2's
-    audio is Wwise, at RoR2's master × SFX volume. A short Delfino Plaza sting plays when Mario emerges on the run's first stage; RoR2 keeps its soundtrack.
+    audio is Wwise, at RoR2's master Ã— SFX volume. A short Delfino Plaza sting plays when Mario emerges on the run's first stage; RoR2 keeps its soundtrack.
   - A Mario no player controls (Goobo Jr.'s clone) gets a view of his own, silent and drawn in
     RoR2's own gummy clone material (`matGummyClone`, a DLC1 addressable; `Look.GummyClones`).
   - Its AI master only walks him (common `SurvivorAi.Drivers`: stand and face the enemy within

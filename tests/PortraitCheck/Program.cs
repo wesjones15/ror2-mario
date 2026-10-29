@@ -48,6 +48,9 @@ static class Program
             var a = new Native.Vec3(0, 100, 0);
             var b = new Native.Vec3(0, 100, 500);
             Check(Native.sms_sim_water_touches_segment(fire.sim, ref a, ref b, 1000) == 0, "fire alone manufactured water contacts");
+            Native.sms_sim_wet(fire.sim);
+            Check(!Marshal.PtrToStringAnsi(Native.sms_sim_status_name(fire.sim)).StartsWith("Fire"), "body water retained a fire phase");
+            Check(Native.sms_sim_ignite(fire.sim) == 0, "body water allowed immediate re-ignition");
         }
         using (var water = new Rig())
         {

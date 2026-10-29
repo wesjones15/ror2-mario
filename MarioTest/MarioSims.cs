@@ -35,5 +35,17 @@ namespace MarioTest
                 if (other != sim && Native.sms_sim_wet_at(other, ref at) != 0) return true;
             return false;
         }
+
+        /// Actual droplet/body contact, independent of the patches used by wet slides.
+        public static bool OthersSoaking(IntPtr sim)
+        {
+            if (live.Count < 2 || sim == IntPtr.Zero || Native.sms_sim_state(sim, out var state) == 0) return false;
+            var a = state.pos; a.y += 35f;
+            var b = state.pos; b.y += 125f;
+            foreach (var other in live)
+                if (other != sim && Native.sms_sim_water_touches_segment(other, ref a, ref b, 35f) != 0)
+                    return true;
+            return false;
+        }
     }
 }

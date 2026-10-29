@@ -324,9 +324,11 @@ namespace MarioTest
                 "fires about 93 a second, so 0.0484 is about 450% a second on one enemy. A burst and a spin " +
                 "jump's spray count for more (BurstMultiplier, SpinSprayMultiplier): 667% is Commando's Double Tap " +
                 "(100% a bullet, one every 0.15 s).");
-            FireWaterMultiplier = Config.Bind("Damage", "FireWaterMultiplier", 20f,
+            FireWaterMultiplier = Config.Bind("Damage", "FireWaterMultiplier", 5f,
                 "FLUDD damage against burning enemies, fire elites and fiery bodies (wisps, Magma Worms). " +
-                "20 deals twenty times normal water damage. These bonuses do not stack.");
+                "5 deals five times normal water damage, including Magma Worms. These bonuses do not stack.");
+            // Migrate the previous experimental default in existing config files too.
+            if (Mathf.Approximately(FireWaterMultiplier.Value, 20f)) FireWaterMultiplier.Value = 5f;
             ExtinguishFireTrails = Config.Bind("Fludd", "ExtinguishFireTrails", true,
                 "Actual water droplets put out the sections of fire elite trails they touch.");
             // Older defaults (0.035, about 330% a second; 0.0717, a build in between), and a config file

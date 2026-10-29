@@ -25,6 +25,7 @@ static class Program
         public void ShineGet(Native.Vec3 p, short yaw) => calls.Add($"shine {p.x},{p.y},{p.z},{yaw}");
         public void ShineEnd() => calls.Add("shine end");
         public void ForeignWet(bool wet) => calls.Add($"wet {wet}");
+        public void Melee(byte move, float frame) => calls.Add($"melee {move} {frame}");
         public void Step(in Native.Pad pad, short cam, float dt) => calls.Add($"step a{pad.a} r{pad.r_analog} mx{pad.move_x} cam{cam}");
     }
 
@@ -49,6 +50,7 @@ static class Program
         rec.LaunchPad(new Native.Vec3(7, 8, 9), 0.01f);
         rec.KnockDown(new Native.Vec3(1, 1, 1), 0);
         rec.ForeignWet(true);
+        rec.Melee(7, 12.5f);
         rec.Step(new Native.Pad { a = 1, r_analog = 200, move_x = 0.5f, use_move = 1 }, -300, 1f / 60f);
         rec.BoostJump(1.2f);
         rec.ShineGet(new Native.Vec3(5, 6, 7), -1234);
@@ -101,7 +103,7 @@ static class Program
         string[] expect0 =
         {
             "teleport 1,2,3", "tuning 1.6,1", "refill", "nozzle 4", "water 0.25", "limits 2,1.5", "aim True,1234,0.5",
-            "launch 4,5,6", "pad 7,8,9,0.01", "knock 1,1,1,0", "wet True", "step a1 r200 mx0.5 cam-300", "boost 1.2",
+            "launch 4,5,6", "pad 7,8,9,0.01", "knock 1,1,1,0", "wet True", "melee 7 12.5", "step a1 r200 mx0.5 cam-300", "boost 1.2",
             "shine 5,6,7,-1234", "shine end", "ignite",
         };
         Check(log.calls.Count == expect0.Length, $"frame 0 has {log.calls.Count} calls");

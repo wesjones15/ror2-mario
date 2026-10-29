@@ -200,6 +200,15 @@ namespace MarioTest
                 UnityEngine.Networking.NetworkServer.active);
         }
 
+        /// One Melee A hitbox at `at`: every enemy in reach takes the disc percent / 3. On a
+        /// client the hits are queued and sent to the server in `End`, the same path stomps and
+        /// water use, so a client's Melee punches land with his damage stat and items.
+        internal static void MeleeHit(CharacterBody body, Vector3 at, float radius, float coefficient, Vector3 force)
+        {
+            if (coefficient <= 0f) return;
+            foreach (var victim in Near(at, radius)) Hit(body, victim, coefficient, at, force, 1f);
+        }
+
         /// `source`: the skill it came from, for the items that only answer skill hits (Breaching
         /// Fin, Luminous Shot, Infernal Mark, Nightmare Demon, Vile Censer).
         static void Hit(CharacterBody body, HealthComponent victim, float coefficient, Vector3 at, Vector3 force,

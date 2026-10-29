@@ -267,6 +267,7 @@ namespace MarioTest
 
             Tune();
             if (Local && MarioRadial.TakeTap()) TapFludd();
+            if (Local && pad.TakeTriggerTap()) TapMelee();
             if (Local && MarioRadial.TakeChoice(out var chosen))
                 chosen.Apply?.Invoke(this);
             if (pad.TakeRefill() && Plugin.DpadRefill.Value)
@@ -327,7 +328,7 @@ namespace MarioTest
             var view = View;
             SimOps.Step(sim, ref host, ref step, cameraYaw, Time.fixedDeltaTime,
                 view != null ? view.Handle : IntPtr.Zero);
-            if (Local) MarioMelee.Step(body, AimDirection);
+            if (Local) MarioMelee.Step(body, AimDirection, grounded);
             MarioCombat.End();
             Native.sms_sim_state(sim, out var st);
             winDemo = st.win_demo;
@@ -540,6 +541,15 @@ namespace MarioTest
             var target = current == MarioNozzleChoice.Spray
                 ? MarioRadial.SelectedAlt : MarioNozzleChoice.Spray;
             SelectNozzle(target);
+        }
+
+        /// The trigger's tap with FLUDD off is the second Melee attack button (RB is the first).
+        void TapMelee()
+        {
+            if (sim == IntPtr.Zero) return;
+            Native.sms_sim_state(sim, out var now);
+            if (MarioNozzleChoices.FromState(now) != MarioNozzleChoice.None) return;
+            MarioMeleeAttack.TryAttack(body, AimDirection);
         }
 
         /// The radial menu chose the alternate. It is remembered for the next tap; if an

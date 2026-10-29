@@ -17,7 +17,7 @@ namespace MarioTest
     {
         Teleport = 1, Tuning = 2, Refill = 3, AddWater = 4, Limits = 5, BoostJump = 6, Launch = 7,
         LaunchPad = 8, KnockDown = 9, SetAim = 10, Down = 11, Step = 12, ShineGet = 13, ShineEnd = 14,
-        ForeignWet = 15, Ignite = 16, SelectNozzle = 17,
+        ForeignWet = 15, Ignite = 16, SelectNozzle = 17, Melee = 18,
     }
 
     /// What replaying a frame does to a sim; MarioPuppet's implementation calls libsms.
@@ -42,6 +42,8 @@ namespace MarioTest
         void ShineEnd();
         /// Whether the player's sim counted the ground as wetted by another Mario's water.
         void ForeignWet(bool wet);
+        /// The Melee A pose the owner is drawing (move 0 clears it).
+        void Melee(byte move, float frame);
         void Step(in Native.Pad pad, short cameraYaw, float dt);
     }
 
@@ -56,7 +58,7 @@ namespace MarioTest
     internal static class FrameCodec
     {
         /// Bumped whenever the wire format changes; a batch with another number is ignored.
-        public const byte Protocol = 5;
+        public const byte Protocol = 6;
 
         static void Vec(ByteWriter w, Native.Vec3 v) { w.F32(v.x); w.F32(v.y); w.F32(v.z); }
         static Native.Vec3 Vec(ByteReader r) => new Native.Vec3(r.F32(), r.F32(), r.F32());
@@ -77,6 +79,7 @@ namespace MarioTest
         public static void WriteShineGet(ByteWriter w, Native.Vec3 pos, short yaw) { w.U8((byte)Op.ShineGet); Vec(w, pos); w.I16(yaw); }
         public static void WriteShineEnd(ByteWriter w) => w.U8((byte)Op.ShineEnd);
         public static void WriteForeignWet(ByteWriter w, bool wet) { w.U8((byte)Op.ForeignWet); w.Bool(wet); }
+        public static void WriteMelee(ByteWriter w, byte move, float frame) { w.U8((byte)Op.Melee); w.U8(move); w.F32(frame); }
 
         public static void WriteStep(ByteWriter w, in Native.Pad pad, short cameraYaw, float dt)
         {
@@ -110,6 +113,7 @@ namespace MarioTest
                     case Op.ShineGet: { var v = Vec(r); sink.ShineGet(v, r.I16()); break; }
                     case Op.ShineEnd: sink.ShineEnd(); break;
                     case Op.ForeignWet: sink.ForeignWet(r.Bool()); break;
+                    case Op.Melee: { byte move = r.U8(); float poseFrame = r.F32(); if (!r.Failed) sink.Melee(move, poseFrame); break; }
                     case Op.Step:
                     {
                         var pad = r.Struct<Native.Pad>();
@@ -244,6 +248,10 @@ namespace MarioTest
             lastWet = wet;
             FrameCodec.WriteForeignWet(ops, wet);
         }
+
+        /// The Melee A pose the owner's lab sim is drawing, so puppets pose Sunshine from the
+        /// same clip and frame without a second Melee sim of their own.
+        public void Melee(byte move, float frame) => FrameCodec.WriteMelee(ops, move, frame);
 
         public void SetAim(bool on, short yaw, float pitch)
         {

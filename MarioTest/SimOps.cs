@@ -105,6 +105,13 @@ namespace MarioTest
             Rec?.ShineEnd();
         }
 
+        /// A Melee A pose for the puppets: the lab sim stays on the owner, so the clip and frame
+        /// travel with the step instead of being re-derived by every client.
+        public static void Melee(byte move, float frame)
+        {
+            Rec?.Melee(move, frame);
+        }
+
         public static uint Step(IntPtr sim, ref Native.Host host, ref Native.Pad pad, short cameraYaw, float dt, IntPtr view)
         {
             bool wet = MarioSims.OthersWet(sim);

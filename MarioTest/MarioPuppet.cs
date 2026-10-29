@@ -35,6 +35,9 @@ namespace MarioTest
         internal bool Drawing => playing && view?.Models != null;
         float lagTicks;
         Native.State state;
+        // The owner's Melee A pose, replayed from the frame stream.
+        byte meleeMove;
+        float meleeFrame;
         int replayRenderFrame = -1, replayedThisFrame;
         double replayMsThisFrame;
 
@@ -191,6 +194,7 @@ namespace MarioTest
         void LateUpdate()
         {
             if (sim == IntPtr.Zero || view == null) return;
+            MarioMelee.ApplyPose(view, meleeMove, meleeFrame);
             view.Update(sim, lagTicks);
             if (view.Models == null) return;
             var feet = anchor.transform.position;
@@ -247,6 +251,7 @@ namespace MarioTest
         // the wet spot is one of a Mario this machine no longer has (a dead spectator's own).
         bool foreignWet;
         public void ForeignWet(bool wet) => foreignWet = wet;
+        public void Melee(byte move, float frame) { meleeMove = move; meleeFrame = frame; }
 
         public void Step(in Native.Pad pad, short cameraYaw, float dt)
         {

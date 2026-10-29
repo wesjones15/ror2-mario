@@ -21,6 +21,9 @@ namespace MarioTest
         // UnityHost.Scale is 0.01 for its 160-unit body; Melee's fighter is ~11 units, so the
         // hitbox positions and radii must use this scale instead.
         const float MeleeScale = 0.1f;
+        // The lab sim is kept a little above the floor while RoR2 says Mario is airborne, so
+        // the A selector picks an aerial (AttackAirN/F/B/Hi/Lw) instead of a grounded move.
+        const float AirborneY = 25f;
         const int MaxJoints = 64;
         static bool tried, ready;
         static IntPtr sim, pose;
@@ -36,6 +39,8 @@ namespace MarioTest
         static int activeMove;
         static string activeClip;
         static float activeFrame;
+        static byte sentMove;
+        static float sentFrame;
 
         public static bool Available
         {
@@ -46,22 +51,31 @@ namespace MarioTest
             }
         }
 
+        /// Loads (or reports why it cannot) once, so the log says at startup whether the
+        /// empty FLUDD button has Melee A attacks.
+        public static void Probe() => _ = Available;
+
         static void Load()
         {
             tried = true;
             try
             {
                 string cache = MarioSkin.MeleeDir;
+                string here = System.IO.Path.GetDirectoryName(typeof(MarioMelee).Assembly.Location);
                 if (string.IsNullOrEmpty(cache) || !File.Exists(System.IO.Path.Combine(cache, "PlMr.dat")))
                 {
                     cache = Environment.GetEnvironmentVariable("SSBM_ASSETS");
                 }
+                if (string.IsNullOrEmpty(cache) && !string.IsNullOrEmpty(here))
+                {
+                    string pointer = System.IO.Path.Combine(here, "melee_assets_dir.txt");
+                    if (File.Exists(pointer)) cache = File.ReadAllText(pointer).Trim();
+                }
                 if (string.IsNullOrEmpty(cache) || !File.Exists(System.IO.Path.Combine(cache, "PlMr.dat")))
                 {
-                    Plugin.Log.LogInfo("Melee Mario: no PlMr.dat in the Melee cache; the empty FLUDD button stays empty");
+                    Plugin.Log.LogInfo("Melee Mario A attacks are off: no PlMr.dat in Paths.MeleeAssets or a melee_assets_dir.txt cache");
                     return;
                 }
-                string here = System.IO.Path.GetDirectoryName(typeof(MarioMelee).Assembly.Location);
                 string dll = System.IO.Path.Combine(here ?? cache, "ssbm.dll");
                 if (!File.Exists(dll))
                 {
@@ -89,6 +103,8 @@ namespace MarioTest
                 if (sim == IntPtr.Zero)
                 {
                     Plugin.Log.LogWarning("Melee Mario: sim load failed: " + MeleeNative.Error);
+                    MeleeNative.ssbm_mario_pose_free(pose);
+                    pose = IntPtr.Zero;
                     return;
                 }
                 host = new MeleeNative.Host
@@ -117,7 +133,7 @@ namespace MarioTest
         }
 
         /// Steps the Melee Mario. Call once per fixed step; [`Draw`] applies the pose.
-        public static void Step(CharacterBody body, Vector3 aim)
+        public static void Step(CharacterBody body, Vector3 aim, bool grounded)
         {
             if (!ready || sim == IntPtr.Zero || !body) return;
             var move = body.inputBank ? body.inputBank.moveVector : Vector3.zero;
@@ -125,10 +141,15 @@ namespace MarioTest
             {
                 movement = new MeleeNative.Vec3(move.x, 0f, move.z),
                 aim = new MeleeNative.Vec3(aim.x, aim.y, aim.z),
+                // Only A goes to the lab. Sunshine's B is the dive, on the Sunshine sim.
                 buttons = queued ? AttackButton : 0u,
                 allowed = 31u,
             };
             queued = false;
+            // Keep the lab sim's ground state in step with RoR2's; a punch in the air becomes
+            // an aerial instead of a standing jab.
+            MeleeNative.ssbm_sim_nudge(sim,
+                new MeleeNative.Vec3(0f, grounded ? 0f : AirborneY, 0f), grounded ? 1u : 0u);
             MeleeNative.ssbm_sim_step(sim, in host, in pad, 1.0 / 60.0);
             Damage(body);
             if (MeleeNative.ssbm_sim_state(sim, out var state) == 0)
@@ -138,7 +159,24 @@ namespace MarioTest
                 return;
             }
             int moveId = (int)state.move_id;
-            string clip = moveId switch
+            string clip = ClipFor(moveId);
+            activeMove = clip == null ? 0 : moveId;
+            if (clip != activeClip) hitOnce.Clear();
+            activeClip = clip;
+            activeFrame = clip == null ? 0f : MeleeNative.ssbm_sim_motion_frame(sim);
+            // Puppets draw the same clip without running a second Melee sim. Only a changed
+            // pose is recorded, so idle frames stay the same size as before.
+            if (activeMove != sentMove || activeFrame != sentFrame)
+            {
+                sentMove = (byte)activeMove;
+                sentFrame = activeFrame;
+                SimOps.Rec?.Melee(sentMove, sentFrame);
+            }
+        }
+
+        static string ClipFor(int move)
+        {
+            return move switch
             {
                 1 => "Attack11",
                 2 => "AttackS3S",
@@ -157,11 +195,6 @@ namespace MarioTest
                 15 => "Attack13",
                 _ => null,
             };
-            activeMove = clip == null ? 0 : moveId;
-            if (clip != activeClip) hitOnce.Clear();
-            activeClip = clip;
-            activeFrame = clip == null ? 0f : MeleeNative.ssbm_sim_motion_frame(sim);
-            if (clip == null) hitOnce.Clear();
         }
 
         /// Melee's own hitboxes, each generation once. The Melee plugin's damage
@@ -180,33 +213,35 @@ namespace MarioTest
                     ? Quaternion.LookRotation(facing)
                     : Quaternion.identity;
                 var at = body.footPosition + rotation * local * MeleeScale;
-                new BlastAttack
-                {
-                    attacker = body.gameObject,
-                    inflictor = body.gameObject,
-                    teamIndex = body.teamComponent ? body.teamComponent.teamIndex : TeamIndex.Neutral,
-                    baseDamage = h.damage / 3f,
-                    damageType = DamageType.Generic,
-                    procCoefficient = 1f,
-                    position = at,
-                    radius = h.radius * MeleeScale,
-                    falloffModel = BlastAttack.FalloffModel.None,
-                    baseForce = 0f,
-                }.Fire();
+                // Melee percent -> RoR2 coefficient, through the same server-authoritative
+                // hit path as stomps/water, so a client's punches land on the server and the
+                // other clients see the same damage.
+                var force = body.transform.forward * Mathf.Clamp(h.damage * 0.35f, 1f, 8f);
+                MarioCombat.MeleeHit(body, at, h.radius * MeleeScale, h.damage / 3f, force);
             }
         }
 
         /// Gives the Sunshine view the active Melee clip's pose. Call before the view draws.
-        public static void Draw(MarioView view)
+        public static void Draw(MarioView view) => ApplyPose(view, (byte)activeMove, activeFrame);
+
+        /// Applies a recorded Melee move/frame to any Mario view (the local player's, or a
+        /// puppet replaying the owner's `Melee` op). `move` 0 clears the override.
+        public static void ApplyPose(MarioView view, byte move, float frame)
         {
             if (view == null) return;
-            if (activeClip == null || activeMove == 0)
+            if (move == 0 || !Available)
+            {
+                view.SetPose(null, 0);
+                return;
+            }
+            string clip = ClipFor(move);
+            if (clip == null)
             {
                 view.SetPose(null, 0);
                 return;
             }
             uint n = MeleeNative.ssbm_mario_pose_sample(
-                pose, NativeLib.CString(activeClip), activeFrame, matrices, (uint)MaxJoints);
+                pose, NativeLib.CString(clip), frame, matrices, (uint)MaxJoints);
             if (n == poseJoints) view.SetPose(matrices, n);
             else view.SetPose(null, 0);
         }
@@ -216,6 +251,8 @@ namespace MarioTest
             queued = false;
             activeMove = 0;
             activeClip = null;
+            sentMove = 0;
+            sentFrame = 0f;
             hitOnce.Clear();
             if (sim != IntPtr.Zero) { MeleeNative.ssbm_sim_free(sim); sim = IntPtr.Zero; }
             if (pose != IntPtr.Zero) { MeleeNative.ssbm_mario_pose_free(pose); pose = IntPtr.Zero; }

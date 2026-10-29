@@ -21,6 +21,9 @@ namespace MarioTest
         // so that depth reads as mid-ground here. Push the sheet out without weakening
         // the screen-space shimmer (the magnitude below uses the same distance).
         const float DepthScale = 1.5f;
+        // The same authored offsets read stronger on RoR2's sharper, larger image;
+        // keep the pattern at a fraction of its literal screen displacement.
+        const float MagnitudeScale = 0.65f;
         static readonly Vector2[] sourceUvs = { new Vector2(0, 1), new Vector2(1, 1), new Vector2(1, 0), new Vector2(0, 0) };
 
         internal static void Initialize()
@@ -56,7 +59,7 @@ namespace MarioTest
             // The reciprocal gain alone leaves the sheet ~24x too weak (sub-pixel);
             // include the sheet distance to restore the source's screen offset.
             material = MarioWater.Refraction("Sunshine heat haze", texture, Texture2D.whiteTexture, frame[1],
-                frame[0] * UnityHost.Scale * DepthScale / frame[1]);
+                frame[0] * UnityHost.Scale * DepthScale * MagnitudeScale / frame[1]);
             if (!material) return false;
             material.SetTextureScale("_BumpMap", Vector2.one);
             material.SetTextureOffset("_BumpMap", Vector2.zero);

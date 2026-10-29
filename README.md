@@ -16,7 +16,7 @@ remaining lifetime without joining dry sections across the gap. New sections
 laid later can still burn. Network protocol is now 5; install matching builds
 on all peers. Pair the updated `sms.dll` with `MarioTest.dll`.
 
-Tap RB to swap between Spray and the selected alternate; hold RB for 0.5 s to choose
+Tap RB to swap between Spray and the selected alternate; hold RB for 0.6 s to choose
 No FLUDD, Hover, Rocket or Turbo from a wheel anchored to the Air Pump cooldown picture. The
 chosen alternate is overlaid on that picture, or left as-is for No FLUDD. Nozzle choices are
 recorded in the multiplayer frame. See `docs/radial-menu.md` for the controls and the optional

@@ -2,6 +2,28 @@
 
 # ror2-mario
 
+`Look.HeatHaze` (default true) draws Sunshine's scrolling distant heat shimmer
+for Mario, Luigi and Piantissimo. Set it to false to disable immediately. It
+uses the disc's ShimmerLow model/BTK/indirect map and the existing refraction
+backend, separately from FLUDD's `Look.WaterRefraction`. Nearby scene geometry
+and the HUD stay clear. See `libsms/docs/heat-haze.md` for source evidence and
+the headless proof. The updated plugin requires native ABI 32.
+
+Sunshine presentation now belongs to the local Mario player's run, so death,
+spectator mode and Remote Operation drone control keep the coin counters,
+life meter/layout, cached Mario tank gauge, haze and visible teleporter Shine.
+Spectator/drone health follows the camera target (an empty meter without a body); money belongs to the local
+user's controlled master (the original master while none is controlled),
+never a spectated teammate. The last Mario tank gauge is a retained visual.
+World coin visuals were already independent of the live Mario body. Shine
+pickup and stage-exit gameplay still require the existing living Mario path.
+Run end, disconnect or a new local network user releases the retained HUD;
+the corpse's model/audio handles are still freed normally.
+
+Validation: headless source render, Rust asset/ABI checks,
+`tests/PresentationCheck` lifecycle checks, native `PortraitCheck`, and a
+plugin build. RoR2 GPU appearance and drone/spectator playtesting remain pending.
+
 Mario's first-stage pod shows the Sunshine Pianta statue and animated M portal.
 Interact/X opens the Delfino Plaza still, plays the arrival sting and original
 portal-exit sound, then runs the approved 0.8-second particle reveal, wahoo,

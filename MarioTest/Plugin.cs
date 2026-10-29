@@ -37,6 +37,7 @@ namespace MarioTest
         internal static ConfigEntry<bool> TraceJumps;
         internal static ConfigEntry<bool> PerformanceLog;
         internal static ConfigEntry<bool> DrawModel;
+        internal static ConfigEntry<bool> HeatHaze;
         internal static ConfigEntry<bool> Sound;
         internal static ConfigEntry<float> SoundVolume;
         internal static ConfigEntry<bool> PiantissimoGameVoice;
@@ -494,6 +495,8 @@ namespace MarioTest
                 "2 makes puffs move and clear twice as fast. Other effects keep their original timing.");
             DrawModel = Config.Bind("Look", "DrawModel", true,
                 "Draw Mario with the disc's models (off: Commando's model).");
+            HeatHaze = Config.Bind("Look", "HeatHaze", true,
+                "Sunshine's animated heat haze distorts distant scenery for Mario and every skin, including while spectating or controlling a Remote Operation drone. False disables it immediately.");
             Sound = Config.Bind("Sound", "Enabled", true,
                 "Play Mario's sounds from the disc (voice, footsteps, FLUDD) on the default output device.");
             SoundVolume = Config.Bind("Sound", "Volume", 1f,
@@ -512,6 +515,8 @@ namespace MarioTest
             }
             Log.LogInfo($"libsms ABI {Native.sms_abi_version()}, assets {AssetsDir}");
             PrepareAssets(disc.Value, here);
+            gameObject.AddComponent<MarioPresentation>();
+            MarioHeatHaze.Initialize();
 
             ItemHooks.Install();
             GlobalEventManager.onServerDamageDealt += MarioDriver.OnServerDamage;
@@ -561,7 +566,9 @@ namespace MarioTest
                 || !File.Exists(Path.Combine(AssetsDir, "wipe", "wipe_m_mark.bti"))
                 || !File.Exists(Path.Combine(AssetsDir, "scene", "mapobj", "shine.bmd"))
                 || !File.Exists(Path.Combine(AssetsDir, "camera", "camera_demo_shine_get_outside.bck"))
-                || Array.Exists(MarioStatuePod.AssetFiles, file => !File.Exists(Path.Combine(AssetsDir, "portal", file)));
+                || Array.Exists(MarioStatuePod.AssetFiles, file => !File.Exists(Path.Combine(AssetsDir, "portal", file)))
+                || (HeatHaze.Value && (!File.Exists(Path.Combine(AssetsDir, "heat_haze", "shimmerlow.bmd"))
+                    || !File.Exists(Path.Combine(AssetsDir, "heat_haze", "shimmerlow.btk"))));
             bool needStings = !(File.Exists(Path.Combine(stings, "spawn.wav"))
                 && File.Exists(Path.Combine(stings, "death.wav"))
                 && File.Exists(Path.Combine(stings, "gameover.wav"))

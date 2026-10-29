@@ -39,6 +39,24 @@ static class Program
         var handle = NativeLibrary.Load(Path.GetFullPath(args[0]));
         NativeLibrary.SetDllImportResolver(typeof(Native).Assembly, (name, assembly, search) => name == Native.Dll ? handle : IntPtr.Zero);
         Check(Native.Load(args[0], out var error), error);
+        if (File.Exists(Path.Combine(assets, "heat_haze", "shimmerlow.bmd")))
+        {
+            var heat = Native.sms_heat_new(NativeLib.CString(assets));
+            Check(heat != IntPtr.Zero, "ShimmerLow native handle");
+            try
+            {
+                var frame = new float[8];
+                Check(Native.sms_heat_frame(heat, 0f, frame, 8) != 0 && frame[0] == 2425f && frame[1] > 1f, "heat-haze depth/gain marshaling");
+                float scroll = frame[7];
+                Check(Native.sms_heat_frame(heat, 0.25f, frame, 8) != 0 && Math.Abs(frame[7] - scroll) > 0.1f, "heat-haze BTK scroll");
+                var shortPixels = new byte[] { 171, 171, 171, 171 };
+                Check(Native.sms_heat_texture(heat, out var texture, shortPixels, 4) == 0 && shortPixels[0] == 171 && shortPixels[3] == 171, "heat-haze short buffer rejected");
+                var pixels = new byte[64 * 64 * 4];
+                Check(Native.sms_heat_texture(heat, out texture, pixels, (uint)pixels.Length) != 0 && texture.width == 64 && pixels[0] == 255, "heat-haze normal map marshaling");
+            }
+            finally { Native.sms_heat_free(heat); }
+            Console.WriteLine("PASS: ShimmerLow depth, compensated normal gain, animated UVs and managed/native buffer safety");
+        }
         using (var r = new Rig())
         {
             r.Step(new Native.Pad { r = 1, r_analog = 255 }, 90);

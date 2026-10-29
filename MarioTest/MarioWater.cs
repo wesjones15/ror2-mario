@@ -84,19 +84,19 @@ namespace MarioTest
 
         // A copy of RoR2's refraction material, its strength scaled by Look.WaterRefraction;
         // null (FLUDD's water is tint alone) if it won't load.
-        internal static Material Refraction(string name, Texture bump = null, Texture mask = null, float normalGain = 1f)
+        internal static Material Refraction(string name, Texture bump = null, Texture mask = null, float normalGain = 1f, float? magnitude = null)
         {
             try
             {
                 var src = Addressables.LoadAssetAsync<Material>(DistortionKey).WaitForCompletion();
                 if (!src || !src.shader)
                 {
-                    Plugin.Log.LogWarning("FLUDD's water: RoR2's refraction material didn't load; tint only");
+                    Plugin.Log.LogWarning($"{name}: RoR2's refraction material didn't load");
                     return null;
                 }
                 var m = new Material(src) { name = name };
                 if (m.HasProperty(MagnitudeId))
-                    m.SetFloat(MagnitudeId, m.GetFloat(MagnitudeId) * Plugin.WaterRefraction.Value / normalGain);
+                    m.SetFloat(MagnitudeId, magnitude ?? (m.GetFloat(MagnitudeId) * Plugin.WaterRefraction.Value / normalGain));
                 if (bump)
                 {
                     // Slide ribbons use the disc's indirect wave map instead of the water
@@ -115,7 +115,7 @@ namespace MarioTest
             }
             catch (Exception e)
             {
-                Plugin.Log.LogWarning($"FLUDD's water: no refraction ({e.Message}); tint only");
+                Plugin.Log.LogWarning($"{name}: no refraction ({e.Message})");
                 return null;
             }
         }

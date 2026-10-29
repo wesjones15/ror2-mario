@@ -919,26 +919,20 @@ namespace MarioTest
             SimOps.Tuning(sim, ref t);
         }
 
-        // The water gauge, for the player playing this Mario.
-        void OnGUI()
-        {
-            if (driving && localUser != null)
-            {
-                MarioHud.Draw();
-                MarioLife.Draw();
-                MarioCoinHud.Draw();
-            }
-        }
-
         /// The local player playing this body, if any (their pad and UI focus).
         void FindLocalUser()
         {
-            if (localUser != null && localUser.cachedBody == body) return;
+            if (localUser != null && localUser.cachedBody == body)
+            {
+                MarioPresentation.Observe(localUser, body);
+                return;
+            }
             localUser = null;
             foreach (var u in LocalUserManager.readOnlyLocalUsersList)
                 if (u != null && u.cachedBody == body)
                 {
                     localUser = u;
+                    MarioPresentation.Observe(u, body);
                     break;
                 }
         }

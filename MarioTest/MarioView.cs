@@ -203,7 +203,7 @@ namespace MarioTest
             models?.Dispose(); models = null;
             water?.Dispose(); water = null;
             fx?.Dispose(); fx = null;
-            if (hud) MarioHud.Reset();
+            if (hud && !MarioPresentation.Active) MarioHud.Reset();
         }
 
         /// Frees the player's view (run over, or the player's Mario gone); the next Ensure
@@ -213,7 +213,7 @@ namespace MarioTest
             var v = player;
             player = null;
             v?.Dispose();
-            MarioHud.Reset();
+            if (!MarioPresentation.Active) MarioHud.Reset();
             MarioLife.Reset();
             MarioCoinHud.Reset();
             tried = false;

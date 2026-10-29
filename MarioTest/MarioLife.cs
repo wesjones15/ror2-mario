@@ -111,10 +111,10 @@ namespace MarioTest
         }
 
         /// After the view's update (render rate): the meter for the player's `health`.
-        public static void Update(IntPtr view, HealthComponent health)
+        public static void Update(IntPtr view, HealthComponent health, bool retainEmpty = false)
         {
             shown = false;
-            if (view == IntPtr.Zero || !Plugin.ShowLife.Value || !health)
+            if (view == IntPtr.Zero || !Plugin.ShowLife.Value || (!health && !retainEmpty))
             {
                 ShowRor2Bars();
                 return;

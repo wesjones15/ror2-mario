@@ -116,15 +116,19 @@ namespace MarioTest
         /// After the view's update (render rate): the counters for the player's gold and lunar
         /// coins. Null `view` hands RoR2's own counters back.
         public static void Update(IntPtr view, CharacterBody body, LocalUser user)
+            => UpdateOwned(view, body ? body.master : null, user);
+
+        /// Also works when this player's Mario body is dead or replaced by a drone.
+        public static void UpdateOwned(IntPtr view, CharacterMaster master, LocalUser user)
         {
             yellowShown = blueShown = false;
-            if (view == IntPtr.Zero || !Plugin.ShowCoins.Value || !body)
+            if (view == IntPtr.Zero || !Plugin.ShowCoins.Value || !master)
             {
                 ShowRor2();
                 lunarSeen = -1;
                 return;
             }
-            uint gold = body.master ? body.master.money : 0u;
+            uint gold = master.money;
             uint lunar = LunarCoins(user);
             // A lunar coin picked up (not spent, and not the first reading): the jingle.
             if (lunarSeen >= 0 && lunar > lunarSeen)

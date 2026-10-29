@@ -180,7 +180,7 @@ namespace MarioTest
         void Look()
         {
             var t = TeleporterInteraction.instance;
-            if (!Charged(t) || MarioDriver.Player == null || !EnsureView()) return;
+            if (!Charged(t) || !MarioPresentation.Active || !EnsureView()) return;
             tele = t;
             rest = t.transform.position + Vector3.up * Mathf.Max(0.2f, Plugin.ShineHeight.Value);
             phase = Phase.Appearing;

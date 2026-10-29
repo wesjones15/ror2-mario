@@ -32,7 +32,7 @@ recorded in the multiplayer frame. With No FLUDD, tapping RB or RT plays one of 
 contextual A attacks (jab, tilts, smashes, dash and aerials) on the Sunshine body, using the
 Melee plugin's `ssbm.dll` and the Melee cache's `PlMr.dat`. The owner records the clip/frame in
 the frame stream so other players' puppets show the same attack; damage goes through
-`MarioCombat`'s clientâ†’server hit message. Without `PlMr.dat` (or `ssbm.dll`) the empty FLUDD
+`MarioCombat`'s client→server hit message. Without `PlMr.dat` (or `ssbm.dll`) the empty FLUDD
 button does nothing; Sunshine's B dive, FLUDD and every other control are unchanged. See
 `docs/radial-menu.md` for the controls and the Melee A details.
 
@@ -203,7 +203,7 @@ How it works:
   - Each material's TEV is baked into one texture, which ror2-common's `ModelView` draws with
     RoR2's own shader and lighting. Commando's model is hidden meanwhile.
   - The game's sounds (voice, footsteps, FLUDD) play on our own audio output, since RoR2's
-    audio is Wwise, at RoR2's master Ã— SFX volume. A short Delfino Plaza sting plays when Mario emerges on the run's first stage; RoR2 keeps its soundtrack.
+    audio is Wwise, at RoR2's master × SFX volume. A short Delfino Plaza sting plays when Mario emerges on the run's first stage; RoR2 keeps its soundtrack.
   - A Mario no player controls (Goobo Jr.'s clone) gets a view of his own, silent and drawn in
     RoR2's own gummy clone material (`matGummyClone`, a DLC1 addressable; `Look.GummyClones`).
   - Its AI master only walks him (common `SurvivorAi.Drivers`: stand and face the enemy within

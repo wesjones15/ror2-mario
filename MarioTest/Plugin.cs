@@ -112,6 +112,7 @@ namespace MarioTest
         internal static ConfigEntry<float> LockRange;
         internal static ConfigEntry<float> LifeX, LifeY, LifeScale, LockMarkerSize, LockMarkerSpin;
         internal static ConfigEntry<bool> KnockdownEnabled, KnockdownGetUpEarly, KnockdownInterruptsPound, BurnPanic;
+        internal static ConfigEntry<float> BurnPanicCooldown;
         internal static ConfigEntry<float> KnockdownThreshold;
         internal static ConfigEntry<float> SlideSprayScale;
         internal static ConfigEntry<bool> SlideSplashes;
@@ -319,7 +320,7 @@ namespace MarioTest
                 "height while the stick keeps circling, then dives) hitting an enemy: it carries the Turbo's " +
                 "speed plus a dive's, so it hits harder than a dive.");
             SuperCorkscrewDamage = Config.Bind("Damage", "SuperCorkscrew", 20f,
-                "A corkscrew that has spun for 4 seconds is in flames, and its one hit does this much " +
+                "A corkscrew that has spun for 1 second is in flames, and its one hit does this much " +
                 "instead of Corkscrew: 20 is 2000%. It bonks Mario over on impact.");
             RocketSpinDamage = Config.Bind("Damage", "RocketSpin", 10f,
                 "A stick circle during the Rocket's climb doubles the climb and sets the spin burning while it " +
@@ -410,6 +411,9 @@ namespace MarioTest
                 "Catching fire (RoR2's burning) throws Mario up yelling, bounces him twice and sends him " +
                 "into Sunshine's landing recovery (FIRE_DOWN, FIRE_JUMP_END), without a panic run. " +
                 "Water contact extinguishes the reaction; five seconds of escape grace prevent chaining. Off: burning only hurts.");
+            BurnPanicCooldown = Config.Bind("Knockdown", "BurnPanicCooldown", 15f,
+                "Seconds after one BurnPanic reaction before catching fire can throw Mario again; a burn " +
+                "in between only hurts.");
             SlideSplashes = Config.Bind("Look", "SlideSplashes", false,
                 "A wet belly slide also throws libsms's old stand-in splashes (a home-made effect, " +
                 "drawn like FLUDD's water) on top of Sunshine's own slide spray. Off: only the game's.");

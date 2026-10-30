@@ -239,8 +239,13 @@ namespace MarioTest
             // RoR2 sets him alight (the OnFire buff comes on): Sunshine's fire hit, with the yell and
             // the panicked run. His own sim does it on his machine; a friend's copy gets it replayed.
             bool burning = MarioFire.Burning(body) || Time.time < fireUntil;
+            // A burn that starts inside BurnPanicCooldown of the last reaction only hurts.
             if (burning && !wasBurning && Plugin.BurnPanic.Value && pounding == 0)
-                wasBurning = SimOps.Ignite(sim) != 0;
+            {
+                if (Time.time < nextBurnPanic) wasBurning = true;
+                else if (wasBurning = SimOps.Ignite(sim) != 0)
+                    nextBurnPanic = Time.time + Mathf.Max(0f, Plugin.BurnPanicCooldown.Value);
+            }
             if (!burning) wasBurning = false;
             if (knockFrom.HasValue)
             {
@@ -326,6 +331,8 @@ namespace MarioTest
                 SimOps.ShineEnd(sim);
             }
             MarioCombat.Begin(body, Items);
+            Native.sms_sim_state(sim, out var before);
+            var stepFrom = UnityHost.ToUnity(before.pos);
             var view = View;
             SimOps.Step(sim, ref host, ref step, cameraYaw, Time.fixedDeltaTime,
                 view != null ? view.Handle : IntPtr.Zero);
@@ -383,6 +390,22 @@ namespace MarioTest
                         body.AddTimedBuff(RoR2Content.Buffs.HiddenInvincibility, 1.5f);
                 }
                 transform.position = fellFrom + feetToOrigin;
+                Resync();
+                var rest = new Native.Vec3(0f, 0f, 0f);
+                SimOps.Launch(sim, ref rest);
+                Native.sms_sim_state(sim, out st);
+                status = NativeLib.Utf8(Native.sms_sim_status_name(sim));
+            }
+            // Through the floor into more map under it (a stage's sealed room, the inside of its
+            // terrain), which the fall checks above take for lower ground: back where he last
+            // stood once he is under it, unhurt, and no "TOO BAD!" (ror2-common's Unstuck.ThroughFloor).
+            else if (unstuck.ThroughFloor(stepFrom, UnityHost.ToUnity(st.pos), UnityHost.MarioHeight * UnityHost.Scale,
+                UnityHost.RecoveryGround, out var overFloor))
+            {
+                Plugin.Log.LogInfo($"Mario fell through the floor to {UnityHost.ToUnity(st.pos)}; back on the surface at {overFloor}");
+                if (Local && NetworkServer.active && body)
+                    body.AddTimedBuff(RoR2Content.Buffs.HiddenInvincibility, 1.5f);
+                transform.position = overFloor + feetToOrigin;
                 Resync();
                 var rest = new Native.Vec3(0f, 0f, 0f);
                 SimOps.Launch(sim, ref rest);
@@ -849,7 +872,7 @@ namespace MarioTest
         Vector3? knockFrom;
         // Whether he was burning last step, so catching fire reacts once.
         bool wasBurning;
-        float fireUntil, nextFireNotice;
+        float fireUntil, nextFireNotice, nextBurnPanic;
 
         internal void CaughtFire()
         {

@@ -132,7 +132,8 @@ namespace MarioTest
 
         bool Create()
         {
-            view = MarioView.Remote(queue.Clone);
+            uint skin = MarioSkin.Selected(body);
+            view = MarioView.Remote(queue.Clone, skin);
             if (view == null || view.Models == null)
             {
                 view?.Dispose();
@@ -144,6 +145,7 @@ namespace MarioTest
             sim = Native.sms_sim_new(NativeLib.CString(Plugin.AssetsDir), ref feet,
                 UnityHost.Yaw(body.transform.forward));
             MarioSims.Add(sim);
+            if (!queue.Clone) MarioSkin.ApplySim(sim, skin);
             if (sim == IntPtr.Zero)
             {
                 failed = true;

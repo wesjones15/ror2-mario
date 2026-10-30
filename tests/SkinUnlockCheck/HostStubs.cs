@@ -45,6 +45,17 @@ namespace RoR2.ContentManagement { public class Collection<T> { public void Add(
 namespace Ror2Common
 {
     public static class NativeLib { public static byte[] CString(string s) => null; }
+    // MarioSkin.Selected() reads the lobby pad's player through this; here, the first local user's loadout.
+    public static class DisplayModel
+    {
+        public static uint SelectedSkin(string bodyName)
+        {
+            var index = RoR2.BodyCatalog.FindBodyIndex(bodyName);
+            foreach (var user in RoR2.LocalUserManager.readOnlyLocalUsersList)
+                if (user.userProfile != null) return user.userProfile.loadout.bodyLoadoutManager.GetSkinIndex(index);
+            return 0;
+        }
+    }
     public enum PortraitFraming { ThreeQuarter }
     public static class Portrait { public static void Request(UnityEngine.GameObject b,Func<object> f,Action<UnityEngine.Texture2D> a,PortraitFraming framing) {} }
     // GameCubeLibrary (compiled in for MarioSkin's Melee cache lookup) logs through CommonLog.

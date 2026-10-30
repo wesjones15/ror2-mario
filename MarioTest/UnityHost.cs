@@ -90,9 +90,21 @@ namespace MarioTest
                 return 1;
             }
             hit.height = h.point.y / Scale;
-            hit.normal = new Native.Vec3(h.normal.x, h.normal.y, h.normal.z);
+            var normal = h.normal;
+            // A floor steep enough to slip on: the slope of the ground round his feet instead, so a
+            // small lip of lumpy terrain (Wetland Aspect's roots and rocks) doesn't slip him.
+            if (normal.y < SlopeCheckBelow && normal.y >= WallNormalY
+                && WorldProbe.GroundSlope(h, SlopeRadius * Scale, out var slope) && slope.y > normal.y)
+                normal = slope;
+            hit.normal = new Native.Vec3(normal.x, normal.y, normal.z);
             return 1;
         }
+
+        // Floors this steep or steeper (normal.y) are checked against the ground round them; over
+        // Sunshine's slip floors (mSlipStart 0.34, mForceSlipAngle 0.4 on the disc).
+        const float SlopeCheckBelow = 0.6f;
+        // How far each way (sim units) the ground round a steep floor is measured: Mario's width.
+        const float SlopeRadius = 50f;
 
         static float voidLogAt;
 

@@ -172,12 +172,8 @@ namespace MarioTest
         public static uint Selected()
         {
             if (loadout.Count < 2) return Mario;
-            var index = BodyCatalog.FindBodyIndex("MarioTestBody");
-            if (index == BodyIndex.None) return Mario;
-            foreach (var user in LocalUserManager.readOnlyLocalUsersList)
-                if (user.userProfile != null)
-                    return FromIndex(user.userProfile.loadout.bodyLoadoutManager.GetSkinIndex(index));
-            return Mario;
+            // The pad being drawn's player in a lobby, else the local player.
+            return FromIndex(DisplayModel.SelectedSkin("MarioTestBody"));
         }
 
         /// The selected skin's row (Mario's when none).

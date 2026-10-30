@@ -173,11 +173,14 @@ namespace MarioTest
             host = UnityHost.Table();
             native = GetComponent<NativeBody>();
             Items = new MarioItems(body);
+            spawn.Remember(transform);
             all.Add(this);
         }
 
         // A stage's floor can load after the body appears: wait in place for it (ror2-common's GroundGate).
         readonly GroundGate ground = new GroundGate();
+        // A client's body starts where the network blend left it, not at its spawn (ror2-common's ClientSpawn).
+        readonly ClientSpawn spawn = new ClientSpawn();
 
         bool CanDrive =>
             Plugin.AssetsReady && !RunAudio.Ended && !failed && body && motor && input
@@ -200,6 +203,7 @@ namespace MarioTest
             }
             if (sim == IntPtr.Zero && !Create())
                 return;
+            if (!driving) spawn.Settle(body, motor);
             if (!ground.Ready(body.footPosition, Time.fixedDeltaTime, "Mario"))
             {
                 // RoR2's own motor would fall too: keep it off, and him where he is.

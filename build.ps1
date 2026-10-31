@@ -1,18 +1,21 @@
-# Builds libsms's DLL and the MarioTest plugin, and installs both into the game's
-# BepInEx/plugins/MarioTest/ folder along with a pointer to libsms's extracted assets.
+# Builds libsms's DLL and the MarioTest plugin, and stages both under the workspace's
+# target/BepInEx/plugins/MarioTest/ folder (beside the game copy's ..\..) along with a pointer to
+# libsms's extracted assets. Copy that folder into the game yourself.
 #
 #   powershell -ExecutionPolicy Bypass -File build.ps1 [-RoR2Dir <game to compile against>]
-#       [-InstallDir <game to install into>] [-NoInstall]
+#       [-InstallDir <folder to stage under; default ..\target, never the game>] [-NoInstall]
 #
 param(
     [string]$RoR2Dir = (Join-Path $PSScriptRoot "..\2026 Mod Stuff\RiskOfRain2_DLC4"),
-    [string]$InstallDir = $RoR2Dir,
+    [string]$InstallDir = "",
     [string]$LibSms = (Join-Path $PSScriptRoot "..\libsms"),
     [string]$LibSsbm = (Join-Path $PSScriptRoot "..\libssbm"),
     [switch]$NoInstall
 )
-if (-not (Test-Path (Join-Path $InstallDir "BepInEx"))) { $InstallDir = $RoR2Dir }
 $ErrorActionPreference = "Stop"
+if ([string]::IsNullOrWhiteSpace($InstallDir)) {
+    $InstallDir = [System.IO.Path]::GetFullPath((Join-Path $RoR2Dir "..\..\target"))
+}
 
 $cargo = Join-Path $env:USERPROFILE ".cargo\bin\cargo.exe"
 if (-not (Test-Path $cargo)) { $cargo = "cargo" }

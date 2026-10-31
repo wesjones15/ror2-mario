@@ -30,6 +30,47 @@ static class Program
         CharacterBody.readOnlyInstancesList.Add(body);
         return body;
     }
+    // The canned path: pops up, comes down on the floor, bounces lower each time, lies still.
+    static void Bounces()
+    {
+        var start = new Vector3(0, 2, 0);
+        Check(CoinBounce.Make(start, new Vector3(1, 7, 0), 0.11f, out var path), "a path over the floor");
+        Check(path.flights >= 2 && path.flights <= 6, $"a few bounces ({path.flights})");
+        float peak = 0f, lastHigh = float.MaxValue, high = 0f;
+        int was = 0;
+        for (float t = 0f; t < path.Duration + 1f; t += 1f / 120f)
+        {
+            var at = path.At(t, out int landed);
+            Check(at.y >= 0.11f - 1e-4f, $"never under the floor ({at.y} at {t})");
+            if (landed == 0) peak = Math.Max(peak, at.y);
+            if (landed != was)
+            {
+                if (was > 0) { Check(high < lastHigh, "each bounce lower"); lastHigh = high; }
+                high = 0f;
+                was = landed;
+            }
+            if (landed > 0) high = Math.Max(high, at.y);
+        }
+        Check(peak > 2.9f && peak < 3.1f, $"pops about 1 m up ({peak})");
+        var rest = path.At(path.Duration + 5f, out int all);
+        Check(all == path.flights && Math.Abs(rest.y - 0.11f) < 1e-4f, "lies on the floor at the end");
+        var side = path.Landing();
+        Check(Math.Abs(rest.x - side.x) < 1e-3f && side.x > 0f, "drifts to where Landing says");
+        // The coin uses it when there is a floor, and falls the old way when there is none.
+        Physics.floor = 0f;
+        var coins = new MarioCoins();
+        var plan = typeof(MarioCoins).GetMethod("Plan", BindingFlags.Static | BindingFlags.NonPublic);
+        var slots = Coins(coins);
+        var coin = Activator.CreateInstance(slots.GetType().GetElementType(), true);
+        coin.GetType().GetField("pos").SetValue(coin, start);
+        coin.GetType().GetField("velocity").SetValue(coin, new Vector3(1, 7, 0));
+        plan.Invoke(null, new[] { coin });
+        Check((bool)coin.GetType().GetField("planned").GetValue(coin), "planned over a floor");
+        Physics.floor = null;
+        plan.Invoke(null, new[] { coin });
+        Check(!(bool)coin.GetType().GetField("planned").GetValue(coin), "no floor, no plan");
+    }
+
     static void Main()
     {
         Run.instance = new Run();
@@ -112,6 +153,7 @@ static class Program
         PauseManager.isPaused = true;
         Step(coins);
         Check(Coins(coins).GetValue(0) != null && CharacterBody.lookups == 0, "pause retained");
+        Bounces();
         Console.WriteLine("CoinCheck: ok");
     }
 }

@@ -144,7 +144,7 @@ namespace MarioTest
             var feet = UnityHost.ToSim(body.footPosition);
             sim = Native.sms_sim_new(NativeLib.CString(Plugin.AssetsDir), ref feet,
                 UnityHost.Yaw(body.transform.forward));
-            MarioSims.Add(sim);
+            MarioSims.Add(sim, body);
             if (!queue.Clone) MarioSkin.ApplySim(sim, skin);
             if (sim == IntPtr.Zero)
             {

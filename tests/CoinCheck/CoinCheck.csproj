@@ -6,5 +6,6 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="../../MarioTest/MarioCoins.cs" Link="MarioCoins.cs" />
+    <Compile Include="../../MarioTest/CoinBounce.cs" Link="CoinBounce.cs" />
   </ItemGroup>
 </Project>

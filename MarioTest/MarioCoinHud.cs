@@ -14,8 +14,10 @@ namespace MarioTest
     //    up is worth Coins.Gold of it, MarioCoins);
     //  - the blue coin shows the player's lunar coins, only once there is one (RoR2 does the
     //    same), and a lunar coin picked up plays Sunshine's actual blue-coin pickup sound.
-    // RoR2's own counters hide while ours show (Hud.CoinCounters), and each of ours sits where
-    // the one it replaces is unless Hud.CoinX / CoinY say otherwise.
+    // RoR2's own counters hide while ours show (Hud.CoinCounters). They are stacked in Sunshine's
+    // order (standard_1.blo: the blue coin's row over the yellow's) from where RoR2's gold counter is,
+    // unless Hud.CoinX / CoinY say otherwise: the yellow one alone there, the blue one there once
+    // there are lunar coins, with the yellow one a row under it.
     internal sealed class CoinImage
     {
         readonly byte which;
@@ -87,9 +89,9 @@ namespace MarioTest
     {
         static readonly CoinImage yellow = new CoinImage(0), blue = new CoinImage(1);
         static bool yellowShown, blueShown;
-        // Where RoR2's own counters are (GUI pixels, y down), when found.
-        static Vector2 yellowAt, blueAt;
-        static bool yellowFound, blueFound;
+        // Where RoR2's own gold counter is (GUI pixels, y down), when found.
+        static Vector2 yellowAt;
+        static bool yellowFound;
         // RoR2's counters, hidden by a CanvasGroup of ours (alpha 0), and whether we added the
         // group, so it can go back.
         static readonly List<CanvasGroup> hidden = new List<CanvasGroup>();
@@ -142,17 +144,15 @@ namespace MarioTest
             else ShowRor2();
         }
 
-        // Where each of RoR2's counters is, left edge and middle, on the screen.
+        // Where RoR2's gold counter is, left edge and middle, on the screen.
         static void Where()
         {
-            yellowFound = blueFound = false;
+            yellowFound = false;
             foreach (var hud in HUD.readOnlyInstanceList)
             {
                 if (!hud) continue;
                 if (hud.moneyText)
                     yellowFound = Left(hud.moneyText.transform as RectTransform, out yellowAt);
-                if (hud.lunarCoinContainer)
-                    blueFound = Left(hud.lunarCoinContainer.transform as RectTransform, out blueAt);
                 return;
             }
         }
@@ -242,19 +242,9 @@ namespace MarioTest
             float scale = Screen.height / 480f * Mathf.Clamp(Plugin.CoinScale.Value, 0.1f, 5f);
             bool set = Plugin.CoinX.Value >= 0f && Plugin.CoinY.Value >= 0f;
             var home = new Vector2(Plugin.CoinX.Value * Screen.width, Plugin.CoinY.Value * Screen.height);
-            float below = 0f;
-            if (yellowShown && yellow.Texture)
-            {
-                var at = set ? home : yellowFound ? yellowAt : new Vector2(0.03f * Screen.width, 0.55f * Screen.height);
-                below = Put(yellow, at, scale);
-            }
-            if (blueShown && blue.Texture)
-            {
-                // Where RoR2's lunar counter was, else under the yellow one.
-                var at = set ? home + Vector2.up * below
-                    : blueFound ? blueAt : new Vector2(0.03f * Screen.width, 0.55f * Screen.height + below);
-                Put(blue, at, scale);
-            }
+            var at = set ? home : yellowFound ? yellowAt : new Vector2(0.03f * Screen.width, 0.55f * Screen.height);
+            if (blueShown && blue.Texture) at += Vector2.up * Put(blue, at, scale);
+            if (yellowShown && yellow.Texture) Put(yellow, at, scale);
         }
 
         // Draws a counter with its left edge at `at.x` and its icon's row centred on `at.y`;

@@ -11,18 +11,35 @@ namespace MarioTest
     internal static class MarioSims
     {
         static readonly HashSet<IntPtr> live = new HashSet<IntPtr>();
+        // Whose Mario each sim plays (for whose water it is: MarioDeflect).
+        static readonly Dictionary<IntPtr, RoR2.CharacterBody> owners = new Dictionary<IntPtr, RoR2.CharacterBody>();
 
-        public static void Add(IntPtr sim) { if (sim != IntPtr.Zero) live.Add(sim); }
-        public static void Remove(IntPtr sim) => live.Remove(sim);
-        public static void Clear() => live.Clear();
+        public static void Add(IntPtr sim, RoR2.CharacterBody body)
+        {
+            if (sim == IntPtr.Zero) return;
+            live.Add(sim);
+            owners[sim] = body;
+        }
+        public static void Remove(IntPtr sim) { live.Remove(sim); owners.Remove(sim); }
+        public static void Clear() { live.Clear(); owners.Clear(); }
+        public static int Count => live.Count;
 
         public static bool WaterTouches(UnityEngine.Vector3 a, UnityEngine.Vector3 b, float radius)
+            => WaterTouches(a, b, radius, out _);
+
+        /// Whether any Mario's drops touch the segment `a`-`b` (world), and whose (null for a sim
+        /// whose body is gone).
+        public static bool WaterTouches(UnityEngine.Vector3 a, UnityEngine.Vector3 b, float radius, out RoR2.CharacterBody mario)
         {
+            mario = null;
             var from = UnityHost.ToSim(a);
             var to = UnityHost.ToSim(b);
             foreach (var sim in live)
                 if (Native.sms_sim_water_touches_segment(sim, ref from, ref to, radius / UnityHost.Scale) != 0)
+                {
+                    owners.TryGetValue(sim, out mario);
                     return true;
+                }
             return false;
         }
 

@@ -18,6 +18,7 @@ namespace UnityEngine
         public Vector3(float x, float y, float z) { this.x = x; this.y = y; this.z = z; }
         public static Vector3 zero => default;
         public static Vector3 up => new Vector3(0, 1, 0);
+        public static Vector3 down => new Vector3(0, -1, 0);
         public float magnitude => (float)Math.Sqrt(x * x + y * y + z * z);
         public static Vector3 operator +(Vector3 a, Vector3 b) => new Vector3(a.x + b.x, a.y + b.y, a.z + b.z);
         public static Vector3 operator -(Vector3 a, Vector3 b) => new Vector3(a.x - b.x, a.y - b.y, a.z - b.z);
@@ -27,6 +28,7 @@ namespace UnityEngine
     }
     public struct Quaternion { public float x, y, z, w; public static Quaternion Euler(float x, float y, float z) => default; }
     public static class Random { public static Vector3 insideUnitSphere => default; }
+    public static class Mathf { public static float Max(float a, float b) => Math.Max(a, b); }
     public static class Time { public static float fixedDeltaTime = 1f / 60f; public static float time; }
     public enum QueryTriggerInteraction { Ignore }
     public struct RaycastHit { public Vector3 point, normal; }
@@ -35,6 +37,16 @@ namespace UnityEngine
         public static Vector3 gravity => new Vector3(0, -9.81f, 0);
         public static bool SphereCast(Vector3 p, float r, Vector3 d, out RaycastHit hit, float distance, int mask, QueryTriggerInteraction q)
         { hit = default; return false; }
+        /// The test's floor (none: null).
+        public static float? floor;
+        public static bool Raycast(Vector3 p, Vector3 d, out RaycastHit hit, float distance, int mask, QueryTriggerInteraction q)
+        {
+            hit = default;
+            if (floor == null || p.y < floor.Value) return false;
+            hit.point = new Vector3(p.x, floor.Value, p.z);
+            hit.normal = Vector3.up;
+            return true;
+        }
     }
 }
 namespace UnityEngine.Networking { public static class NetworkServer { public static bool active; } }
@@ -116,25 +128,28 @@ namespace MarioTest
         internal static Timing Measure(Part p) => default;
     }
     internal class Setting<T> { public T Value; public Setting(T value) { Value = value; } }
-    internal class Logger { public void LogError(string text) { } }
+    internal class Logger { public void LogError(string text) { } public void LogInfo(string text) { } }
     internal static class Plugin
     {
         public static bool AssetsReady = false;
         public static string AssetsDir = "";
         public static Logger Log = new Logger();
         public static Setting<int> CoinGold = new Setting<int>(3);
+        public static Setting<float> CoinSeconds = new Setting<float>(30f);
     }
     internal static class Native
     {
         internal struct Vec3 { public float x, y, z; }
         public static void sms_view_free(IntPtr view) { }
         public static IntPtr sms_view_new_look(byte[] path, int sound, int look) => IntPtr.Zero;
+        public static byte sms_view_sound(IntPtr view, byte[] name, ref Vec3 pos) => 0;
     }
     internal static class UnityHost
     {
         public static float Scale => .01f;
         public static Native.Vec3 ToSim(Vector3 v) => new Native.Vec3 { x = v.x / Scale, y = v.y / Scale, z = v.z / Scale };
     }
+    internal class MarioView { public static MarioView Player => null; public IntPtr Handle => IntPtr.Zero; }
     internal static class MarioNet
     {
         public static int taken, collected;

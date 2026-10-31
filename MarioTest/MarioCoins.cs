@@ -11,10 +11,15 @@ namespace MarioTest
     // The yellow mesh/materials, pickup sound and sparks come from the user's Sunshine disc.
     // TCoin::taken / TMario::getCoin restore one of eight life segments. RoR2 owns healing,
     // so it goes through HealthComponent.Heal and normal healing-item rules.
+    // A coin pops up and bounces to rest on a path worked out when it appears (CoinBounce: one
+    // ground ray, no physics per step), and lasts Coins.Seconds, blinking out over the last
+    // BlinkSeconds as Sunshine's do (TItem's MAP_OBJ_FLAG_DISAPPEARING).
     internal sealed class MarioCoins : MonoBehaviour
     {
         internal const int Capacity = 128;
-        const float Lifetime = 60f, PickupDelay = 0.3f;
+        const float PickupDelay = 0.3f, BlinkSeconds = 3f;
+        // The pop: up, and a little to the side. Where a coin rests: its centre this far over the ground.
+        internal const float PopUp = 7f, PopSide = 1.5f, RestHeight = 0.11f;
         sealed class Coin
         {
             public Vector3 pos, velocity;
@@ -23,7 +28,14 @@ namespace MarioTest
             public bool settled;
             /// When a client last told the server one of its Marios touched this coin.
             public float touchSent = -10f;
+            /// Its bounce, when there was ground under it to plan one on (else it falls step by step).
+            public CoinBounce path;
+            public bool planned;
+            public int landings;
         }
+
+        static float Lifetime => Mathf.Max(BlinkSeconds + 1f, Plugin.CoinSeconds.Value);
+        bool droppedThisStage;
 
         readonly Coin[] coins = new Coin[Capacity];
         readonly System.Collections.Generic.List<CharacterBody> collectors = new System.Collections.Generic.List<CharacterBody>();
@@ -57,7 +69,7 @@ namespace MarioTest
             view = IntPtr.Zero;
         }
 
-        void SceneChanged(Scene from, Scene to) => Clear();
+        void SceneChanged(Scene from, Scene to) { Clear(); droppedThisStage = false; }
         void RunEnded(Run run) => Clear();
 
         void Clear()
@@ -97,13 +109,22 @@ namespace MarioTest
             if (!attacker.teamComponent || !victim.teamComponent
                 || !TeamMask.GetEnemyTeams(attacker.teamComponent.teamIndex).HasTeam(victim.teamComponent.teamIndex)) return;
             if (!rewarded.Add(victim.GetInstanceID()) || !EnsureModel()) return;
-            float unit = UnityHost.Scale;
+            var side = UnityEngine.Random.insideUnitSphere;
+            side.y = 0f;
             var coin = new Coin
             {
                 pos = victim.corePosition,
-                velocity = UnityEngine.Random.insideUnitSphere * (80f * unit) + Vector3.up * (220f * unit),
+                velocity = side * PopSide + Vector3.up * PopUp,
                 team = attacker.teamComponent.teamIndex,
             };
+            Plan(coin);
+            if (!droppedThisStage)
+            {
+                droppedThisStage = true;
+                Plugin.Log.LogInfo(coin.planned
+                    ? $"Mario's coins: the first this stage pops from {coin.pos} and rests at height {coin.path.rest:F2}"
+                    : $"Mario's coins: the first this stage pops from {coin.pos} with no ground under it (it falls)");
+            }
             coins[next] = coin;
             MarioNet.SendCoin(next, coin.pos, coin.velocity, coin.team);
             next = (next + 1) % Capacity;
@@ -114,7 +135,42 @@ namespace MarioTest
         internal void Spawned(int index, Vector3 pos, Vector3 velocity, TeamIndex team)
         {
             if (index < 0 || index >= Capacity || !EnsureModel()) return;
-            coins[index] = new Coin { pos = pos, velocity = velocity, team = team };
+            var coin = new Coin { pos = pos, velocity = velocity, team = team };
+            Plan(coin);
+            coins[index] = coin;
+        }
+
+        /// Its bounce, on the ground under where it will come to rest (each machine finds the same ground).
+        static void Plan(Coin coin)
+        {
+            coin.planned = false;
+            if (!Ground(coin.pos, out float ground)
+                || !CoinBounce.Make(coin.pos, coin.velocity, ground + RestHeight, out var path)) return;
+            // The ground where it lands, a step to the side of where it popped.
+            var landing = coin.pos + path.Landing();
+            if (Ground(new Vector3(landing.x, coin.pos.y, landing.z), out float there)
+                && CoinBounce.Make(coin.pos, coin.velocity, there + RestHeight, out var over))
+                path = over;
+            coin.path = path;
+            coin.planned = true;
+        }
+
+        internal static bool Ground(Vector3 from, out float y)
+        {
+            y = 0f;
+            if (!Physics.Raycast(from + Vector3.up * 0.5f, Vector3.down, out var hit, 200f,
+                LayerIndex.world.mask, QueryTriggerInteraction.Ignore)) return false;
+            y = hit.point.y;
+            return true;
+        }
+
+        /// Sunshine's MSD_SE_SY_COIN_BOUND where a coin lands (only the first few landings: the last are taps).
+        static void Bounced(Vector3 at)
+        {
+            var player = MarioView.Player;
+            if (player == null || player.Handle == IntPtr.Zero) return;
+            var p = UnityHost.ToSim(at);
+            Native.sms_view_sound(player.Handle, NativeLib.CString("MSD_SE_SY_COIN_BOUND"), ref p);
         }
 
         /// The server says a Mario picked this coin up.
@@ -130,13 +186,24 @@ namespace MarioTest
             float dt = Time.fixedDeltaTime;
             float unit = UnityHost.Scale;
             bool gathered = false, ownGathered = false;
+            float lifetime = Lifetime;
             for (int i = 0; i < coins.Length; i++)
             {
                 var coin = coins[i];
                 if (coin == null) continue;
                 coin.age += dt;
-                if (coin.age >= Lifetime) { coins[i] = null; continue; }
-                if (!coin.settled)
+                if (coin.age >= lifetime) { coins[i] = null; continue; }
+                if (coin.planned)
+                {
+                    coin.pos = coin.path.At(coin.age, out int landed);
+                    if (landed > coin.landings)
+                    {
+                        coin.landings = landed;
+                        if (landed <= 2) Bounced(coin.pos);
+                    }
+                    coin.settled = landed >= coin.path.flights;
+                }
+                else if (!coin.settled)
                 {
                     coin.velocity += Physics.gravity * dt;
                     var step = coin.velocity * dt;
@@ -247,10 +314,14 @@ namespace MarioTest
             source.count = 0;
             // TItemManager::perform rotates coins two degrees per 120 Hz tick.
             var turn = Quaternion.Euler(0f, Time.time * 240f, 0f);
+            float lifetime = Lifetime;
             for (int i = 0; i < coins.Length; i++)
             {
                 var coin = coins[i];
                 if (coin == null) continue;
+                // Its last seconds: on and off ten times a second.
+                float left = lifetime - coin.age;
+                if (left < BlinkSeconds && (int)(left * 10f) % 2 == 1) continue;
                 var pos = UnityHost.ToSim(coin.pos);
                 source.draws[source.count++] = new ViewDraw
                 {

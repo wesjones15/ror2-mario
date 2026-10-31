@@ -69,7 +69,7 @@ namespace MarioTest
         internal static ConfigEntry<float> DiveDamage, CorkscrewDamage, SuperCorkscrewDamage, SuperCorkscrewRecoil, RocketSpinDamage;
         internal static ConfigEntry<float> WaterDamage;
         internal static ConfigEntry<float> FireWaterMultiplier;
-        internal static ConfigEntry<bool> ExtinguishFireTrails;
+        internal static ConfigEntry<bool> ExtinguishFireTrails, SprayDeflects;
         internal static ConfigEntry<bool> FallDamageEnabled;
         internal static ConfigEntry<float> FallSafeHeight, DiveSafeHeight, FallPerHeight, DiveFallMultiplier;
         internal static ConfigEntry<float> BurstMultiplier, SpinSprayMultiplier;
@@ -109,6 +109,7 @@ namespace MarioTest
         internal static ConfigEntry<float> ShineHeight, ShineTouchRadius, ShineSeconds;
         internal static ConfigEntry<float> CoinX, CoinY, CoinScale, LivesScale, ScreenSpeed, TooBadDrop;
         internal static ConfigEntry<int> CoinGold;
+        internal static ConfigEntry<float> CoinSeconds;
         internal static ConfigEntry<float> LockRange;
         internal static ConfigEntry<float> LifeX, LifeY, LifeScale, LockMarkerSize, LockMarkerSpin;
         internal static ConfigEntry<bool> KnockdownEnabled, KnockdownGetUpEarly, KnockdownInterruptsPound, BurnPanic;
@@ -285,6 +286,9 @@ namespace MarioTest
             CoinGold = Config.Bind("Coins", "Gold", 1,
                 new ConfigDescription("RoR2 gold each yellow coin Mario picks up is worth, on top of the " +
                     "health it heals. 0: none.", new AcceptableValueRange<int>(0, 1000)));
+            CoinSeconds = Config.Bind("Coins", "Seconds", 30f,
+                new ConfigDescription("Seconds a yellow coin lies there before it is gone (it blinks over its last 3).",
+                    new AcceptableValueRange<float>(4f, 600f)));
             LockRange = Config.Bind("Controls", "LockRange", 60f,
                 new ConfigDescription("How far away, in metres, the lock-on can pick an enemy (with a clear line): " +
                     "far enough for flying ones. FLUDD's water still falls short of the far ones.",
@@ -340,6 +344,10 @@ namespace MarioTest
             if (Mathf.Approximately(FireWaterMultiplier.Value, 20f)) FireWaterMultiplier.Value = 5f;
             ExtinguishFireTrails = Config.Bind("Fludd", "ExtinguishFireTrails", true,
                 "Actual water droplets put out the sections of fire elite trails they touch.");
+            SprayDeflects = Config.Bind("Fludd", "SprayDeflects", true,
+                "FLUDD's water is a shield while it is in the air: enemy projectiles that fly through its drops are " +
+                "turned back at whoever fired them (and are Mario's from then on), and enemy bullets and lasers " +
+                "stop at it. Not Sunshine's.");
             // Older defaults (0.035, about 330% a second; 0.0717, a build in between), and a config file
             // keeps the default it was written with: a player who never changed it gets the new one.
             if (Mathf.Approximately(WaterDamage.Value, 0.035f) || Mathf.Approximately(WaterDamage.Value, 0.0717f))
@@ -542,11 +550,13 @@ namespace MarioTest
             gameObject.AddComponent<MarioPresentation>();
             MarioHeatHaze.Initialize();
             MarioFire.Initialize();
+            MarioDeflect.Initialize();
 
             ItemHooks.Install();
             GlobalEventManager.onServerDamageDealt += MarioDriver.OnServerDamage;
             GlobalEventManager.onCharacterDeathServer += MarioSkin.OnCharacterDeath;
             gameObject.AddComponent<MarioCoins>();
+            gameObject.AddComponent<MarioDeflect>();
             gameObject.AddComponent<MarioScreenFx>();
             gameObject.AddComponent<MarioShine>();
             gameObject.AddComponent<MarioLunarCoin>();

@@ -267,7 +267,7 @@ namespace MarioTest
             SpawnMusic.PlayCue("shineget");
             if (Plugin.ShineCameraOn.Value) TakeCamera(driver);
             Plugin.Log.LogInfo($"Shine Get: the stage ends in about {Plugin.ShineSeconds.Value:F1} s " +
-                $"(teleporter asked at {requestAt:F1} s, camera {(demoInside ? "inside" : "outside")})");
+                $"(teleporter asked at {requestAt:F1} s, camera {(demoInside ? "inside" : "outside")}); Mario: {driver.DrawNote()}");
         }
 
         // How long RoR2's exit takes from the teleporter finishing to the scene changing (not a public
@@ -288,7 +288,11 @@ namespace MarioTest
 
         void RunDemo(float dt)
         {
+            float was = demoAge;
             demoAge += dt;
+            // How Mario is drawn a second in, and once the teleporter has been asked.
+            if (demoDriver && ((was < 1f && demoAge >= 1f) || (was < requestAt + 0.5f && demoAge >= requestAt + 0.5f)))
+                Plugin.Log.LogInfo($"Shine Get at {demoAge:F1} s: Mario {demoDriver.DrawNote()}");
             if (!requested && demoAge >= requestAt)
             {
                 requested = true;

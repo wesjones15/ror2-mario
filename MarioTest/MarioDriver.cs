@@ -151,6 +151,16 @@ namespace MarioTest
         /// The view this Mario draws with: the player's, or his own.
         MarioView View => Local ? MarioView.Player : cloneView;
 
+        /// How he is being drawn, for the log (the Shine demo's: a host's Mario went unseen in his own demo).
+        internal string DrawNote()
+        {
+            var view = View;
+            return $"driving {driving}, authority {(body && body.hasEffectiveAuthority)}, " +
+                $"vehicle {(body && body.currentVehicle ? body.currentVehicle.name : "none")}, alive {(!health || health.alive)}, " +
+                $"local {Local}, view {(view == null ? "none" : view.Models == null ? "no models" : "drawn")}, " +
+                $"Commando hidden {bodyHidden}, server {NetworkServer.active}";
+        }
+
         /// A host-owned yellow coin was collected: Sunshine's pickup sound and sparks.
         internal void CoinCollected(Vector3 position)
         {
@@ -1004,7 +1014,7 @@ namespace MarioTest
             var feet = UnityHost.ToSim(body.footPosition);
             short yaw = UnityHost.Yaw(direction ? direction.forward : transform.forward);
             sim = Native.sms_sim_new(NativeLib.CString(Plugin.AssetsDir), ref feet, yaw);
-            MarioSims.Add(sim);
+            MarioSims.Add(sim, body);
             if (sim == IntPtr.Zero)
             {
                 failed = true;

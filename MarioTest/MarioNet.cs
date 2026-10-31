@@ -31,6 +31,12 @@ namespace MarioTest
         public const short CoinTouchMsg = 0x4D07;
         public const short FireMsg = 0x4D08;
         public const short MithrixDefeatedMsg = 0x4D09;
+        /// The flower world's things near the players: server to the clients (a mirror to draw).
+        public const short FlowerSnapMsg = 0x4D0A;
+        /// A flower sound or burst, for every machine: server to the clients.
+        public const short FlowerFxMsg = 0x4D0B;
+        /// A client's Mario sprayed or stomped a flower thing: client to server.
+        public const short FlowerHitMsg = 0x4D0C;
 
         /// One hit a client's Mario made, for the server to land.
         public struct HitRecord
@@ -57,6 +63,9 @@ namespace MarioTest
             Mp.Register(ShineMsg, OnShine, null);
             Mp.Register(CoinTouchMsg, OnCoinTouch, null);
             Mp.Register(FireMsg, null, OnFire);
+            Mp.Register(FlowerSnapMsg, null, (from, r) => { if (!NetworkServer.active) MarioFlowers.OnSnapshot(r); });
+            Mp.Register(FlowerFxMsg, null, (from, r) => { if (!NetworkServer.active) MarioFlowers.OnFx(r); });
+            Mp.Register(FlowerHitMsg, (from, r) => MarioFlowers.OnHit(r), null);
             Mp.Register(MithrixDefeatedMsg, null, (from, reader) => {
                 string runId = reader.Str();
                 if (!NetworkServer.active && !reader.Failed && reader.Done) MarioSkin.MithrixDefeated(runId);

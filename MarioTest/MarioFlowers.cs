@@ -16,19 +16,22 @@ namespace MarioTest
     //  * a flower tower (THanaSambo) that bursts out of the ground near Mario, bites and sinks again.
     // Stomping or pounding a flower enemy kills it (coins drop); a spray freezes a tower for a while.
     //
-    // The world lives in the sim of the Mario the host's player plays, and only on the machine that
-    // runs the server (the coins are the server's, as every other coin is): in a co-op run the
-    // other players do not see them. Models, clips and tuning come from the user's disc
-    // (assets/enemy/sambo*, params_enemy/*.prm). Each thing on screen has its own native prop view
-    // (one posed instance per view), made when it comes near and freed when it leaves, so a stage
-    // with a dozen of them stays cheap.
+    // Multiplayer: the server owns the one world (placement, the step, bites and coins). Every
+    // client holds a mirror of it, refreshed by snapshots of the things near the players, and
+    // draws it, so a player who is not Mario sees the flowers, towers and heads too. Only a Mario
+    // can wake them, though: his sim (on his own machine) lands the spray and the stomps on the
+    // things it knows (the mirror's targets) and reports them, and the server applies them; the
+    // enemies chase and bite the nearest Mario only. Models, clips and tuning come from the user's
+    // disc (assets/enemy/sambo*, params_enemy/*.prm). Each thing on screen has its own native prop
+    // view (one posed instance per view), made when it comes near and freed when it leaves.
     internal sealed class MarioFlowers : MonoBehaviour
     {
         // The three kinds (Native.FlowerItem.kind) and the look codes of their views.
         const byte Flower = 0, Tower = 1, Head = 2;
         static readonly byte[] Looks = { 5, 6, 7 };
-        const int MaxViews = 16;
-        const float DrawRange = 90f, MinSpawnDistance = 18f, LingerSeconds = 3f;
+        const int MaxViews = 16, MaxItems = 512;
+        const float DrawRange = 90f, SnapRange = 130f, MinSpawnDistance = 18f, LingerSeconds = 3f;
+        const float SnapEvery = 0.125f, HitResend = 0.3f;
 
         // Clips by kind, in the order the pose code names them.
         static readonly string[][] ClipNames =
@@ -50,26 +53,42 @@ namespace MarioTest
             public float seen;
         }
 
+        internal static MarioFlowers Instance { get; private set; }
+
+        // One world for the process: sims hold its pointer, so it is never freed.
+        static IntPtr world;
+
         readonly Dictionary<(byte, uint), Prop> props = new Dictionary<(byte, uint), Prop>();
         readonly List<(byte, uint)> stale = new List<(byte, uint)>();
         readonly List<(uint spawn, Vector3 pos, float yaw)> placements = new List<(uint, Vector3, float)>();
         readonly Native.FlowerEvent[] events = new Native.FlowerEvent[64];
+        readonly Native.FlowerHit[] hits = new Native.FlowerHit[64];
+        readonly Native.FlowerItem[] items = new Native.FlowerItem[MaxItems];
+        readonly Dictionary<(byte, uint), float> hitSent = new Dictionary<(byte, uint), float>();
+        // A client's smoothing between snapshots: where each thing was and when the last one came.
+        readonly Dictionary<(byte, uint), Vector3> previous = new Dictionary<(byte, uint), Vector3>();
+        readonly List<CharacterBody> marios = new List<CharacterBody>();
+        Native.Vec3[] feet = new Native.Vec3[16];
         Native.FlowerClips clips;
         bool clipsRead, placed, failed;
-        IntPtr simUsed;
-        float arrived;
+        float arrived, snapAt, sentAt;
+        static Native.Host host;
+        static bool hostMade;
 
         void Awake()
         {
+            Instance = this;
             SceneManager.activeSceneChanged += SceneChanged;
             Run.onRunDestroyGlobal += RunEnded;
         }
 
         void OnDestroy()
         {
+            if (Instance == this) Instance = null;
             SceneManager.activeSceneChanged -= SceneChanged;
             Run.onRunDestroyGlobal -= RunEnded;
-            Reset();
+            foreach (var p in props.Values) Free(p);
+            props.Clear();
         }
 
         void SceneChanged(Scene from, Scene to) => Reset();
@@ -80,9 +99,16 @@ namespace MarioTest
             foreach (var p in props.Values) Free(p);
             props.Clear();
             placements.Clear();
+            previous.Clear();
+            hitSent.Clear();
             placed = false;
-            simUsed = IntPtr.Zero;
             arrived = 0f;
+            if (world != IntPtr.Zero)
+            {
+                // Empty it: an empty snapshot is a mirror of nothing; the server's setup clears it too.
+                Native.sms_fw_mirror(world, items, 0);
+                Native.sms_fw_setup(world, NativeLib.CString(Plugin.AssetsDir), ref clips);
+            }
         }
 
         static void Free(Prop p)
@@ -90,6 +116,19 @@ namespace MarioTest
             p.models?.Dispose();
             if (p.view != IntPtr.Zero) Native.sms_view_free(p.view);
             p.view = IntPtr.Zero;
+        }
+
+        bool EnsureWorld()
+        {
+            if (failed || !Plugin.AssetsReady) return false;
+            if (world == IntPtr.Zero)
+            {
+                world = Native.sms_fw_new();
+                if (world == IntPtr.Zero) { failed = true; return false; }
+                if (!hostMade) { host = UnityHost.Table(); hostMade = true; }
+            }
+            if (!clipsRead) ReadClips();
+            return true;
         }
 
         /// Clip lengths in ticks, read once from the models' own clips.
@@ -118,70 +157,90 @@ namespace MarioTest
                 tower_freeze = Ticks(6, "sambo_hit") * 3,
                 tower_die = Ticks(6, "sambo_down"),
             };
+            Native.sms_fw_setup(world, NativeLib.CString(Plugin.AssetsDir), ref clips);
         }
 
-        bool Suitable()
+        static bool Suitable()
         {
             var info = SceneInfo.instance;
             return Run.instance && Stage.instance && info && info.groundNodes && info.sceneDef
                 && info.sceneDef.sceneType == SceneType.Stage;
         }
 
+        /// Every Mario body in play, alive, and their feet in sim units.
+        int GatherMarios()
+        {
+            marios.Clear();
+            foreach (var b in CharacterBody.readOnlyInstancesList)
+                if (b && b.healthComponent && b.healthComponent.alive && b.GetComponent<MarioDriver>()) marios.Add(b);
+            if (feet.Length < marios.Count) feet = new Native.Vec3[marios.Count * 2];
+            for (int i = 0; i < marios.Count; i++) feet[i] = UnityHost.ToSim(marios[i].footPosition);
+            return marios.Count;
+        }
+
         void FixedUpdate()
         {
-            if (failed || !NetworkServer.active || !Plugin.AssetsReady || PauseManager.isPaused || !Suitable()) return;
-            if (Plugin.FlowerChance.Value <= 0) return;
-            var driver = MarioDriver.Player;
-            if (driver == null || driver.SimHandle == IntPtr.Zero || !driver.Alive) return;
+            if (failed || PauseManager.isPaused || !Plugin.AssetsReady || !EnsureWorld()) return;
+            // Each Mario this machine plays hits the world's things with his water and his feet.
+            var own = MarioDriver.Player;
+            if (own != null && own.SimHandle != IntPtr.Zero) Native.sms_sim_set_flowers(own.SimHandle, world);
+            if (NetworkServer.active) ServerStep(); else ClientSendHits();
+        }
+
+        // ---- the server ----
+
+        void ServerStep()
+        {
+            if (Plugin.FlowerChance.Value <= 0 || !Suitable()) return;
+            int count = GatherMarios();
+            if (count == 0) return;
             if (arrived == 0f) arrived = Time.time;
             if (Time.time - arrived < 2f) return;
-            var sim = driver.SimHandle;
-            if (!clipsRead) ReadClips();
             if (!placed)
             {
                 placed = true;
-                if (!Place(driver, sim)) return;
+                Place();
             }
-            else if (sim != simUsed)
+            Native.sms_fw_step(world, ref host, feet, (uint)count, Time.fixedDeltaTime);
+            // Hits the host's own Mario's sim reported, then the clients' (OnHit applies as they come).
+            uint n;
+            while ((n = Native.sms_fw_take_hits(world, hits, (uint)hits.Length)) > 0)
             {
-                // A new sim (after a death or a restart): the same flowers, shut again.
-                Setup(sim);
-                foreach (var p in placements)
-                {
-                    var at = UnityHost.ToSim(p.pos);
-                    Native.sms_flowers_place(sim, p.spawn, ref at, p.yaw);
-                }
+                for (int i = 0; i < n; i++) Native.sms_fw_hit(world, hits[i].id, hits[i].kind);
+                if (n < hits.Length) break;
             }
-            simUsed = sim;
-            Pump(driver, sim);
+            while ((n = Native.sms_fw_events(world, events, (uint)events.Length)) > 0)
+            {
+                for (int i = 0; i < n; i++) Handle(events[i]);
+                if (n < events.Length) break;
+            }
+            if (Mp.Networked && Time.time - sentAt >= SnapEvery)
+            {
+                sentAt = Time.time;
+                SendSnapshot();
+            }
         }
 
-        void Setup(IntPtr sim)
+        /// The stage's rolls: each may put one thing on a ground node away from every Mario.
+        void Place()
         {
-            Native.sms_flowers_setup(sim, NativeLib.CString(Plugin.AssetsDir), ref clips);
-            Native.sms_flowers_set_table(sim, (uint)Plugin.FlowerChance.Value, 3, 5, 2, 2);
-        }
-
-        /// The stage's rolls: each may put one thing on a ground node away from where Mario stands.
-        bool Place(MarioDriver driver, IntPtr sim)
-        {
-            Setup(sim);
+            Native.sms_fw_setup(world, NativeLib.CString(Plugin.AssetsDir), ref clips);
+            Native.sms_fw_set_table(world, (uint)Plugin.FlowerChance.Value, 3, 5, 2, 2);
             var graph = SceneInfo.instance.groundNodes;
             var nodes = graph.GetActiveNodesForHullMask(HullMask.Human);
-            if (nodes == null || nodes.Count == 0) return false;
-            var from = driver.Feet;
+            if (nodes == null || nodes.Count == 0) return;
             int made = 0;
             for (int roll = 0; roll < Plugin.FlowerRolls.Value; roll++)
             {
-                uint spawn = Native.sms_flowers_roll(sim, UnityEngine.Random.value, UnityEngine.Random.value);
+                uint spawn = Native.sms_fw_roll(world, UnityEngine.Random.value, UnityEngine.Random.value);
                 if (spawn == 0) continue;
                 for (int tries = 0; tries < 40; tries++)
                 {
                     if (!graph.GetNodePosition(nodes[UnityEngine.Random.Range(0, nodes.Count)], out Vector3 pos)) continue;
-                    if ((pos - from).sqrMagnitude < MinSpawnDistance * MinSpawnDistance) continue;
+                    if (NearAMario(pos)) continue;
                     float yaw = UnityEngine.Random.Range(0f, 360f);
                     var at = UnityHost.ToSim(pos);
-                    if (Native.sms_flowers_place(sim, spawn, ref at, yaw) == 0) break;
+                    if (Native.sms_fw_place(world, spawn, ref at, yaw) == 0) break;
                     placements.Add((spawn, pos, yaw));
                     made++;
                     break;
@@ -189,63 +248,198 @@ namespace MarioTest
             }
             Plugin.Log.LogInfo($"Sunshine flowers: {made} set(s) placed on this stage ({Plugin.FlowerRolls.Value} rolls at "
                 + $"{Plugin.FlowerChance.Value}/1000)");
-            return true;
         }
 
-        /// What the sim's flowers did since the last step: coins, bites, deaths, sounds.
-        void Pump(MarioDriver driver, IntPtr sim)
+        bool NearAMario(Vector3 pos)
         {
-            uint n;
-            while ((n = Native.sms_flowers_events(sim, events, (uint)events.Length)) > 0)
-            {
-                for (int i = 0; i < n; i++) Handle(driver, sim, events[i]);
-                if (n < events.Length) break;
-            }
+            foreach (var m in marios)
+                if ((m.footPosition - pos).sqrMagnitude < MinSpawnDistance * MinSpawnDistance) return true;
+            return false;
         }
 
-        void Handle(MarioDriver driver, IntPtr sim, Native.FlowerEvent e)
+        /// What the world did since the last step: coins, bites, deaths, sounds and bursts.
+        void Handle(Native.FlowerEvent e)
         {
-            var body = driver.Body;
             var at = new Vector3(e.pos.x, e.pos.y, e.pos.z) * UnityHost.Scale;
+            CharacterBody target = e.target >= 0 && e.target < marios.Count ? marios[e.target] : null;
             switch (e.kind)
             {
-                case 1: Sound("MSD_SE_OBJ_FLOWER_OPEN_" + Mathf.Clamp(e.a, 0, 11), e.pos); break;
                 case 3:
-                    if (body && body.teamComponent && MarioCoins.Instance)
-                    {
-                        MarioCoins.Instance.Burst(at, e.vel, body.teamComponent.teamIndex);
-                        Sound("MSD_SE_SY_COIN_APPEAR", e.pos);
-                    }
+                    // The ring's coins are the server's, like every coin (the clients draw copies).
+                    if (target && target.teamComponent && MarioCoins.Instance)
+                        MarioCoins.Instance.Burst(at, e.vel, target.teamComponent.teamIndex);
                     break;
-                case 4: Sound("MSD_SE_EN_SAMBO_APPEAR", e.pos); break;
                 case 6:
-                    if (body && body.healthComponent && body.healthComponent.alive)
+                    if (target && target.healthComponent && target.healthComponent.alive)
                     {
-                        body.healthComponent.TakeDamage(new DamageInfo
+                        target.healthComponent.TakeDamage(new DamageInfo
                         {
-                            damage = body.maxHealth * Plugin.FlowerBiteMax.Value / 100f,
-                            position = body.corePosition,
+                            damage = target.maxHealth * Plugin.FlowerBiteMax.Value / 100f,
+                            position = target.corePosition,
                             procCoefficient = 0f,
                             damageColorIndex = DamageColorIndex.Default,
                         });
-                        var from = e.pos;
-                        Native.sms_sim_knock_down(sim, ref from, 0);
+                        // His sim is on his machine: the owner knocks him over.
+                        if (target.hasEffectiveAuthority) target.GetComponent<MarioDriver>()?.KnockFrom(at);
+                        else MarioNet.SendKnock(target, at);
                     }
                     break;
                 case 7:
                     // genRandomItem: a handful of coins from where it fell.
-                    if (body && body.teamComponent && MarioCoins.Instance)
+                    var who = target ?? (marios.Count > 0 ? marios[0] : null);
+                    if (who && who.teamComponent && MarioCoins.Instance)
                     {
                         int coins = e.a == 1 ? 5 : 2;
                         for (int c = 0; c < coins; c++)
                         {
                             float a = c * Mathf.PI * 2f / coins;
                             MarioCoins.Instance.Burst(at + Vector3.up * 1f,
-                                new Native.Vec3(Mathf.Cos(a) * 2f, 10f + c, Mathf.Sin(a) * 2f), body.teamComponent.teamIndex);
+                                new Native.Vec3(Mathf.Cos(a) * 2f, 10f + c, Mathf.Sin(a) * 2f), who.teamComponent.teamIndex);
                         }
-                        Sound("MSD_SE_SY_COIN_APPEAR", e.pos);
                     }
                     break;
+            }
+            // Sounds and bursts: every machine plays its own.
+            if (e.kind != 6)
+            {
+                Fx(e.kind, e.a, e.pos);
+                SendFx(e);
+            }
+        }
+
+        // ---- messages ----
+
+        void SendSnapshot()
+        {
+            uint total = Native.sms_fw_items(world, items, (uint)items.Length);
+            int n = (int)Math.Min(total, (uint)items.Length);
+            if (n == 0) return;
+            GatherMarios();
+            // Players near enough to see a thing: every Mario, and every player body.
+            var eyes = new List<Vector3>();
+            foreach (var b in CharacterBody.readOnlyInstancesList)
+                if (b && b.isPlayerControlled) eyes.Add(b.footPosition);
+            var near = new bool[n];
+            // A unit goes whole or not at all (a client's mirror fills gaps in a unit with copies).
+            var unitNear = new Dictionary<uint, bool>();
+            for (int i = 0; i < n; i++)
+            {
+                var p = new Vector3(items[i].pos.x, items[i].pos.y, items[i].pos.z) * UnityHost.Scale;
+                bool close = false;
+                foreach (var e in eyes)
+                    if ((e - p).sqrMagnitude < SnapRange * SnapRange) { close = true; break; }
+                if (items[i].kind == Flower)
+                {
+                    uint unit = items[i].handle / 64;
+                    unitNear.TryGetValue(unit, out bool was);
+                    unitNear[unit] = was || close;
+                }
+                else near[i] = close;
+            }
+            var w = new ByteWriter(16 + n * 26);
+            int count = 0;
+            w.U8(0);
+            for (int i = 0; i < n; i++)
+            {
+                if (items[i].kind == Flower ? !unitNear[items[i].handle / 64] : !near[i]) continue;
+                var it = items[i];
+                w.U8(it.kind);
+                w.U8(it.state);
+                w.U16((ushort)it.handle);
+                w.U32(it.age);
+                w.F32(it.pos.x); w.F32(it.pos.y); w.F32(it.pos.z);
+                w.F32(it.yaw);
+                count++;
+            }
+            if (count == 0) return;
+            var bytes = w.ToArray();
+            bytes[0] = (byte)Math.Min(count, 255);
+            Mp.SendToAll(MarioNet.FlowerSnapMsg, bytes);
+        }
+
+        /// A client: the server's snapshot becomes the mirror, remembering where things were.
+        internal static void OnSnapshot(ByteReader r)
+        {
+            var self = Instance;
+            if (!self || !self.EnsureWorld()) return;
+            int count = r.U8();
+            var list = new Native.FlowerItem[Math.Min(count, MaxItems)];
+            for (int i = 0; i < list.Length; i++)
+            {
+                list[i] = new Native.FlowerItem
+                {
+                    kind = r.U8(),
+                    state = r.U8(),
+                    handle = r.U16(),
+                    age = r.U32(),
+                    pos = new Native.Vec3(r.F32(), r.F32(), r.F32()),
+                    yaw = r.F32(),
+                };
+            }
+            if (r.Failed) return;
+            uint had = Native.sms_fw_items(world, self.items, (uint)self.items.Length);
+            self.previous.Clear();
+            for (int i = 0; i < Math.Min(had, (uint)self.items.Length); i++)
+                self.previous[(self.items[i].kind, self.items[i].handle)] =
+                    new Vector3(self.items[i].pos.x, self.items[i].pos.y, self.items[i].pos.z);
+            Native.sms_fw_mirror(world, list, (uint)list.Length);
+            self.snapAt = Time.time;
+        }
+
+        void SendFx(Native.FlowerEvent e)
+        {
+            if (!Mp.Networked) return;
+            var w = new ByteWriter(24);
+            w.U8((byte)e.kind);
+            w.U32((uint)e.a);
+            w.F32(e.pos.x); w.F32(e.pos.y); w.F32(e.pos.z);
+            Mp.SendToAll(MarioNet.FlowerFxMsg, w.ToArray());
+        }
+
+        internal static void OnFx(ByteReader r)
+        {
+            uint kind = r.U8();
+            int a = (int)r.U32();
+            var pos = new Native.Vec3(r.F32(), r.F32(), r.F32());
+            if (r.Failed || !float.IsFinite(pos.x + pos.y + pos.z)) return;
+            Fx(kind, a, pos);
+        }
+
+        /// A client's Mario sprayed or stomped a flower thing: the server applies it.
+        void ClientSendHits()
+        {
+            uint n = Native.sms_fw_take_hits(world, hits, (uint)hits.Length);
+            for (int i = 0; i < n; i++)
+            {
+                var key = ((byte)hits[i].kind, (uint)(hits[i].id & 0xFFFFFFFF));
+                if (hitSent.TryGetValue(key, out float last) && Time.time - last < HitResend) continue;
+                hitSent[key] = Time.time;
+                var w = new ByteWriter(8);
+                w.U32((uint)(hits[i].id - IdBase));
+                w.U8((byte)hits[i].kind);
+                Mp.SendToServer(MarioNet.FlowerHitMsg, w.ToArray());
+            }
+        }
+
+        const ulong IdBase = 0x4000_0000UL;
+
+        internal static void OnHit(ByteReader r)
+        {
+            uint low = r.U32();
+            byte kind = r.U8();
+            if (r.Failed || world == IntPtr.Zero || low >= 0x30000) return;
+            Native.sms_fw_hit(world, IdBase + low, kind);
+        }
+
+        /// A sound (and, soon, a burst of particles) at a sim position, on this machine.
+        static void Fx(uint kind, int a, Native.Vec3 pos)
+        {
+            switch (kind)
+            {
+                case 1: Sound("MSD_SE_OBJ_FLOWER_OPEN_" + Mathf.Clamp(a, 0, 11), pos); break;
+                case 3: Sound("MSD_SE_SY_COIN_APPEAR", pos); break;
+                case 4: Sound("MSD_SE_EN_SAMBO_APPEAR", pos); break;
+                case 7: Sound("MSD_SE_SY_COIN_APPEAR", pos); break;
             }
         }
 
@@ -256,34 +450,37 @@ namespace MarioTest
             Native.sms_view_sound(player.Handle, NativeLib.CString(name), ref pos);
         }
 
-        // ---- drawing ----
+        // ---- drawing (every machine, any player) ----
 
         void LateUpdate()
         {
-            var driver = MarioDriver.Player;
-            if (driver == null || driver.SimHandle == IntPtr.Zero || (!placed && props.Count == 0)) return;
-            var sim = driver.SimHandle;
+            if (world == IntPtr.Zero || failed) return;
+            uint total = Native.sms_fw_items(world, items, (uint)items.Length);
+            int n = (int)Math.Min(total, (uint)items.Length);
+            if (n == 0 && props.Count == 0) return;
             var cam = GameSettings.PlayerCamera();
-            var eye = cam ? cam.position : driver.Feet;
+            var eye = cam ? cam.position : Vector3.zero;
             float now = Time.time;
-            for (byte kind = 0; kind < 3; kind++)
+            bool mirrored = !NetworkServer.active;
+            float since = mirrored ? Mathf.Max(0f, now - snapAt) : 0f;
+            float blend = mirrored ? Mathf.Clamp01(since / SnapEvery) : 1f;
+            for (int i = 0; i < n; i++)
             {
-                uint count = Native.sms_flowers_count(sim, kind);
-                for (uint i = 0; i < count; i++)
+                var item = items[i];
+                if (!Visible(item.kind, item.state)) continue;
+                var key = (item.kind, item.handle);
+                var at = new Vector3(item.pos.x, item.pos.y, item.pos.z);
+                if (mirrored && blend < 1f && previous.TryGetValue(key, out var was)) at = Vector3.Lerp(was, at, blend);
+                if ((at * UnityHost.Scale - eye).sqrMagnitude > DrawRange * DrawRange) continue;
+                item.pos = new Native.Vec3(at.x, at.y, at.z);
+                item.age += (uint)(since * 120f);
+                if (!props.TryGetValue(key, out var prop))
                 {
-                    if (Native.sms_flowers_get(sim, kind, i, out var item) == 0) continue;
-                    if (!Visible(kind, item.state)) continue;
-                    var at = new Vector3(item.pos.x, item.pos.y, item.pos.z) * UnityHost.Scale;
-                    if ((at - eye).sqrMagnitude > DrawRange * DrawRange) continue;
-                    var key = (kind, item.handle);
-                    if (!props.TryGetValue(key, out var prop))
-                    {
-                        if (props.Count >= MaxViews || (prop = Make(kind)) == null) continue;
-                        props[key] = prop;
-                    }
-                    prop.seen = now;
-                    Draw(prop, kind, item);
+                    if (props.Count >= MaxViews || (prop = Make(item.kind)) == null) continue;
+                    props[key] = prop;
                 }
+                prop.seen = now;
+                Draw(prop, item.kind, item);
             }
             stale.Clear();
             foreach (var kv in props)

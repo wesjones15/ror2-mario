@@ -247,7 +247,7 @@ namespace MarioTest
                         ownMarios.Clear();
                         // Only bodies this machine drives: usually one, and none to look at otherwise.
                         foreach (var candidate in CharacterBody.readOnlyInstancesList)
-                            if (candidate && candidate.hasEffectiveAuthority && candidate.GetComponent<MarioDriver>()) ownMarios.Add(candidate);
+                            if (candidate && candidate.hasEffectiveAuthority && CanCollect(candidate)) ownMarios.Add(candidate);
                     }
                     TouchedByOwnMario(i, coin);
                     continue;
@@ -259,12 +259,12 @@ namespace MarioTest
                     // Preserve CharacterBody order (including AI/cloned Marios), but scan the
                     // stage once, instead of once per coin. No scan on clients or without coins.
                     foreach (var candidate in CharacterBody.readOnlyInstancesList)
-                        if (candidate && candidate.GetComponent<MarioDriver>()) collectors.Add(candidate);
+                        if (candidate && CanCollect(candidate)) collectors.Add(candidate);
                 }
                 foreach (var body in collectors)
                 {
                     if (!body || !body.healthComponent || !body.healthComponent.alive || !body.teamComponent
-                        || body.teamComponent.teamIndex != coin.team || !body.GetComponent<MarioDriver>()) continue;
+                        || body.teamComponent.teamIndex != coin.team || !CanCollect(body)) continue;
                     var feet = body.footPosition;
                     var delta = coin.pos - feet;
                     // coin_hit_data_table: radius 70, height 100; Mario's cylinder adds 50/160.
@@ -275,6 +275,11 @@ namespace MarioTest
                 }
             }
         }
+
+        /// A Mario picks coins up; so does any player teammate when Coins.TeammatesCollect is on (the
+        /// heal and the gold are the same for them).
+        static bool CanCollect(CharacterBody body) =>
+            body.GetComponent<MarioDriver>() || (Plugin.CoinTeammates.Value && body.isPlayerControlled);
 
         /// Whether a Mario's cylinder reaches a coin (coin_hit_data_table: radius 70, height 100; Mario's
         /// cylinder adds 50 and 160).
@@ -322,7 +327,7 @@ namespace MarioTest
             if (!NetworkServer.active || index < 0 || index >= Capacity) return;
             var coin = coins[index];
             if (coin == null || coin.age < PickupDelay || !body || !body.healthComponent || !body.healthComponent.alive
-                || !body.teamComponent || body.teamComponent.teamIndex != coin.team || !body.GetComponent<MarioDriver>()) return;
+                || !body.teamComponent || body.teamComponent.teamIndex != coin.team || !CanCollect(body)) return;
             Collect(index, body);
         }
 

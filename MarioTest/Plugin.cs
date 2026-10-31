@@ -110,6 +110,7 @@ namespace MarioTest
         internal static ConfigEntry<float> CoinX, CoinY, CoinScale, LivesScale, ScreenSpeed, TooBadDrop;
         internal static ConfigEntry<int> CoinGold;
         internal static ConfigEntry<float> CoinSeconds;
+        internal static ConfigEntry<bool> CoinTeammates;
         internal static ConfigEntry<int> FlowerChance, FlowerRolls, FlowerBiteMax;
         internal static ConfigEntry<float> LockRange;
         internal static ConfigEntry<float> LifeX, LifeY, LifeScale, LockMarkerSize, LockMarkerSpin;
@@ -300,6 +301,8 @@ namespace MarioTest
             FlowerBiteMax = Config.Bind("Flowers", "BitePercent", 10,
                 new ConfigDescription("Percent of Mario's maximum health a flower enemy's bite takes.",
                     new AcceptableValueRange<int>(1, 100)));
+            CoinTeammates = Config.Bind("Coins", "TeammatesCollect", true,
+                "Other players on Mario's team can pick up his coins too: the same heal and the same Gold.");
             LockRange = Config.Bind("Controls", "LockRange", 60f,
                 new ConfigDescription("How far away, in metres, the lock-on can pick an enemy (with a clear line): " +
                     "far enough for flying ones. FLUDD's water still falls short of the far ones.",

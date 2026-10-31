@@ -930,7 +930,7 @@ namespace MarioTest
                 else
                 {
                     ShowMario(false);
-                    itemDisplays?.Dispose(); itemDisplays = null;
+                    itemDisplays?.Dispose(); itemDisplays = null; itemDisplaysTried = false;
                     if (ownsView && (!health || RunAudio.Ended)) MarioView.Reset();
                 }
             }

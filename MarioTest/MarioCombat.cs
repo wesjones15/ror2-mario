@@ -273,6 +273,9 @@ namespace MarioTest
                 case Native.EventKind.ThrowAim:
                     MarioShipParts.OnEvent(ref e);
                     break;
+                case Native.EventKind.WaterImpact:
+                    SimOps.Rec?.WaterImpact(e.pos);
+                    break;
                 case Native.EventKind.WaterHit:
                 case Native.EventKind.BurstHit:
                 case Native.EventKind.SpinHit:

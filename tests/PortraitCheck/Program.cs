@@ -39,6 +39,24 @@ static class Program
         var handle = NativeLibrary.Load(Path.GetFullPath(args[0]));
         NativeLibrary.SetDllImportResolver(typeof(Native).Assembly, (name, assembly, search) => name == Native.Dll ? handle : IntPtr.Zero);
         Check(Native.Load(args[0], out var error), error);
+        using (var impact = new Rig())
+        {
+            var contact = new Native.Vec3(0, 160, 600);
+            Native.sms_view_water_hit(impact.view, ref contact);
+            impact.Step(new Native.Pad(), 4);
+            var pointer = Native.sms_view_fx_vertices(impact.view, out uint count);
+            bool atContact = false;
+            for (int i = 0; i < count; i++)
+            {
+                var v = Marshal.PtrToStructure<Native.FxVertex>(IntPtr.Add(pointer, i * Marshal.SizeOf<Native.FxVertex>()));
+                atContact |= v.pos.z > 500;
+            }
+            Check(atContact, "recorded FLUDD impact didn't draw through the managed/native boundary");
+            impact.Step(new Native.Pad(), 120);
+            Native.sms_view_fx_vertices(impact.view, out count);
+            Check(count == 0, "recorded FLUDD impact did not expire");
+        }
+        Console.WriteLine("PASS: emitter 0xE7 replay contact and expiry through the C# boundary");
         using (var fire = new Rig())
         {
             Check(Native.sms_sim_ignite(fire.sim) != 0, "fire state failed to start");

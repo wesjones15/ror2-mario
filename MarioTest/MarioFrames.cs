@@ -17,7 +17,7 @@ namespace MarioTest
     {
         Teleport = 1, Tuning = 2, Refill = 3, AddWater = 4, Limits = 5, BoostJump = 6, Launch = 7,
         LaunchPad = 8, KnockDown = 9, SetAim = 10, Down = 11, Step = 12, ShineGet = 13, ShineEnd = 14,
-        ForeignWet = 15, Ignite = 16, SelectNozzle = 17, Melee = 18, Soaked = 19, Carried = 20,
+        ForeignWet = 15, Ignite = 16, SelectNozzle = 17, Melee = 18, Soaked = 19, Carried = 20, WaterImpact = 21,
     }
 
     /// What replaying a frame does to a sim; MarioPuppet's implementation calls libsms.
@@ -39,6 +39,8 @@ namespace MarioTest
         void Soaked();
         /// Another Mario holds him by the seat of his pants (the fire hop's flail, silent) or has let go.
         void Carried(bool on);
+        /// A recorded enemy contact; presentation only, the shadow sim deals no damage.
+        void WaterImpact(Native.Vec3 pos);
         void SetAim(bool on, short yaw, float pitch);
         void Down();
         void ShineGet(Native.Vec3 pos, short yaw);
@@ -61,7 +63,7 @@ namespace MarioTest
     internal static class FrameCodec
     {
         /// Bumped whenever the wire format changes; a batch with another number is ignored.
-        public const byte Protocol = 8;
+        public const byte Protocol = 9;
 
         static void Vec(ByteWriter w, Native.Vec3 v) { w.F32(v.x); w.F32(v.y); w.F32(v.z); }
         static Native.Vec3 Vec(ByteReader r) => new Native.Vec3(r.F32(), r.F32(), r.F32());
@@ -79,6 +81,7 @@ namespace MarioTest
         public static void WriteIgnite(ByteWriter w) => w.U8((byte)Op.Ignite);
         public static void WriteSoaked(ByteWriter w) => w.U8((byte)Op.Soaked);
         public static void WriteCarried(ByteWriter w, bool on) { w.U8((byte)Op.Carried); w.Bool(on); }
+        public static void WriteWaterImpact(ByteWriter w, Native.Vec3 pos) { w.U8((byte)Op.WaterImpact); Vec(w, pos); }
         public static void WriteSetAim(ByteWriter w, bool on, short yaw, float pitch) { w.U8((byte)Op.SetAim); w.Bool(on); w.I16(yaw); w.F32(pitch); }
         public static void WriteDown(ByteWriter w) => w.U8((byte)Op.Down);
         public static void WriteShineGet(ByteWriter w, Native.Vec3 pos, short yaw) { w.U8((byte)Op.ShineGet); Vec(w, pos); w.I16(yaw); }
@@ -115,6 +118,13 @@ namespace MarioTest
                     case Op.Ignite: sink.Ignite(); break;
                     case Op.Soaked: sink.Soaked(); break;
                     case Op.Carried: sink.Carried(r.Bool()); break;
+                    case Op.WaterImpact:
+                    {
+                        var pos = Vec(r);
+                        if (r.Failed || !float.IsFinite(pos.x) || !float.IsFinite(pos.y) || !float.IsFinite(pos.z)) return false;
+                        sink.WaterImpact(pos);
+                        break;
+                    }
                     case Op.SetAim: { bool on = r.Bool(); short yaw = r.I16(); sink.SetAim(on, yaw, r.F32()); break; }
                     case Op.Down: sink.Down(); break;
                     case Op.ShineGet: { var v = Vec(r); sink.ShineGet(v, r.I16()); break; }
@@ -235,6 +245,7 @@ namespace MarioTest
         public void Ignite() => FrameCodec.WriteIgnite(ops);
         public void Soaked() => FrameCodec.WriteSoaked(ops);
         public void Carried(bool on) => FrameCodec.WriteCarried(ops, on);
+        public void WaterImpact(Native.Vec3 pos) => FrameCodec.WriteWaterImpact(ops, pos);
         public void Down() => FrameCodec.WriteDown(ops);
         public void ShineGet(Native.Vec3 pos, short yaw) => FrameCodec.WriteShineGet(ops, pos, yaw);
         public void ShineEnd() => FrameCodec.WriteShineEnd(ops);

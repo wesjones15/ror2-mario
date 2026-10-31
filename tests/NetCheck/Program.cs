@@ -24,6 +24,7 @@ static class Program
         public void Ignite() => calls.Add("ignite");
         public void Soaked() => calls.Add("soaked");
         public void Carried(bool on) => calls.Add($"carried {on}");
+        public void WaterImpact(Native.Vec3 pos) => calls.Add($"impact {pos.x},{pos.y},{pos.z}");
         public void ShineGet(Native.Vec3 p, short yaw) => calls.Add($"shine {p.x},{p.y},{p.z},{yaw}");
         public void ShineEnd() => calls.Add("shine end");
         public void ForeignWet(bool wet) => calls.Add($"wet {wet}");
@@ -61,6 +62,7 @@ static class Program
         rec.Soaked();
         rec.Carried(true);
         rec.Carried(false);
+        rec.WaterImpact(new Native.Vec3(15, 160, 400));
         rec.End(new Native.Vec3(10, 20, 30));
         // Frame 1: unchanged limits and aim are deduped, only the step goes out.
         rec.Begin();
@@ -109,7 +111,7 @@ static class Program
         {
             "teleport 1,2,3", "tuning 1.6,1", "refill", "nozzle 4", "water 0.25", "limits 2,1.5", "aim True,1234,0.5",
             "launch 4,5,6", "pad 7,8,9,0.01", "knock 1,1,1,0", "wet True", "melee 7 12.5", "step a1 r200 mx0.5 cam-300", "boost 1.2",
-            "shine 5,6,7,-1234", "shine end", "ignite", "soaked", "carried True", "carried False",
+            "shine 5,6,7,-1234", "shine end", "ignite", "soaked", "carried True", "carried False", "impact 15,160,400",
         };
         Check(log.calls.Count == expect0.Length, $"frame 0 has {log.calls.Count} calls");
         for (int i = 0; i < expect0.Length; i++) Check(log.calls[i] == expect0[i], $"call {i}: {log.calls[i]} != {expect0[i]}");
@@ -124,6 +126,21 @@ static class Program
         Check(log.calls.Count == 3 && log.calls[0] == "limits 2,1.5" && log.calls[1] == "wet False", "refresh resends limits and the wet state");
 
         // Wrong protocol, wrong ABI and truncation are reported, not thrown.
+        var badImpact = new ByteWriter();
+        FrameCodec.WriteWaterImpact(badImpact, new Native.Vec3(float.NaN, 0, 0));
+        log.calls.Clear();
+        Check(!FrameCodec.Replay(new Frame { ops = badImpact.ToArray() }, log) && log.calls.Count == 0,
+            "nonfinite impact must not reach the native view");
+        var impactOnly = new ByteWriter();
+        FrameCodec.WriteWaterImpact(impactOnly, new Native.Vec3(1, 2, 3));
+        var impactBytes = impactOnly.ToArray();
+        for (int cut = 1; cut < impactBytes.Length; cut++)
+        {
+            var part = new byte[cut]; Array.Copy(impactBytes, part, cut);
+            log.calls.Clear();
+            Check(!FrameCodec.Replay(new Frame { ops = part }, log) && log.calls.Count == 0,
+                "truncated impact must not emit a partial flash");
+        }
         var wrong = (byte[])bytes.Clone();
         wrong[0] = 99;
         Check(FrameCodec.ReadBatch(new ByteReader(wrong), out _, out _, new List<Frame>(), out byte got) == FrameCodec.BatchStatus.WrongProtocol && got == 99, "protocol");

@@ -4,7 +4,7 @@ using Ror2Common;
 
 namespace MarioTest
 {
-    // The libsms C ABI (libsms/crates/libsms-ffi, SMS_ABI_VERSION 33). Layouts mirror the
+    // The libsms C ABI (libsms/crates/libsms-ffi, SMS_ABI_VERSION 39). Layouts mirror the
     // #[repr(C)] structs there field for field; Load checks them with sms_struct_sizes. Sim
     // units: about 1 cm, Y up, a facing angle a (i16, 0x10000 per turn) points along
     // (sin a, 0, cos a). The view's structs are ror2-common's (ViewModelInfo...), which
@@ -12,7 +12,7 @@ namespace MarioTest
     internal static class Native
     {
         public const string Dll = "sms";
-        public const uint AbiVersion = 38;
+        public const uint AbiVersion = 39;
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern IntPtr sms_heat_new(byte[] dir);
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern void sms_heat_free(IntPtr heat);
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern byte sms_heat_texture(IntPtr heat, out ViewTexture texture, [Out] byte[] rgba, uint capacity);
@@ -116,6 +116,8 @@ namespace MarioTest
             Throw = 24,
             /// With the Throw before it: arg his facing (a 16-bit angle), pos his velocity.
             ThrowAim = 25,
+            // Presentation only, including native flower targets; never apply damage from it.
+            WaterImpact = 26,
         }
 
         /// Jump kinds (Event.arg of Jump).
@@ -402,6 +404,7 @@ namespace MarioTest
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern void sms_view_prop_update(IntPtr view, short yaw, int clip, float frame, byte mirror);
 
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern void sms_view_effect(IntPtr view, byte[] nameUtf8, ref Vec3 pos, float scale);
+        [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern void sms_view_water_hit(IntPtr view, ref Vec3 pos);
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern void sms_view_effects_step(IntPtr view, float dt, ref Vec3 right, ref Vec3 up);
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern void sms_sim_let_go(IntPtr sim);
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern void sms_sim_set_carried(IntPtr sim, byte on);

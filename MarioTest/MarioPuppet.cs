@@ -247,6 +247,10 @@ namespace MarioTest
         public void Ignite() => Native.sms_sim_ignite(sim);
         public void Soaked() => Native.sms_sim_wet(sim);
         public void Carried(bool on) => Native.sms_sim_set_carried(sim, (byte)(on ? 1 : 0));
+        public void WaterImpact(Native.Vec3 pos)
+        {
+            if (view != null) Native.sms_view_water_hit(view.Handle, ref pos);
+        }
         public void SetAim(bool on, short yaw, float pitch) => Native.sms_sim_set_aim(sim, (byte)(on ? 1 : 0), yaw, pitch);
         public void Down() => Native.sms_sim_down(sim);
         public void ShineGet(Native.Vec3 pos, short yaw) => Native.sms_sim_shine_get(sim, ref pos, yaw);

@@ -74,9 +74,11 @@ namespace MarioTest
         /// RB must be held this long before the wheel opens; a tap does nothing.
         const float OpenHold = 0.5f;
         const int RingSize = 512;
+        /// The wheel grows out of the cooldown picture over this long (unscaled seconds).
+        const float EmergeTime = 0.16f;
 
         static bool open, wasHeld, armed, tapPending;
-        static float heldSince;
+        static float heldSince, openedAt;
         static int hovered, builtinEntries;
         static MarioRadialEntry pending;
         static MarioNozzleChoice selectedAlt = MarioNozzleChoice.Hover;
@@ -162,6 +164,7 @@ namespace MarioTest
                 }
                 if (Time.unscaledTime - heldSince < OpenHold) return;
                 open = true;
+                openedAt = Time.unscaledTime;
                 // A stick already held over from the camera must be released before it counts:
                 // pressing RB during a turn should not pick that direction immediately.
                 armed = direction.sqrMagnitude < Commit * Commit;
@@ -350,9 +353,18 @@ namespace MarioTest
 
             var old = GUI.color;
             // A quiet dim behind the wheel so the segments read on any stage.
-            GUI.color = new Color(0f, 0f, 0f, 0.30f);
+            float grow = Mathf.Clamp01((Time.unscaledTime - openedAt) / EmergeTime);
+            grow = 1f - (1f - grow) * (1f - grow) * (1f - grow);
+            GUI.color = new Color(0f, 0f, 0f, 0.30f * grow);
             GUI.DrawTexture(new Rect(0f, 0f, Screen.width, Screen.height), Texture2D.whiteTexture);
             GUI.color = Color.white;
+            // Scale everything about the cooldown picture's centre so the wheel unfolds from it.
+            var matrixBefore = GUI.matrix;
+            if (grow < 1f)
+            {
+                var origin = TrySkillIcon(out var portrait) ? portrait.center : center;
+                GUIUtility.ScaleAroundPivot(Vector2.one * Mathf.Max(0.02f, grow), origin);
+            }
             GUI.DrawTexture(new Rect(center.x - outer, center.y - outer, outer * 2f, outer * 2f),
                 ring, ScaleMode.StretchToFill, true);
 
@@ -385,6 +397,7 @@ namespace MarioTest
                 outer * 2f, h * 0.04f);
             Shadow(hintRect, "FULL RS TILT TO CHOOSE  -  RELEASE TO CANCEL", label);
             GUI.color = old;
+            GUI.matrix = matrixBefore;
         }
 
         static void DrawEntryIcon(MarioRadialEntry entry, Rect rect, float size, float rotation)

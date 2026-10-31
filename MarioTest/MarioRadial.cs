@@ -5,8 +5,8 @@ using UnityEngine;
 
 namespace MarioTest
 {
-    // The nozzle picked by the radial menu, in the order the segments sit (clockwise from the
-    // top). `None` takes FLUDD away; the native slots are 0 for none, then 1..4.
+    // The nozzle a radial segment fits. `None` takes FLUDD away; the native slots are 0 for
+    // none, then 1..4. MarioRadial's constructor sets the order the segments sit in.
     internal enum MarioNozzleChoice
     {
         Spray = 0,

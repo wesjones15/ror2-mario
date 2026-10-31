@@ -117,6 +117,14 @@ namespace MarioTest
         }
 
         internal CharacterBody Body => body;
+        /// The teammate he held broke free (or the server refused him): his hands come down, and he stumbles
+        /// back from the one who got away.
+        internal void LetGo(CharacterBody from)
+        {
+            if (sim == IntPtr.Zero) return;
+            Native.sms_sim_let_go(sim);
+            if (from) KnockFrom(from.footPosition);
+        }
         /// The native sim (flowers and the like ask it things), or zero before it exists.
         internal IntPtr SimHandle => sim;
         /// Where the player aims (the camera's ray); the Melee Mario A attack's direction.

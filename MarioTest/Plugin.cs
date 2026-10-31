@@ -111,6 +111,7 @@ namespace MarioTest
         internal static ConfigEntry<int> CoinGold;
         internal static ConfigEntry<float> CoinSeconds;
         internal static ConfigEntry<bool> CoinTeammates;
+        internal static ConfigEntry<int> CarryTeammates;
         internal static ConfigEntry<int> FlowerChance, FlowerRolls, FlowerBiteMax;
         internal static ConfigEntry<float> LockRange;
         internal static ConfigEntry<float> LifeX, LifeY, LifeScale, LockMarkerSize, LockMarkerSpin;
@@ -303,6 +304,10 @@ namespace MarioTest
                     new AcceptableValueRange<int>(1, 100)));
             CoinTeammates = Config.Bind("Coins", "TeammatesCollect", true,
                 "Other players on Mario's team can pick up his coins too: the same heal and the same Gold.");
+            CarryTeammates = Config.Bind("Carry", "CarryTeammates", 1,
+                new ConfigDescription("Which teammates Mario can pick up with B and set down or throw: 0 nobody, " +
+                    "1 Olimar, the Melee fighters and other Marios, 2 any player. A held player breaks free by " +
+                    "pressing his own A (a Mario's jump, otherwise his primary).", new AcceptableValueRange<int>(0, 2)));
             LockRange = Config.Bind("Controls", "LockRange", 60f,
                 new ConfigDescription("How far away, in metres, the lock-on can pick an enemy (with a clear line): " +
                     "far enough for flying ones. FLUDD's water still falls short of the far ones.",
@@ -574,6 +579,8 @@ namespace MarioTest
             gameObject.AddComponent<MarioScreenFx>();
             gameObject.AddComponent<MarioShine>();
             gameObject.AddComponent<MarioFlowers>();
+            gameObject.AddComponent<MarioCarry>();
+            MarioCarry.Register();
             gameObject.AddComponent<MarioLunarCoin>();
             MarioNet.Register();
             // The HUD's skill icons name the buttons Mario's sim reads (MarioPad), not RoR2's binds.

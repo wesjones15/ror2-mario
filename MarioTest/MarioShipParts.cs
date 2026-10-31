@@ -21,7 +21,7 @@ namespace MarioTest
         const string BodyName = "MarioTestBody";
         /// A thrown part leaves at this many metres a second along his facing and this much upward, plus
         /// half his own horizontal speed.
-        const float ThrowSpeed = 14f, ThrowLift = 9f;
+        internal const float ThrowSpeed = 14f, ThrowLift = 9f;
 
         static bool tried;
         static Func<bool> active;
@@ -104,8 +104,10 @@ namespace MarioTest
         {
             try
             {
-                if (!Playing) return 0;
-                int n = Math.Min(takeables(UnityHost.ToUnity(pos), radius * UnityHost.Scale, ids, positions, radii), (int)max);
+                // Pellets and ship parts first (with a Pikmin world up), then the teammates in reach.
+                int n = Playing
+                    ? Math.Min(takeables(UnityHost.ToUnity(pos), radius * UnityHost.Scale, ids, positions, radii), (int)max)
+                    : 0;
                 for (int i = 0; i < n; i++)
                 {
                     radiusOf[ids[i]] = radii[i];
@@ -114,7 +116,8 @@ namespace MarioTest
                         id = ids[i], pos = UnityHost.ToSim(positions[i]), radius = radii[i] / UnityHost.Scale, fruit = -1,
                     };
                 }
-                return (uint)Math.Max(0, n);
+                n = Math.Max(0, n);
+                return (uint)n + MarioCarry.Append(output + n, max - (uint)n, pos, radius);
             }
             catch (Exception e)
             {
@@ -125,6 +128,7 @@ namespace MarioTest
 
         static byte Take(IntPtr user, uint id)
         {
+            if ((id & MarioCarry.Bit) != 0) return MarioCarry.Take(id);
             try
             {
                 if (!Playing || !take(id)) return 0;
@@ -146,6 +150,7 @@ namespace MarioTest
         /// After each step of the local Mario: the part he carries stays in his arms.
         public static void Step(CharacterBody body, in Native.State st, bool local)
         {
+            MarioCarry.Step(body, st, local);
             if (!local || !holding) return;
             try
             {
@@ -158,6 +163,7 @@ namespace MarioTest
         /// He died, or the stage ended: the part is let go.
         public static void Lost()
         {
+            MarioCarry.Lost();
             if (!holding) return;
             holding = false;
             throwing = false;
@@ -167,6 +173,7 @@ namespace MarioTest
         /// Sunshine's put and throw, from the step's events.
         public static void OnEvent(ref Native.Event e)
         {
+            if (MarioCarry.OnEvent(ref e)) return;
             if (!holding && !throwing) return;
             try
             {

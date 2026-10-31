@@ -130,6 +130,24 @@ namespace MarioTest
             next = (next + 1) % Capacity;
         }
 
+        /// Coins thrown from a flower ring or a dead flower enemy: popped from `pos` with a sim-unit
+        /// velocity (`checkGenCoin`'s: xz 2, y 10 + 8 * rate), for the nearest Mario's team. Server only.
+        internal void Burst(Vector3 pos, Native.Vec3 simVelocity, TeamIndex team)
+        {
+            if (!NetworkServer.active || !EnsureModel()) return;
+            // Sunshine's units per tick, about what a stomped enemy's coin pops at (PopUp 7, PopSide 1.5).
+            var coin = new Coin
+            {
+                pos = pos,
+                velocity = new Vector3(simVelocity.x * 0.75f, simVelocity.y * 0.7f, simVelocity.z * 0.75f),
+                team = team,
+            };
+            Plan(coin);
+            coins[next] = coin;
+            MarioNet.SendCoin(next, coin.pos, coin.velocity, coin.team);
+            next = (next + 1) % Capacity;
+        }
+
         /// The server made a coin: every other machine drops the same one (it lands where its own world puts it;
         /// only the server picks coins up).
         internal void Spawned(int index, Vector3 pos, Vector3 velocity, TeamIndex team)

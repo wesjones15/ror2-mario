@@ -12,7 +12,7 @@ namespace MarioTest
     internal static class Native
     {
         public const string Dll = "sms";
-        public const uint AbiVersion = 34;
+        public const uint AbiVersion = 35;
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern IntPtr sms_heat_new(byte[] dir);
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern void sms_heat_free(IntPtr heat);
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern byte sms_heat_texture(IntPtr heat, out ViewTexture texture, [Out] byte[] rgba, uint capacity);
@@ -398,6 +398,43 @@ namespace MarioTest
 
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern IntPtr sms_view_new(byte[] assetsDirUtf8, byte sound);
         /// look: 0 Mario, 1 Shadow Mario's colours (unused by the host now), 2 the yellow coin, 3 the Shine.
+        [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern int sms_view_prop_clip(IntPtr view, byte[] nameUtf8, out float frames);
+        [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern void sms_view_prop_update(IntPtr view, short yaw, int clip, float frame, byte mirror);
+        [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern void sms_flowers_setup(IntPtr sim, byte[] assetsDirUtf8, ref FlowerClips clips);
+        [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern void sms_flowers_set_table(IntPtr sim, uint chancePerMille, uint ring, uint single, uint enemyRing, uint tower);
+        [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern uint sms_flowers_roll(IntPtr sim, float r, float s);
+        [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern uint sms_flowers_place(IntPtr sim, uint spawn, ref Vec3 pos, float yaw);
+        [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern uint sms_flowers_count(IntPtr sim, byte kind);
+        [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern byte sms_flowers_get(IntPtr sim, byte kind, uint i, out FlowerItem item);
+        [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern uint sms_flowers_events(IntPtr sim, [Out] FlowerEvent[] events, uint max);
+
+        /// Clip lengths in sim ticks (a clip's frames * 2); 0 keeps the core's guess.
+        [StructLayout(LayoutKind.Sequential)]
+        public struct FlowerClips
+        {
+            public uint flower_open, tower_appear, tower_hide, tower_attack_start, tower_attack, tower_attack_end, tower_freeze, tower_die;
+        }
+
+        /// One flower (kind 0), tower (1) or head (2): the phase / state, ticks in it, where it stands.
+        [StructLayout(LayoutKind.Sequential)]
+        public struct FlowerItem
+        {
+            public byte kind, state, pad0, pad1;
+            public uint handle, age;
+            public Vec3 pos;
+            public float yaw;
+        }
+
+        /// 1 bloomed, 2 wilted, 3 a coin leaves a ring (pos, vel), 4 a tower rose, 5 it sank, 6 a bite
+        /// (a: 0 tower, 1 head), 7 died (a: 1 tower, 2 head), 8 a head hopped.
+        [StructLayout(LayoutKind.Sequential)]
+        public struct FlowerEvent
+        {
+            public uint kind;
+            public int a;
+            public Vec3 pos, vel;
+        }
+
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern IntPtr sms_view_new_look(byte[] assetsDirUtf8, byte sound, byte look);
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern void sms_view_free(IntPtr view);
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern void sms_view_skin(IntPtr view, uint skin);

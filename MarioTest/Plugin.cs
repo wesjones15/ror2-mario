@@ -110,6 +110,7 @@ namespace MarioTest
         internal static ConfigEntry<float> CoinX, CoinY, CoinScale, LivesScale, ScreenSpeed, TooBadDrop;
         internal static ConfigEntry<int> CoinGold;
         internal static ConfigEntry<float> CoinSeconds;
+        internal static ConfigEntry<int> FlowerChance, FlowerRolls, FlowerBiteMax;
         internal static ConfigEntry<float> LockRange;
         internal static ConfigEntry<float> LifeX, LifeY, LifeScale, LockMarkerSize, LockMarkerSpin;
         internal static ConfigEntry<bool> KnockdownEnabled, KnockdownGetUpEarly, KnockdownInterruptsPound, BurnPanic;
@@ -289,6 +290,16 @@ namespace MarioTest
             CoinSeconds = Config.Bind("Coins", "Seconds", 30f,
                 new ConfigDescription("Seconds a yellow coin lies there before it is gone (it blinks over its last 3).",
                     new AcceptableValueRange<float>(4f, 600f)));
+            FlowerChance = Config.Bind("Flowers", "ChancePerRoll", 120,
+                new ConfigDescription("Per thousand: the chance each stage roll puts Sunshine flowers out (a ring of flowers " +
+                    "you spray open for coins, a lone flower, a ring of hopping flower enemies or a flower tower). " +
+                    "0 turns them off.", new AcceptableValueRange<int>(0, 1000)));
+            FlowerRolls = Config.Bind("Flowers", "RollsPerStage", 8,
+                new ConfigDescription("How many rolls a stage makes when Mario arrives. With the default chance " +
+                    "that is about one set of flowers a stage.", new AcceptableValueRange<int>(0, 40)));
+            FlowerBiteMax = Config.Bind("Flowers", "BitePercent", 10,
+                new ConfigDescription("Percent of Mario's maximum health a flower enemy's bite takes.",
+                    new AcceptableValueRange<int>(1, 100)));
             LockRange = Config.Bind("Controls", "LockRange", 60f,
                 new ConfigDescription("How far away, in metres, the lock-on can pick an enemy (with a clear line): " +
                     "far enough for flying ones. FLUDD's water still falls short of the far ones.",
@@ -559,6 +570,7 @@ namespace MarioTest
             gameObject.AddComponent<MarioDeflect>();
             gameObject.AddComponent<MarioScreenFx>();
             gameObject.AddComponent<MarioShine>();
+            gameObject.AddComponent<MarioFlowers>();
             gameObject.AddComponent<MarioLunarCoin>();
             MarioNet.Register();
             // The HUD's skill icons name the buttons Mario's sim reads (MarioPad), not RoR2's binds.

@@ -117,6 +117,8 @@ namespace MarioTest
         }
 
         internal CharacterBody Body => body;
+        /// The native sim (flowers and the like ask it things), or zero before it exists.
+        internal IntPtr SimHandle => sim;
         /// Where the player aims (the camera's ray); the Melee Mario A attack's direction.
         internal Vector3 AimDirection => input && input.aimDirection.sqrMagnitude > 1e-6f
             ? input.aimDirection : transform.forward;

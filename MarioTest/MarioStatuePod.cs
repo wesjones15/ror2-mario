@@ -256,7 +256,10 @@ namespace MarioTest
                 || passenger.GetComponent<MarioPuppet>()?.Drawing == true);
             handedOff = released && (playableDraws || !passenger || !passenger.healthComponent.alive || Time.time - releasedAt > 2f);
             if (handedOff) {
-                if (cameraHandoff) { cameraHandoff.Release(); cameraHandoff = null; }
+                if (cameraHandoff) {
+                    if (!playableDraws || !cameraHandoff.ContinueFromHere()) cameraHandoff.Release();
+                    cameraHandoff = null;
+                }
                 // HideModel uses forceRenderingOff, not a counter. The normal driver now
                 // owns that flag; clearing it here would briefly reveal Commando.
                 if (playableDraws) hideFallback = false;

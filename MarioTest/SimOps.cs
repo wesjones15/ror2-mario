@@ -35,6 +35,12 @@ namespace MarioTest
             Rec?.SelectNozzle((byte)slot);
         }
 
+        public static void EquipNozzle(IntPtr sim, uint slot)
+        {
+            Native.sms_sim_equip_nozzle(sim, slot);
+            Rec?.EquipNozzle((byte)slot);
+        }
+
         public static void AddWater(IntPtr sim, float share)
         {
             Native.sms_sim_add_water(sim, share);

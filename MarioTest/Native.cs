@@ -4,7 +4,7 @@ using Ror2Common;
 
 namespace MarioTest
 {
-    // The libsms C ABI (libsms/crates/libsms-ffi, SMS_ABI_VERSION 40). Layouts mirror the
+    // The libsms C ABI (libsms/crates/libsms-ffi, SMS_ABI_VERSION 41). Layouts mirror the
     // #[repr(C)] structs there field for field; Load checks them with sms_struct_sizes. Sim
     // units: about 1 cm, Y up, a facing angle a (i16, 0x10000 per turn) points along
     // (sin a, 0, cos a). The view's structs are ror2-common's (ViewModelInfo...), which
@@ -12,7 +12,7 @@ namespace MarioTest
     internal static class Native
     {
         public const string Dll = "sms";
-        public const uint AbiVersion = 40;
+        public const uint AbiVersion = 41;
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern IntPtr sms_heat_new(byte[] dir);
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern void sms_heat_free(IntPtr heat);
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern byte sms_heat_texture(IntPtr heat, out ViewTexture texture, [Out] byte[] rgba, uint capacity);
@@ -378,6 +378,8 @@ namespace MarioTest
         /// Fits FLUDD's nozzle at once (0 no FLUDD, 1 Spray, 2 Hover, 3 Rocket, 4 Turbo); fitting
         /// one while FLUDD is off gives it back. 0 for an unknown slot.
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern byte sms_sim_select_nozzle(IntPtr sim, uint slot);
+        /// Fits the radial menu's choice with Sunshine's nozzle-box pickup (sparkle and sounds).
+        [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern byte sms_sim_equip_nozzle(IntPtr sim, uint slot);
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern void sms_sim_set_limits(IntPtr sim, ref Limits limits);
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern void sms_sim_add_water(IntPtr sim, float share);
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern void sms_sim_launch(IntPtr sim, ref Vec3 vel);
@@ -543,6 +545,7 @@ namespace MarioTest
                 sms_sim_water_touches_segment(IntPtr.Zero, ref zero, ref zero, 0f);
                 sms_sim_wet(IntPtr.Zero);
                 sms_sim_set_flight_camera(IntPtr.Zero, 0, 0, 0f);
+                sms_sim_equip_nozzle(IntPtr.Zero, 0);
                 sms_view_water_stream_quads(IntPtr.Zero);
                 sms_view_set_water_cohesive(IntPtr.Zero, 0);
             }

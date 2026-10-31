@@ -14,15 +14,17 @@ selected the picture is left as it is.
 | Full RS tilt / far mouse move | Choose it and close |
 | Release RB / Special, pause, UI focus | Cancel (the button must be released before opening again) |
 
-Segments, clockwise from the top: Hover, Rocket, Turbo, No FLUDD. Each is centred on an axis, so
-up chooses Hover, right Rocket, down Turbo and left No FLUDD. Each nozzle picture remains
-upright. Option labels are removed; the selected name remains in the center, with
-"Select F.L.U.D.D. Nozzle with RS" above the wheel. All nozzle icons are enlarged;
-Hover gets the same additional 1.35x boost in the cooldown overlay, radial and hub.
-The generated cooldown portrait is unchanged. The pictures are the disc HUD's own `nz01..04` icons
-(`sms_view_nozzle_icon_*`), not stand-ins. No FLUDD is the Spray picture struck through: choosing
-it calls `sms_sim_select_nozzle(0)` and hides the tank. Choosing Hover/Rocket/Turbo immediately
-equips it, including from Spray. From No FLUDD, choosing a nozzle gives FLUDD back.
+Segments, clockwise from the top: Hover, Rocket, No FLUDD, Turbo. Each is centred on an axis, so
+up chooses Hover, right Rocket, down No FLUDD and left Turbo. Each nozzle picture remains
+upright. The left and right pictures sit slightly farther from the hub (0.79 instead of 0.74 of
+the wheel radius) so they read as centred in their segments. Option labels are removed; the
+selected name remains in the center, with "Select F.L.U.D.D. Nozzle with RS" above the wheel.
+All nozzle icons are enlarged; Hover gets the same additional 1.35x boost in the cooldown
+overlay, radial and hub. The generated cooldown portrait is unchanged. The pictures are the
+disc HUD's own `nz01..04` icons (`sms_view_nozzle_icon_*`), not stand-ins. No FLUDD is the
+Spray picture struck through: choosing it calls `sms_sim_select_nozzle(0)` and hides the tank.
+Choosing Hover/Rocket/Turbo immediately equips it, including from Spray. From No FLUDD,
+choosing a nozzle gives FLUDD back.
 
 Source identity and layout proof: `GC2D/GCConsole2.cpp::loadAfter` binds HUD panes
 `nz01..04` from `game_6/scrn/standard_1.blo` (2D pictures; no emitter/model cue).
@@ -35,14 +37,16 @@ This is a Rust layout proof; the
 RoR2 menu and opening animation are **not yet played**.
 
 Opening plays the nozzle box's **0x3801 / MSD_SE_IT_EGG_APPEAR** once, from
-`MoveBG/Item.cpp::TNozzleBox::receiveMessage`. Equipping a different alternate
-plays **0x484E / MSD_SE_SY_GET_NOZZLE** (`TItemNozzle::touchPlayer`) plus
+`MoveBG/Item.cpp::TNozzleBox::receiveMessage`. Choosing a different alternate in the
+wheel plays **0x484E / MSD_SE_SY_GET_NOZZLE** (`TItemNozzle::touchPlayer`) plus
 **0x1989 / MSD_SE_MA_SHINING_EFF_CALM2**, and emits the exact **JPA 0x0E /
 ms_itemget1_a** sparkle (`MarioReceiveMsg.cpp::getNozzle` ->
 `MarioParticle.cpp::emitGetEffect`). It follows body joint 1's position, with its
 authored 120-frame emitter / 35-frame particle lifetime. Re-selecting the current
-nozzle and returning to Spray do not retrigger pickup feedback. Selection replay
-uses the existing native operation so remote Marios receive the same feedback.
+nozzle and returning to Spray do not retrigger pickup feedback, and the quick
+Spray/alternate tap (the game's X) stays silent; only the wheel's equip plays it.
+Selection replay uses the native equip operation so remote Marios receive the
+same feedback.
 `viewer --example nozzle_pickup` renders the exact sparkle at six frames.
 
 With No FLUDD selected the button is empty. Tapping **RB or RT** there plays Melee Mario's
@@ -60,9 +64,10 @@ accepted as a fallback, so MarioTest never references the Melee assembly. With F
 sprays and RB changes nozzles as before. Without the Melee cache/`ssbm.dll` the empty FLUDD
 button does nothing; Sunshine's B dive and every other control are unchanged.
 
-The selection is a host operation (`SimOps.SelectNozzle`), so it is recorded in the same
+The selection is a host operation (`SimOps.SelectNozzle` for the silent quick swap,
+`SimOps.EquipNozzle` for the wheel), so it is recorded in the same
 multiplayer frame as the step; the owner's Melee clip and frame travel in that frame stream too,
-so puppets pose Sunshine identically. Network protocol 10 and native ABI 40 are required on every
+so puppets pose Sunshine identically. Network protocol 11 and native ABI 41 are required on every
 peer.
 
 ## Adding an ability

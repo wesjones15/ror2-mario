@@ -99,7 +99,6 @@ namespace MarioTest
             // Spray is the baseline and is reached by tapping, not from this wheel.
             AddNozzle("HOVER", HoverColor, MarioNozzleChoice.Hover, 1);
             AddNozzle("ROCKET", RocketColor, MarioNozzleChoice.Rocket, 2);
-            AddNozzle("TURBO", TurboColor, MarioNozzleChoice.Turbo, 3);
             entries.Add(new MarioRadialEntry
             {
                 Label = "NO FLUDD",
@@ -110,6 +109,7 @@ namespace MarioTest
                 CrossOut = true,
                 Apply = d => d.ChooseAlternative(MarioNozzleChoice.None),
             });
+            AddNozzle("TURBO", TurboColor, MarioNozzleChoice.Turbo, 3);
             builtinEntries = entries.Count;
         }
 
@@ -392,7 +392,10 @@ namespace MarioTest
                 // Math coordinates here (y up); the screen is turned over below.
                 float a = (90f - i * step) * Mathf.Deg2Rad;
                 var radial = new Vector2(Mathf.Cos(a), Mathf.Sin(a));
-                var iconAt = center + new Vector2(radial.x, -radial.y) * (outer * 0.74f);
+                // The left and right pictures sit slightly farther out so their centres read as
+                // their segments' centres.
+                float reach = i == 1 || i == 3 ? outer * 0.79f : outer * 0.74f;
+                var iconAt = center + new Vector2(radial.x, -radial.y) * reach;
                 var iconRect = new Rect(iconAt.x - iconSize * 0.5f, iconAt.y - iconSize * 0.5f,
                     iconSize, iconSize);
                 DrawEntryIcon(entries[i], iconRect, iconSize);

@@ -14,6 +14,9 @@ that starting pitch levels the flight. Stick circles still sustain the roll.
 Source identity, labelled three-frame viewer proof, headless checks and host
 approximation limits: `libsms/docs/fludd-stream-flight.md`.
 
-Install the matching **ABI 40** `sms.dll` and `MarioTest.dll` together.
-Flight-camera replay uses **network protocol 10**.
+Install the matching **ABI 41** `sms.dll` and `MarioTest.dll` together.
+Flight-camera replay uses **network protocol 11**.
+ABI 41 adds `sms_sim_equip_nozzle` (the radial menu's pickup feedback) beside the
+silent quick-swap `sms_sim_select_nozzle`; the frame stream gains its own equip
+operation.
 RoR2 visual appearance and steering feel are **not yet played**.

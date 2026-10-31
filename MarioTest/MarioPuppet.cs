@@ -241,6 +241,7 @@ namespace MarioTest
         public void Tuning(in Native.Tuning tuning) { var t = tuning; Native.sms_sim_set_tuning(sim, ref t); }
         public void Refill() => Native.sms_sim_refill(sim);
         public void SelectNozzle(byte slot) => Native.sms_sim_select_nozzle(sim, slot);
+        public void EquipNozzle(byte slot) => Native.sms_sim_equip_nozzle(sim, slot);
         public void AddWater(float share) => Native.sms_sim_add_water(sim, share);
         public void Limits(in Native.Limits limits) { var l = limits; Native.sms_sim_set_limits(sim, ref l); }
         public void BoostJump(float factor) => Native.sms_sim_boost_jump(sim, factor);

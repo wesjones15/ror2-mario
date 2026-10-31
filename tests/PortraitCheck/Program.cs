@@ -41,7 +41,7 @@ static class Program
         Check(Native.Load(args[0], out var error), error);
         using (var pickup = new Rig())
         {
-            Check(Native.sms_sim_select_nozzle(pickup.sim, 2) != 0, "Hover equip failed");
+            Check(Native.sms_sim_equip_nozzle(pickup.sim, 2) != 0, "Hover equip failed");
             pickup.Step(default, 8);
             Native.sms_sim_state(pickup.sim, out var equipped);
             Check(equipped.nozzle == 5, "Hover was not equipped immediately");

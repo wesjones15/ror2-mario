@@ -622,6 +622,7 @@ namespace MarioTest
         /// RB tapped: swap Spray and the selected alternate. With No FLUDD selected the button
         /// is empty, so it becomes the optional Melee Mario punch/kick; until that provider
         /// exists the ability is omitted and a tap there does nothing. Hold RB to fit a nozzle.
+        /// The tap is a quick swap, like the game's X: no pickup feedback.
         void TapFludd()
         {
             if (sim == IntPtr.Zero) return;
@@ -647,7 +648,7 @@ namespace MarioTest
         }
 
         /// Remember and immediately equip the alternate chosen by the wheel, including
-        /// from Spray. The native selection supplies Sunshine's pickup feedback.
+        /// from Spray. The native equip supplies Sunshine's pickup feedback.
         internal void ChooseAlternative(MarioNozzleChoice choice)
         {
             if (sim == IntPtr.Zero) return;
@@ -663,11 +664,12 @@ namespace MarioTest
                 if (now.has_fludd != 0) SelectNozzle(MarioNozzleChoice.None);
                 return;
             }
-            SelectNozzle(choice);
+            SimOps.EquipNozzle(sim, choice.NativeSlot());
         }
 
-        /// Fits the nozzle chosen in the radial menu, recording it for the other players'
-        /// puppets. Called from the step, so it lands before the sim reads the pad.
+        /// Fits the nozzle chosen by a quick swap (RB tap), recording it for the other players'
+        /// puppets. Called from the step, so it lands before the sim reads the pad. Silent: the
+        /// pickup feedback belongs to the radial menu's equip.
         internal void SelectNozzle(MarioNozzleChoice choice)
         {
             if (sim == IntPtr.Zero) return;

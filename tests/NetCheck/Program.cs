@@ -13,6 +13,7 @@ static class Program
         public void Tuning(in Native.Tuning t) => calls.Add($"tuning {t.jump_height},{t.unlimited_water}");
         public void Refill() => calls.Add("refill");
         public void SelectNozzle(byte slot) => calls.Add($"nozzle {slot}");
+        public void EquipNozzle(byte slot) => calls.Add($"equip {slot}");
         public void AddWater(float s) => calls.Add($"water {s}");
         public void Limits(in Native.Limits l) => calls.Add($"limits {l.air_extra},{l.wet_slide_seconds}");
         public void BoostJump(float f) => calls.Add($"boost {f}");
@@ -47,6 +48,7 @@ static class Program
         rec.Tuning(new Native.Tuning { jump_height = 1.6f, unlimited_water = 1 });
         rec.Refill();
         rec.SelectNozzle(4);
+        rec.EquipNozzle(2);
         rec.AddWater(0.25f);
         rec.Limits(new Native.Limits { air_extra = 2, wet_slide_seconds = 1.5f });
         rec.SetAim(true, 1234, 0.5f);
@@ -110,7 +112,7 @@ static class Program
         Check(FrameCodec.Replay(frames[0], log), "replay frame 0");
         string[] expect0 =
         {
-            "teleport 1,2,3", "tuning 1.6,1", "refill", "nozzle 4", "water 0.25", "limits 2,1.5", "aim True,1234,0.5",
+            "teleport 1,2,3", "tuning 1.6,1", "refill", "nozzle 4", "equip 2", "water 0.25", "limits 2,1.5", "aim True,1234,0.5",
             "launch 4,5,6", "pad 7,8,9,0.01", "knock 1,1,1,0", "wet True", "melee 7 12.5", "step a1 r200 mx0.5 cam-300", "boost 1.2",
             "shine 5,6,7,-1234", "shine end", "ignite", "soaked", "carried True", "carried False", "impact 15,160,400",
         };

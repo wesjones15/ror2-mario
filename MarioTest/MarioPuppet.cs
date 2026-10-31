@@ -31,8 +31,8 @@ namespace MarioTest
         GameObject anchor;
         StepSmoother smoother;
         FrameQueue queue;
-        bool playing, hidden, failed;
-        internal bool Drawing => playing && view?.Models != null;
+        bool playing, hidden, failed, drawn;
+        internal bool Drawing => playing && drawn;
         float lagTicks;
         Native.State state;
         // The owner's Melee A pose, replayed from the frame stream.
@@ -195,6 +195,7 @@ namespace MarioTest
 
         void LateUpdate()
         {
+            drawn = false;
             if (sim == IntPtr.Zero || view == null) return;
             MarioMelee.ApplyPose(view, meleeMove, meleeFrame);
             view.Update(sim, lagTicks);
@@ -203,10 +204,12 @@ namespace MarioTest
             view.Effects(feet);
             view.Draw(feet);
             GameSettings.HideModel(body, ref hidden, true);
+            drawn = true;
         }
 
         void Teardown()
         {
+            drawn = false;
             if (view != null)
             {
                 view.Hide();

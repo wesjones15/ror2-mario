@@ -37,6 +37,7 @@ namespace MarioTest
         IntPtr sim;
         bool failed;
         bool driving;
+        bool drawn;
         Native.Host host;
         // Body origin minus feet: the sim tracks Mario's feet.
         Vector3 feetToOrigin;
@@ -141,7 +142,7 @@ namespace MarioTest
         /// Where the player aims (the camera's ray); the Melee Mario A attack's direction.
         internal Vector3 AimDirection => input && input.aimDirection.sqrMagnitude > 1e-6f
             ? input.aimDirection : transform.forward;
-        internal bool Drawing => driving && View?.Models != null;
+        internal bool Drawing => driving && drawn;
         internal LocalUser LocalUser => localUser;
         internal bool Alive => !health || health.alive;
         /// Where his feet are now.
@@ -675,6 +676,7 @@ namespace MarioTest
         // Mario's models at the body's (smoothed) feet, facing as the sim says.
         void LateUpdate()
         {
+            drawn = false;
             if (!driving || sim == IntPtr.Zero) return;
             if (Local)
             {
@@ -689,6 +691,7 @@ namespace MarioTest
             var view = View;
             if (view == null)
             {
+                drawn = false;
                 ShowMario(false);
                 return;
             }
@@ -708,6 +711,7 @@ namespace MarioTest
                 feet + Vector3.up * (height * 0.5f), height);
             view.Draw(feet);
             ShowMario(true);
+            drawn = true;
             if (Local)
             {
                 // The life meter for the player's health, and the marker on the locked enemy
@@ -887,6 +891,7 @@ namespace MarioTest
 
         void StopDriving()
         {
+            drawn = false;
             if (Local) MarioRadial.Cancel();
             unstuck.Reset();
             guard.Reset();

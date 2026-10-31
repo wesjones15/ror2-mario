@@ -11,6 +11,9 @@ namespace MarioTest
 {
     // Keep the stock networked seat, animated descent and its sound events. The approved
     // native entrance owns only the visible model, X sequence and final ejection position.
+    // MarioDriver (-200) and MarioPuppet draw first. Retire the entrance rider
+    // afterward, in the SAME rendered frame as the playable rider's first draw.
+    [DefaultExecutionOrder(200)]
     internal sealed class MarioStatuePod : MonoBehaviour
     {
         internal static readonly string[] AssetFiles = { "05_gate01.bmd", "05_gate01.btk", "05_gate01.brk", "plaza.bmd", "scene.bin", "efdokangate.bmd", "manhole.bmd", "monumentshine.bmd", "palmleaf.bmd", "palmnormal.bmd", "ms_gatewind_a.jpa", "ms_gatewind_a2.jpa", "ms_gatewind_a3.jpa", "ms_gatewind_b.jpa" };
@@ -59,6 +62,7 @@ namespace MarioTest
         readonly List<Collider> scanColliders = new List<Collider>();
         float scanAt;
         bool handedOff;
+        CameraHandoff cameraHandoff;
         MarioPortalPlayback portalPlayback;
         readonly Plane[] portalFrustum = new Plane[6];
         Camera portalCuller;
@@ -252,6 +256,7 @@ namespace MarioTest
                 || passenger.GetComponent<MarioPuppet>()?.Drawing == true);
             handedOff = released && (playableDraws || !passenger || !passenger.healthComponent.alive || Time.time - releasedAt > 2f);
             if (handedOff) {
+                if (cameraHandoff) { cameraHandoff.Release(); cameraHandoff = null; }
                 // HideModel uses forceRenderingOff, not a counter. The normal driver now
                 // owns that flag; clearing it here would briefly reveal Commando.
                 if (playableDraws) hideFallback = false;
@@ -551,6 +556,7 @@ namespace MarioTest
             if (released) return;
             released = true;
             releasedAt = Time.time;
+            cameraHandoff = CameraHandoff.Hold(passenger, pod);
             // Bridge the physics tick until MarioDriver/MarioPuppet draws the playable
             // body. Stock seat unhide must not flash Commando between the two views.
             GameSettings.HideModel(passenger, ref hideFallback, true);
@@ -567,6 +573,7 @@ namespace MarioTest
         void Cleanup()
         {
             custom = false;
+            if (cameraHandoff) { cameraHandoff.Release(); cameraHandoff = null; }
             GameSettings.HideModel(passenger, ref hideFallback, false);
             if (pod && originalCamera) pod.cameraBone = originalCamera;
             if (portalCamera) Destroy(portalCamera.gameObject);

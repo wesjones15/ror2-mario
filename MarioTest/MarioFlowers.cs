@@ -72,6 +72,11 @@ namespace MarioTest
         Native.FlowerClips clips;
         bool clipsRead, placed, failed;
         float arrived, snapAt, sentAt;
+        // The disc's particle effects (an effects view, look 8) and the mesh that draws them.
+        IntPtr fxView;
+        MarioFx fx;
+        bool fxTried;
+        float fxUntil;
         static Native.Host host;
         static bool hostMade;
 
@@ -89,6 +94,10 @@ namespace MarioTest
             Run.onRunDestroyGlobal -= RunEnded;
             foreach (var p in props.Values) Free(p);
             props.Clear();
+            fx?.Dispose();
+            fx = null;
+            if (fxView != IntPtr.Zero) Native.sms_view_free(fxView);
+            fxView = IntPtr.Zero;
         }
 
         void SceneChanged(Scene from, Scene to) => Reset();
@@ -300,11 +309,8 @@ namespace MarioTest
                     break;
             }
             // Sounds and bursts: every machine plays its own.
-            if (e.kind != 6)
-            {
-                Fx(e.kind, e.a, e.pos);
-                SendFx(e);
-            }
+            Fx(e.kind, e.a, e.pos);
+            SendFx(e);
         }
 
         // ---- messages ----
@@ -431,16 +437,75 @@ namespace MarioTest
             Native.sms_fw_hit(world, IdBase + low, kind);
         }
 
-        /// A sound (and, soon, a burst of particles) at a sim position, on this machine.
+        /// A sound and a burst of particles at a sim position, on this machine (the disc's:
+        /// `TSamboFlower::bloom`, `TNerveHanaSamboAppear/Hide/Die`, `THanaSambo::createPollen`).
         static void Fx(uint kind, int a, Native.Vec3 pos)
         {
             switch (kind)
             {
-                case 1: Sound("MSD_SE_OBJ_FLOWER_OPEN_" + Mathf.Clamp(a, 0, 11), pos); break;
+                case 1:
+                    Sound("MSD_SE_OBJ_FLOWER_OPEN_" + Mathf.Clamp(a, 0, 11), pos);
+                    Emit("ms_smb_kafun_ow", pos);
+                    break;
                 case 3: Sound("MSD_SE_SY_COIN_APPEAR", pos); break;
-                case 4: Sound("MSD_SE_EN_SAMBO_APPEAR", pos); break;
-                case 7: Sound("MSD_SE_SY_COIN_APPEAR", pos); break;
+                case 4:
+                    Sound("MSD_SE_EN_SAMBO_APPEAR", pos);
+                    Emit("ms_smb_ap_rock", pos);
+                    Emit("ms_smb_ap_smoke", pos);
+                    break;
+                case 5:
+                    Emit("ms_smb_hd_rock", pos);
+                    Emit("ms_smb_hd_smoke", pos);
+                    break;
+                case 6:
+                    // The pollen the biting head throws, where the head is.
+                    Sound("MSD_SE_EN_SAMBO_ATTACK", pos);
+                    Emit("ms_smb_kafun_oa", pos);
+                    break;
+                case 7:
+                    Sound("MSD_SE_SY_COIN_APPEAR", pos);
+                    // `TNerveHanaSamboDie`: a puff at four joints up the body.
+                    for (int i = 0; i < 4; i++)
+                    {
+                        var at = new Native.Vec3(pos.x, pos.y + 40f + i * (a == 1 ? 90f : 30f), pos.z);
+                        Emit("ms_enm_disap_a", at);
+                        Emit("ms_enm_disap_b", at);
+                    }
+                    break;
             }
+        }
+
+        static void Emit(string name, Native.Vec3 pos)
+        {
+            var self = Instance;
+            if (!self || !self.EnsureFx()) return;
+            Native.sms_view_effect(self.fxView, NativeLib.CString(name), ref pos, 1f);
+            self.fxUntil = Time.time + 4f;
+        }
+
+        bool EnsureFx()
+        {
+            if (fx != null) return true;
+            if (fxTried || !Plugin.AssetsReady) return false;
+            fxTried = true;
+            fxView = Native.sms_view_new_look(NativeLib.CString(Plugin.AssetsDir), 0, 8);
+            if (fxView != IntPtr.Zero) fx = MarioFx.Create(fxView);
+            if (fx == null) Plugin.Log.LogInfo("The flowers' particle effects aren't drawn (no effects in the assets folder).");
+            return fx != null;
+        }
+
+        /// Runs and draws the effects while any are alive.
+        void StepFx()
+        {
+            if (fx == null || Time.time > fxUntil) return;
+            var cam = GameSettings.PlayerCamera();
+            var fwd = cam ? cam.forward : Vector3.forward;
+            var up = cam ? cam.up : Vector3.up;
+            var right = Vector3.Cross(up, fwd).normalized;
+            var r = new Native.Vec3(right.x, right.y, right.z);
+            var u = new Native.Vec3(up.x, up.y, up.z);
+            Native.sms_view_effects_step(fxView, Time.deltaTime, ref r, ref u);
+            fx.Update(fxView, UnityHost.Scale, Vector3.zero);
         }
 
         static void Sound(string name, Native.Vec3 pos)
@@ -455,6 +520,7 @@ namespace MarioTest
         void LateUpdate()
         {
             if (world == IntPtr.Zero || failed) return;
+            StepFx();
             uint total = Native.sms_fw_items(world, items, (uint)items.Length);
             int n = (int)Math.Min(total, (uint)items.Length);
             if (n == 0 && props.Count == 0) return;

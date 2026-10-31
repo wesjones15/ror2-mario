@@ -8,14 +8,28 @@ Rare finds on a stage, from `libsms::flower` (decomp: `Enemy/hanasambo.cpp`). Co
   stay open. Miss one and the open ones wilt after `mSLBloomTimer` (300 ticks).
 - **Single flower**: a unit of one, one coin.
 - **Enemy ring**: 3-6 flower heads (`TSamboHead`) that wake when Mario is near and hop at him.
-- **Flower tower** (`THanaSambo`): bursts out of the ground inside 1000 units, bites inside 500,
-  sinks past 2000. A stomp or pound kills it; water freezes it a while.
+- **Flower tower** (`THanaSambo`): bursts out of the ground inside 1000 units, sinks past 2000. Its
+  bite is the disc's head hit cylinder (60 wide, 20 tall) at the head joint (joint 3 of `sambo.bmd`,
+  posed by the same clip the model plays), so it only hurts a Mario the head actually reaches
+  (about 260 units out in its attack, a bite at most every half second, none while frozen). A stomp
+  or pound kills it; water freezes it a while.
 Dead enemies drop coins. Bites take `BitePercent` of max health and knock Mario down.
 
-Models/clips come from `assets/enemy/sambo*` (stage archives; an older assets folder re-extracts on
-the next run), tuning from `params_enemy/{samboflower,hanasambo,sambohead}.prm`. ABI 35.
+Particles are the disc's own `.jpa` effects (`ms_smb_kafun_ow` pollen on a bloom, `_oa` on a bite,
+`ms_smb_ap_*` rising, `ms_smb_hd_*` sinking, `ms_enm_disap_*` dying), emitted by every machine from the
+same events.
 
-Not done / approximations: runs only on the server's machine for the host's Mario (co-op clients
-do not see it); the tower's bite is a cylinder at its base, not the posed head joint; no pollen or
-burst particles yet; the open chime names (`MSD_SE_OBJ_FLOWER_OPEN_n`) are untested; heads'
-hop distance is `mSLMoveDist` over the air time; never played.
+## Multiplayer
+The server owns one world (placement, the step, bites, coins). Clients mirror snapshots (8 a second,
+the things within 130 m of a player, a flower ring whole or not at all) and draw them, so players who
+are not Mario see the flowers, towers and heads, with their particles. Only a Mario can wake them: his
+sim lands spray and stomps on the mirror's things and reports them (`FlowerHitMsg`); the server applies
+them. Enemies chase and bite the nearest Mario only. The sounds are Mario's own sound bank, so a player
+without a Mario view sees but does not hear them. Messages 0x4D0A-0x4D0C; ABI 36.
+
+Mario's coins can be picked up by any player teammate (`Coins.TeammatesCollect`, on): same heal, same
+`Coins.Gold`.
+
+Not done / approximations: never played, never run on two machines; a respawned Mario's sim does not
+carry flower state (the world is separate, so it survives); a head's hop distance is `mSLMoveDist`
+over the air time; the tower's pollen while it waits (`createPollen` at frame 16) is not drawn.

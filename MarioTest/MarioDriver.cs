@@ -105,6 +105,9 @@ namespace MarioTest
         // A Mario no local player controls: his own silent view (tried once).
         MarioView cloneView;
         bool cloneTried;
+        // RoR2's cosmetic item displays on the drawn body (ror2-common), when enabled.
+        ItemDisplayRig itemDisplays;
+        bool itemDisplaysTried;
 
         /// The Mario a local player is playing, or null.
         internal static MarioDriver Player
@@ -711,6 +714,12 @@ namespace MarioTest
                 feet + Vector3.up * (height * 0.5f), height);
             view.Draw(feet);
             ShowMario(true);
+            if (ItemDisplayRig.Enabled && !itemDisplaysTried)
+            {
+                itemDisplaysTried = true;
+                itemDisplays = ItemDisplayRig.Attach(body, new MarioItemAnchors(view));
+            }
+            itemDisplays?.Pose(feet, view.DrawnRotation, UnityHost.Scale);
             drawn = true;
             if (Local)
             {
@@ -729,6 +738,13 @@ namespace MarioTest
         {
             var view = View;
             if (!show && view != null && (ownsView || view == cloneView)) view.Hide();
+            if (itemDisplays != null)
+            {
+                if (show) itemDisplays.HideStock();
+                else itemDisplays.ShowStock();
+                itemDisplays.SetVisible(show);
+                return;
+            }
             GameSettings.HideModel(body, ref bodyHidden, show && view != null && view.Models != null);
         }
 
@@ -914,6 +930,7 @@ namespace MarioTest
                 else
                 {
                     ShowMario(false);
+                    itemDisplays?.Dispose(); itemDisplays = null;
                     if (ownsView && (!health || RunAudio.Ended)) MarioView.Reset();
                 }
             }
@@ -1175,6 +1192,7 @@ namespace MarioTest
         {
             if (traced == this) traced = null;
             all.Remove(this);
+            itemDisplays?.Dispose(); itemDisplays = null;
             Items?.Dispose();
             pivot?.Use(false);
             flames.Set(false, default, 0f);

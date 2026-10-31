@@ -123,6 +123,7 @@ namespace MarioTest
         internal static ConfigEntry<bool> DeathFall;
         internal static ConfigEntry<float> DeathFallSeconds;
         internal static ConfigEntry<bool> GummyClones;
+    internal static ConfigEntry<bool> ItemDisplays;
         internal static ConfigEntry<float> WaterOpacity;
         internal static ConfigEntry<float> SlideWaveTint;
         internal static ConfigEntry<float> WaterRefraction;
@@ -517,6 +518,11 @@ namespace MarioTest
             GummyClones = Config.Bind("Look", "GummyClones", true,
                 "Marios no player controls (Goobo Jr.'s clone) are drawn in RoR2's gummy clone " +
                 "material. Off: Commando's model.");
+            ItemDisplays = Config.Bind("Look", "ItemDisplays", true,
+                "Draw RoR2's cosmetic item displays on Mario: glasses, syringes, crowns and the rest " +
+                "follow the drawn body (Mario, Luigi, Piantissimo or Yoshi) instead of being hidden " +
+                "with Commando. Off: hidden, as before.");
+            ItemDisplayRig.Enabled = ItemDisplays.Value;
             ExternalForces = Config.Bind("Sim", "ExternalForces", true,
                 "RoR2 can throw Mario: jump pads, geysers, knockback, Milky Chrysalis.");
             CrowdControl = Config.Bind("Sim", "CrowdControl", true,

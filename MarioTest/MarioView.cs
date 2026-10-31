@@ -33,6 +33,16 @@ namespace MarioTest
 
         /// The native view (for sms_sim_step's sounds and sms_view_update), or zero.
         public IntPtr Handle => view;
+        /// The turn the body was last drawn at (the sim's facing plus the corkscrew tilt).
+        public Quaternion DrawnRotation
+        {
+            get
+            {
+                if (models == null || models.DrawCount == 0) return Quaternion.identity;
+                var d = models.DrawAt(0);
+                return new Quaternion(d.rot_x, d.rot_y, d.rot_z, d.rot_w);
+            }
+        }
         /// A host pose for the body (the Melee Mario A port), or null to use the sim's pose.
         public bool SetPose(float[] matrices, uint count) =>
             view != IntPtr.Zero && Native.sms_view_set_pose(view, matrices, count) != 0;

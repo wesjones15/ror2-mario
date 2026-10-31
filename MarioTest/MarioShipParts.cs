@@ -25,6 +25,8 @@ namespace MarioTest
 
         static bool tried;
         static Func<bool> active;
+        /// The Olimar plugin's `CanCarry` (version 2: pellets outside Ship Repair too); null on an older one.
+        static Func<bool> canCarry;
         static Action<CharacterBody> register;
         static Func<Vector3, float, uint[], Vector3[], float[], int> takeables;
         static Func<uint, bool> take;
@@ -66,6 +68,8 @@ namespace MarioTest
                     (T)Delegate.CreateDelegate(typeof(T), api.GetMethod(name, BindingFlags.Public | BindingFlags.Static)
                         ?? throw new MissingMethodException(name));
                 active = (Func<bool>)Delegate.CreateDelegate(typeof(Func<bool>), api.GetProperty("Active").GetGetMethod());
+                var carry = api.GetProperty("CanCarry");
+                if (carry != null) canCarry = (Func<bool>)Delegate.CreateDelegate(typeof(Func<bool>), carry.GetGetMethod());
                 register = Method<Action<CharacterBody>>("RegisterGuest");
                 takeables = Method<Func<Vector3, float, uint[], Vector3[], float[], int>>("Takeables");
                 take = Method<Func<uint, bool>>("Take");
@@ -85,7 +89,8 @@ namespace MarioTest
             }
         }
 
-        static bool Playing => Bind() && active();
+        /// Ship parts in Ship Repair, and with a Pikmin world up (an Olimar in the run) every loose pellet.
+        static bool Playing => Bind() && (canCarry != null ? canCarry() : active());
 
         /// Every Mario's body (on the server too, for a client's): tells the mode he is a player.
         public static void Register(CharacterBody body)

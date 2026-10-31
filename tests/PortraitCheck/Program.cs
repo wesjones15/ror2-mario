@@ -39,6 +39,20 @@ static class Program
         var handle = NativeLibrary.Load(Path.GetFullPath(args[0]));
         NativeLibrary.SetDllImportResolver(typeof(Native).Assembly, (name, assembly, search) => name == Native.Dll ? handle : IntPtr.Zero);
         Check(Native.Load(args[0], out var error), error);
+        using (var pickup = new Rig())
+        {
+            Check(Native.sms_sim_select_nozzle(pickup.sim, 2) != 0, "Hover equip failed");
+            pickup.Step(default, 8);
+            Native.sms_sim_state(pickup.sim, out var equipped);
+            Check(equipped.nozzle == 5, "Hover was not equipped immediately");
+            Native.sms_view_fx_vertices(pickup.view, out var sparkleVertices);
+            Check(sparkleVertices > 0, "native nozzle pickup sparkle missing");
+            Check(Native.sms_view_hud_info(pickup.view, out var tank) != 0
+                && Native.sms_view_hud_nozzle_info(pickup.view, out var head) != 0
+                && head.width > 0 && head.height > 0 && head.x >= 0 && head.y >= 0
+                && head.x + head.width <= tank.width && head.y + head.height <= tank.height,
+                "nozzle head anchor lies outside tank canvas");
+        }
         using (var impact = new Rig())
         {
             var contact = new Native.Vec3(0, 160, 600);
@@ -91,6 +105,11 @@ static class Program
         using (var water = new Rig())
         {
             water.Step(new Native.Pad { r_analog = 255 }, 60);
+            Check(Native.sms_view_water_info(water.view, out var waterInfo) != 0, "water mesh info missing");
+            uint streamQuads = Native.sms_view_water_stream_quads(water.view);
+            Check(streamQuads > 0 && streamQuads <= waterInfo.drop_quads, "cohesive stream partition did not cross the native boundary");
+            Native.sms_view_water_vertices(water.view, out uint waterVertices);
+            Check(waterVertices == 4 * (waterInfo.drop_quads + waterInfo.splash_quads + waterInfo.wet_quads), "cohesive mesh violated quad layout");
             var a = new Native.Vec3(0, 100, 0);
             var b = new Native.Vec3(0, 100, 500);
             Check(Native.sms_sim_water_touches_segment(water.sim, ref a, ref b, 1000) != 0, "spray did not expose real water contacts");
@@ -120,6 +139,7 @@ static class Program
         }
         using (var r = new Rig())
         {
+            Native.sms_view_set_water_cohesive(r.view, 0); // Matches MarioWater.UsePortraitTint.
             r.Step(new Native.Pad { r = 1, r_analog = 255 }, 90);
             Check(Native.sms_view_water_info(r.view, out var water) != 0 && water.drop_quads > 0, "FLUDD has no water");
             var target = new Vector3(.18f, 1.5f, 0);
@@ -130,7 +150,9 @@ static class Program
             var frame = new Native.ViewFrame { eye = new Native.Vec3(eye.X * 100, eye.Y * 100, eye.Z * 100),
                 forward = new Native.Vec3(forward.X, forward.Y, forward.Z), up = new Native.Vec3(up.X, up.Y, up.Z) };
             Native.sms_view_update(r.view, r.sim, ref frame);
+            Check(Native.sms_view_water_info(r.view, out water) != 0, "portrait water info missing after camera rebuild");
             var ptr = Native.sms_view_water_vertices(r.view, out var count);
+            Check(count >= water.drop_quads * 4, "portrait water count does not match rebuilt mesh");
             int visible = 0;
             for (int i = 0; i < water.drop_quads * 4; i++)
             {
@@ -140,6 +162,7 @@ static class Program
                 if (z > .01f && Math.Abs(Vector3.Dot(p, right)) < half && Math.Abs(Vector3.Dot(p, up)) < half) visible++;
             }
             Check(visible > 0, "FLUDD water lies outside the actual portrait camera");
+            Check(Native.sms_view_water_stream_quads(r.view) == 0, "portrait did not retain its original mask path");
         }
         using (var r = new Rig())
         {

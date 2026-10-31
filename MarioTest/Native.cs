@@ -4,7 +4,7 @@ using Ror2Common;
 
 namespace MarioTest
 {
-    // The libsms C ABI (libsms/crates/libsms-ffi, SMS_ABI_VERSION 39). Layouts mirror the
+    // The libsms C ABI (libsms/crates/libsms-ffi, SMS_ABI_VERSION 40). Layouts mirror the
     // #[repr(C)] structs there field for field; Load checks them with sms_struct_sizes. Sim
     // units: about 1 cm, Y up, a facing angle a (i16, 0x10000 per turn) points along
     // (sin a, 0, cos a). The view's structs are ror2-common's (ViewModelInfo...), which
@@ -12,7 +12,7 @@ namespace MarioTest
     internal static class Native
     {
         public const string Dll = "sms";
-        public const uint AbiVersion = 39;
+        public const uint AbiVersion = 40;
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern IntPtr sms_heat_new(byte[] dir);
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern void sms_heat_free(IntPtr heat);
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern byte sms_heat_texture(IntPtr heat, out ViewTexture texture, [Out] byte[] rgba, uint capacity);
@@ -383,6 +383,7 @@ namespace MarioTest
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern void sms_sim_launch(IntPtr sim, ref Vec3 vel);
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern void sms_sim_launch_pad(IntPtr sim, ref Vec3 vel, float gravity);
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern void sms_sim_set_aim(IntPtr sim, byte on, short yaw, float pitch);
+        [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern void sms_sim_set_flight_camera(IntPtr sim, byte on, short yaw, float pitch);
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern uint sms_sim_last_spray(IntPtr sim, out Spray spray);
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern void sms_sim_down(IntPtr sim);
         /// A hit from `from` knocks Mario down (damage kind 0: the common enemy's) without touching the sim's health.
@@ -486,6 +487,9 @@ namespace MarioTest
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern IntPtr sms_view_texture_ids(IntPtr view, out uint count);
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern IntPtr sms_view_frame_uvs(IntPtr view, out uint count);
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern IntPtr sms_view_water_vertices(IntPtr view, out uint count);
+        [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern uint sms_view_water_stream_quads(IntPtr view);
+        [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern byte sms_view_hud_nozzle_info(IntPtr view, out HudInfo info);
+        [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern void sms_view_set_water_cohesive(IntPtr view, byte on);
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern byte sms_view_water_info(IntPtr view, out WaterInfo info);
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern void sms_view_coin_get(IntPtr view, ref Vec3 pos);
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern byte sms_view_water_texture(IntPtr view, uint which, out ViewTexture info, [Out] byte[] rgba, uint len);
@@ -538,10 +542,13 @@ namespace MarioTest
                 var zero = new Vec3();
                 sms_sim_water_touches_segment(IntPtr.Zero, ref zero, ref zero, 0f);
                 sms_sim_wet(IntPtr.Zero);
+                sms_sim_set_flight_camera(IntPtr.Zero, 0, 0, 0f);
+                sms_view_water_stream_quads(IntPtr.Zero);
+                sms_view_set_water_cohesive(IntPtr.Zero, 0);
             }
             catch (EntryPointNotFoundException)
             {
-                error = $"{path} lacks FLUDD's fire/wet contact support; update sms.dll with MarioTest.dll";
+                error = $"{path} lacks current FLUDD/flight support; update sms.dll with MarioTest.dll";
                 return false;
             }
             uint v = sms_abi_version();

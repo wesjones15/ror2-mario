@@ -255,6 +255,7 @@ namespace MarioTest
             if (view != null) Native.sms_view_water_hit(view.Handle, ref pos);
         }
         public void SetAim(bool on, short yaw, float pitch) => Native.sms_sim_set_aim(sim, (byte)(on ? 1 : 0), yaw, pitch);
+        public void FlightCamera(bool on, short yaw, float pitch) => Native.sms_sim_set_flight_camera(sim, (byte)(on ? 1 : 0), yaw, pitch);
         public void Down() => Native.sms_sim_down(sim);
         public void ShineGet(Native.Vec3 pos, short yaw) => Native.sms_sim_shine_get(sim, ref pos, yaw);
         public void ShineEnd() => Native.sms_sim_shine_end(sim);

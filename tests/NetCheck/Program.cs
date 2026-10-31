@@ -20,6 +20,7 @@ static class Program
         public void LaunchPad(Native.Vec3 v, float g) => calls.Add($"pad {v.x},{v.y},{v.z},{g}");
         public void KnockDown(Native.Vec3 f, byte k) => calls.Add($"knock {f.x},{f.y},{f.z},{k}");
         public void SetAim(bool on, short yaw, float pitch) => calls.Add($"aim {on},{yaw},{pitch}");
+        public void FlightCamera(bool on, short yaw, float pitch) => calls.Add($"flight {on},{yaw},{pitch}");
         public void Down() => calls.Add("down");
         public void Ignite() => calls.Add("ignite");
         public void Soaked() => calls.Add("soaked");
@@ -212,5 +213,10 @@ static class Program
         stalled.Add(new Frame { seq = 0, ops = Array.Empty<byte>() });
         Check(stalled.TryTake(out var restarted) && restarted.seq == 0, "cleared queue can restart sequence");
         Console.WriteLine("NetCheck: ok");
+        var flight = new ByteWriter(16);
+        FrameCodec.WriteFlightCamera(flight, true, -2500, 0.25f);
+        log.calls.Clear();
+        Check(FrameCodec.Replay(new Frame { ops = flight.ToArray() }, log)
+            && log.calls.Count == 1 && log.calls[0] == "flight True,-2500,0.25", "corkscrew camera replay preserves yaw and pitch");
     }
 }

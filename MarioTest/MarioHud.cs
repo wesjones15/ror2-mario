@@ -15,6 +15,7 @@ namespace MarioTest
         static byte[] pixels = new byte[0];
         static byte[] flipped = new byte[0];
         static Native.HudInfo info;
+        static Native.HudInfo nozzleInfo;
         static bool shown, warned;
 
         public static void Reset()
@@ -25,6 +26,7 @@ namespace MarioTest
             version = 0;
             pixels = flipped = new byte[0];
             info = default;
+            nozzleInfo = default;
         }
 
         /// After sms_view_update: takes this frame's gauge.
@@ -39,6 +41,7 @@ namespace MarioTest
                 return;
             }
             if (info.shown == 0 || info.width == 0 || info.height == 0) return;
+            Native.sms_view_hud_nozzle_info(view, out nozzleInfo);
             if (!tex || tex.width != info.width || tex.height != info.height)
             {
                 if (tex) UnityEngine.Object.Destroy(tex);
@@ -75,6 +78,13 @@ namespace MarioTest
         {
             if (!shown || !tex || Event.current.type != EventType.Repaint) return;
             if (PauseManager.isPaused || !RoR2.UI.HUD.cvHudEnable.value) return;
+            if (TryTankRect(out var rect)) GUI.DrawTexture(rect, tex, ScaleMode.StretchToFill, true);
+        }
+
+        static bool TryTankRect(out Rect rect)
+        {
+            rect = default;
+            if (info.screen_h == 0 || info.width == 0 || info.height == 0) return false;
             float scale = Screen.height / (float)info.screen_h * Mathf.Clamp(Plugin.TankScale.Value, 0.1f, 5f);
             float w = info.width * scale, h = info.height * scale;
             // Kept whole on the screen, wherever Hud.TankX/TankY put its middle.
@@ -83,7 +93,20 @@ namespace MarioTest
             float y = Plugin.TankY.Value < 0f ? Screen.height - edge - h * 0.5f : Plugin.TankY.Value * Screen.height;
             float cx = Mathf.Clamp(x, w * 0.5f, Mathf.Max(w * 0.5f, Screen.width - w * 0.5f));
             float cy = Mathf.Clamp(y, h * 0.5f, Mathf.Max(h * 0.5f, Screen.height - h * 0.5f));
-            GUI.DrawTexture(new Rect(cx - w * 0.5f, cy - h * 0.5f, w, h), tex, ScaleMode.StretchToFill, true);
+            rect = new Rect(cx - w * 0.5f, cy - h * 0.5f, w, h);
+            return true;
+        }
+
+        /// Exact nz01..04 picture in the displayed tank, shared by the radial's origin
+        /// and destination. Retain the cached anchor when No FLUDD hides the tank.
+        internal static bool TryNozzleHead(out Rect head, out Rect tank)
+        {
+            head = default;
+            if (!TryTankRect(out tank) || nozzleInfo.width == 0) return false;
+            float scale = tank.width / info.width;
+            head = new Rect(tank.x + nozzleInfo.x * scale, tank.y + nozzleInfo.y * scale,
+                nozzleInfo.width * scale, nozzleInfo.height * scale);
+            return true;
         }
     }
 }

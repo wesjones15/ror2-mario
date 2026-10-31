@@ -92,6 +92,12 @@ namespace MarioTest
             Rec?.SetAim(on != 0, yaw, pitch);
         }
 
+        public static void FlightCamera(IntPtr sim, byte on, short yaw, float pitch)
+        {
+            Native.sms_sim_set_flight_camera(sim, on, yaw, pitch);
+            Rec?.FlightCamera(on != 0, yaw, pitch);
+        }
+
         public static void Down(IntPtr sim)
         {
             Native.sms_sim_down(sim);

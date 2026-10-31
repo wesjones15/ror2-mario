@@ -126,7 +126,7 @@ namespace MarioTest
                 models = ModelView.Create(new SmsViewSource(view), "Mario skill portrait", card.Root);
                 fx = MarioFx.Create(view, card.Root);
                 water = withWater ? MarioWater.Create(view, card.Root) : null;
-                water?.UsePortraitTint();
+                water?.UsePortraitTint(view);
                 if (models == null) { Dispose(); throw new InvalidOperationException("Mario's portrait model didn't load"); }
                 Native.sms_view_set_fx(view, 1, 1);
             }

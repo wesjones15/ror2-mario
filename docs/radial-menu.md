@@ -1,8 +1,9 @@
 # FLUDD nozzle radial
 
 RB has two jobs. **Tap** swaps between Spray and the selected alternate (Hover by default).
-**Hold for 0.5 s** opens a compact wheel for changing that alternate. The wheel unfolds from (0.16 s grow) and sits just above
-the Air Pump cooldown picture and the chosen alternate is overlaid on that picture; with No FLUDD
+**Hold for 0.5 s** opens a compact wheel for changing that alternate. The wheel slides and grows from
+the nozzle head above the water tank over 0.28 s, settling to the tank's upper left.
+The chosen alternate is overlaid on the Air Pump cooldown picture; with No FLUDD
 selected the picture is left as it is.
 
 | Input | Action |
@@ -14,12 +15,35 @@ selected the picture is left as it is.
 | Release RB / Special, pause, UI focus | Cancel (the button must be released before opening again) |
 
 Segments, clockwise from the top: Hover, Rocket, Turbo, No FLUDD. Each is centred on an axis, so
-up chooses Hover, right Rocket, down Turbo and left No FLUDD. Each nozzle picture is turned
-to point out of its own segment. The pictures are the disc HUD's own `nz01..04` icons
+up chooses Hover, right Rocket, down Turbo and left No FLUDD. Each nozzle picture remains
+upright. Option labels are removed; the selected name remains in the center, with
+"Select F.L.U.D.D. Nozzle with RS" above the wheel. All nozzle icons are enlarged;
+Hover gets the same additional 1.35x boost in the cooldown overlay, radial and hub.
+The generated cooldown portrait is unchanged. The pictures are the disc HUD's own `nz01..04` icons
 (`sms_view_nozzle_icon_*`), not stand-ins. No FLUDD is the Spray picture struck through: choosing
-it calls `sms_sim_select_nozzle(0)` and hides the tank. Choosing Hover/Rocket/Turbo while an
-alternate is fitted changes it in place; while Spray is fitted it is only remembered for the next
-tap. From No FLUDD, choosing a nozzle gives FLUDD back.
+it calls `sms_sim_select_nozzle(0)` and hides the tank. Choosing Hover/Rocket/Turbo immediately
+equips it, including from Spray. From No FLUDD, choosing a nozzle gives FLUDD back.
+
+Source identity and layout proof: `GC2D/GCConsole2.cpp::loadAfter` binds HUD panes
+`nz01..04` from `game_6/scrn/standard_1.blo` (2D pictures; no emitter/model cue).
+`cargo run --release -p viewer --example nozzle_radial -- assets output/nozzle-radial.png`
+in `libsms/` captures the original icons upright at the new sizes, including the
+existing cooldown portrait with its overlay. Add `opening` after the output PNG
+to capture four animation frames. The anchor uses the actual nozzle pane within
+the gauge, then the same TankX/TankY/TankScale placement as the drawn HUD.
+This is a Rust layout proof; the
+RoR2 menu and opening animation are **not yet played**.
+
+Opening plays the nozzle box's **0x3801 / MSD_SE_IT_EGG_APPEAR** once, from
+`MoveBG/Item.cpp::TNozzleBox::receiveMessage`. Equipping a different alternate
+plays **0x484E / MSD_SE_SY_GET_NOZZLE** (`TItemNozzle::touchPlayer`) plus
+**0x1989 / MSD_SE_MA_SHINING_EFF_CALM2**, and emits the exact **JPA 0x0E /
+ms_itemget1_a** sparkle (`MarioReceiveMsg.cpp::getNozzle` ->
+`MarioParticle.cpp::emitGetEffect`). It follows body joint 1's position, with its
+authored 120-frame emitter / 35-frame particle lifetime. Re-selecting the current
+nozzle and returning to Spray do not retrigger pickup feedback. Selection replay
+uses the existing native operation so remote Marios receive the same feedback.
+`viewer --example nozzle_pickup` renders the exact sparkle at six frames.
 
 With No FLUDD selected the button is empty. Tapping **RB or RT** there plays Melee Mario's
 contextual A attack: libssbm's Mario fighter (`FighterKind::Mario`, `PlMr.dat`/`PlMrAJ.dat`)
@@ -38,7 +62,7 @@ button does nothing; Sunshine's B dive and every other control are unchanged.
 
 The selection is a host operation (`SimOps.SelectNozzle`), so it is recorded in the same
 multiplayer frame as the step; the owner's Melee clip and frame travel in that frame stream too,
-so puppets pose Sunshine identically. Network protocol 6 and native ABI 34 are required on every
+so puppets pose Sunshine identically. Network protocol 10 and native ABI 40 are required on every
 peer.
 
 ## Adding an ability

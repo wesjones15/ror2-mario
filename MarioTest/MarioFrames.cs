@@ -17,7 +17,7 @@ namespace MarioTest
     {
         Teleport = 1, Tuning = 2, Refill = 3, AddWater = 4, Limits = 5, BoostJump = 6, Launch = 7,
         LaunchPad = 8, KnockDown = 9, SetAim = 10, Down = 11, Step = 12, ShineGet = 13, ShineEnd = 14,
-        ForeignWet = 15, Ignite = 16, SelectNozzle = 17, Melee = 18, Soaked = 19, Carried = 20, WaterImpact = 21,
+        ForeignWet = 15, Ignite = 16, SelectNozzle = 17, Melee = 18, Soaked = 19, Carried = 20, WaterImpact = 21, FlightCamera = 22,
     }
 
     /// What replaying a frame does to a sim; MarioPuppet's implementation calls libsms.
@@ -42,6 +42,7 @@ namespace MarioTest
         /// A recorded enemy contact; presentation only, the shadow sim deals no damage.
         void WaterImpact(Native.Vec3 pos);
         void SetAim(bool on, short yaw, float pitch);
+        void FlightCamera(bool on, short yaw, float pitch);
         void Down();
         void ShineGet(Native.Vec3 pos, short yaw);
         void ShineEnd();
@@ -63,7 +64,7 @@ namespace MarioTest
     internal static class FrameCodec
     {
         /// Bumped whenever the wire format changes; a batch with another number is ignored.
-        public const byte Protocol = 9;
+        public const byte Protocol = 10;
 
         static void Vec(ByteWriter w, Native.Vec3 v) { w.F32(v.x); w.F32(v.y); w.F32(v.z); }
         static Native.Vec3 Vec(ByteReader r) => new Native.Vec3(r.F32(), r.F32(), r.F32());
@@ -83,6 +84,7 @@ namespace MarioTest
         public static void WriteCarried(ByteWriter w, bool on) { w.U8((byte)Op.Carried); w.Bool(on); }
         public static void WriteWaterImpact(ByteWriter w, Native.Vec3 pos) { w.U8((byte)Op.WaterImpact); Vec(w, pos); }
         public static void WriteSetAim(ByteWriter w, bool on, short yaw, float pitch) { w.U8((byte)Op.SetAim); w.Bool(on); w.I16(yaw); w.F32(pitch); }
+        public static void WriteFlightCamera(ByteWriter w, bool on, short yaw, float pitch) { w.U8((byte)Op.FlightCamera); w.Bool(on); w.I16(yaw); w.F32(pitch); }
         public static void WriteDown(ByteWriter w) => w.U8((byte)Op.Down);
         public static void WriteShineGet(ByteWriter w, Native.Vec3 pos, short yaw) { w.U8((byte)Op.ShineGet); Vec(w, pos); w.I16(yaw); }
         public static void WriteShineEnd(ByteWriter w) => w.U8((byte)Op.ShineEnd);
@@ -126,6 +128,7 @@ namespace MarioTest
                         break;
                     }
                     case Op.SetAim: { bool on = r.Bool(); short yaw = r.I16(); sink.SetAim(on, yaw, r.F32()); break; }
+                    case Op.FlightCamera: { bool on = r.Bool(); short yaw = r.I16(); sink.FlightCamera(on, yaw, r.F32()); break; }
                     case Op.Down: sink.Down(); break;
                     case Op.ShineGet: { var v = Vec(r); sink.ShineGet(v, r.I16()); break; }
                     case Op.ShineEnd: sink.ShineEnd(); break;
@@ -237,6 +240,7 @@ namespace MarioTest
         public void Tuning(in Native.Tuning t) => FrameCodec.WriteTuning(ops, t);
         public void Refill() => FrameCodec.WriteRefill(ops);
         public void SelectNozzle(byte slot) => FrameCodec.WriteSelectNozzle(ops, slot);
+        public void FlightCamera(bool on, short yaw, float pitch) => FrameCodec.WriteFlightCamera(ops, on, yaw, pitch);
         public void AddWater(float share) => FrameCodec.WriteAddWater(ops, share);
         public void BoostJump(float f) => FrameCodec.WriteBoostJump(ops, f);
         public void Launch(Native.Vec3 v) => FrameCodec.WriteLaunch(ops, v);

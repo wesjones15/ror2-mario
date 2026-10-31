@@ -57,8 +57,8 @@ namespace MarioTest
     // Hold the change-nozzle button to open, tilt the right stick (or move the mouse on a
     // keyboard) to choose the alternate nozzle, and push to full tilt to commit. A tap of the
     // button swaps between Spray and the chosen alternate; when the alternate is No FLUDD, a tap
-    // on that empty button is the optional Melee Mario punch/kick. The wheel is anchored to the
-    // Air Pump cooldown picture and overlays it with the chosen alternate. Built over IMGUI,
+    // on that empty button is the optional Melee Mario punch/kick. The wheel emerges from
+    // the HUD nozzle head beside the water tank; the cooldown shows the chosen alternate. Built over IMGUI,
     // like FLUDD's tank, because the mod already presents its HUD there and needs no prefab.
     internal static class MarioRadial
     {
@@ -67,6 +67,8 @@ namespace MarioTest
         static readonly Color RocketColor = new Color(0.96f, 0.48f, 0.13f);
         static readonly Color TurboColor = new Color(0.96f, 0.78f, 0.14f);
         static readonly Color NoneColor = new Color(0.55f, 0.56f, 0.62f);
+        // Item.cpp TNozzleBox::receiveMessage opens the box with system SE 0x3801.
+        static readonly byte[] OpenSound = Ror2Common.NativeLib.CString("MSD_SE_IT_EGG_APPEAR");
 
         const float Deadzone = 0.32f;
         /// A full right-stick tilt commits at once; a partial tilt only shows the highlight.
@@ -74,8 +76,11 @@ namespace MarioTest
         /// RB must be held this long before the wheel opens; a tap does nothing.
         const float OpenHold = 0.5f;
         const int RingSize = 512;
-        /// The wheel grows out of the cooldown picture over this long (unscaled seconds).
-        const float EmergeTime = 0.16f;
+        /// The wheel grows out of the tank's nozzle head over this long (unscaled seconds).
+        const float EmergeTime = 0.28f;
+        // Cooldown overlay is the reference: the wide Hover pair gets the same extra
+        // scale in the cooldown, each radial option, and the center preview.
+        static float IconScale(MarioNozzleChoice? nozzle) => nozzle == MarioNozzleChoice.Hover ? 1.35f : 1f;
 
         static bool open, wasHeld, armed, tapPending;
         static float heldSince, openedAt;
@@ -165,6 +170,13 @@ namespace MarioTest
                 if (Time.unscaledTime - heldSince < OpenHold) return;
                 open = true;
                 openedAt = Time.unscaledTime;
+                var soundView = MarioView.Player;
+                if (soundView != null)
+                {
+                    var camera = Ror2Common.GameSettings.PlayerCamera();
+                    var soundPosition = camera ? UnityHost.ToSim(camera.position) : default;
+                    Native.sms_view_sound(soundView.Handle, OpenSound, ref soundPosition);
+                }
                 // A stick already held over from the camera must be released before it counts:
                 // pressing RB during a turn should not pick that direction immediately.
                 armed = direction.sqrMagnitude < Commit * Commit;
@@ -304,12 +316,12 @@ namespace MarioTest
             return false;
         }
 
-        /// The wheel's centre: just above the Air Pump icon, or the screen's middle without it.
+        /// To the left of FLUDD's tank, slightly above its nozzle head.
         static Vector2 WheelCentre(float outer, float h)
         {
-            var center = new Vector2(Screen.width * 0.5f, Screen.height * 0.5f);
-            if (TrySkillIcon(out var icon))
-                center = new Vector2(icon.center.x, icon.yMin - outer - h * 0.012f);
+            var center = new Vector2(Screen.width - outer * 2.2f, Screen.height - outer * 1.4f);
+            if (MarioHud.TryNozzleHead(out var head, out var tank))
+                center = new Vector2(tank.xMin - outer - h * 0.035f, head.center.y - outer * 0.6f);
             float edge = h * 0.012f;
             center.x = Mathf.Clamp(center.x, outer + edge,
                 Mathf.Max(outer + edge, Screen.width - outer - edge));
@@ -331,7 +343,7 @@ namespace MarioTest
                 : selectedAlt == MarioNozzleChoice.Turbo ? 3 : -1;
             var tex = MarioNozzleIcons.Get(index, view.Handle);
             if (!tex) return;
-            float size = Mathf.Min(icon.width, icon.height) * 0.68f;
+            float size = Mathf.Min(icon.width, icon.height) * 0.95f * IconScale(selectedAlt);
             var at = new Rect(icon.center.x - size * 0.5f, icon.center.y - size * 0.5f, size, size);
             var old = GUI.color;
             GUI.color = Color.white;
@@ -353,23 +365,28 @@ namespace MarioTest
 
             var old = GUI.color;
             // A quiet dim behind the wheel so the segments read on any stage.
-            float grow = Mathf.Clamp01((Time.unscaledTime - openedAt) / EmergeTime);
-            grow = 1f - (1f - grow) * (1f - grow) * (1f - grow);
+            float progress = Mathf.Clamp01((Time.unscaledTime - openedAt) / EmergeTime);
+            float grow = 1f - (1f - progress) * (1f - progress) * (1f - progress);
             GUI.color = new Color(0f, 0f, 0f, 0.30f * grow);
             GUI.DrawTexture(new Rect(0f, 0f, Screen.width, Screen.height), Texture2D.whiteTexture);
             GUI.color = Color.white;
-            // Scale everything about the cooldown picture's centre so the wheel unfolds from it.
+            // Lift a small wheel from the tank's actual nozzle head into position.
             var matrixBefore = GUI.matrix;
             if (grow < 1f)
             {
-                var origin = TrySkillIcon(out var portrait) ? portrait.center : center;
-                GUIUtility.ScaleAroundPivot(Vector2.one * Mathf.Max(0.02f, grow), origin);
+                var origin = MarioHud.TryNozzleHead(out var head, out _) ? head.center : center;
+                float travel = progress * progress * (3f - 2f * progress);
+                var position = Vector2.Lerp(origin, center, travel);
+                float scale = Mathf.Lerp(0.08f, 1f, grow);
+                GUI.matrix = matrixBefore * Matrix4x4.TRS(new Vector3(position.x, position.y, 0f),
+                    Quaternion.identity, new Vector3(scale, scale, 1f))
+                    * Matrix4x4.Translate(new Vector3(-center.x, -center.y, 0f));
             }
             GUI.DrawTexture(new Rect(center.x - outer, center.y - outer, outer * 2f, outer * 2f),
                 ring, ScaleMode.StretchToFill, true);
 
             float step = 360f / entries.Count;
-            float iconSize = Mathf.Clamp(h * 0.055f, 28f, 72f);
+            float iconSize = Mathf.Clamp(h * 0.08f, 40f, 104f);
             for (int i = 0; i < entries.Count; i++)
             {
                 // Math coordinates here (y up); the screen is turned over below.
@@ -378,30 +395,27 @@ namespace MarioTest
                 var iconAt = center + new Vector2(radial.x, -radial.y) * (outer * 0.74f);
                 var iconRect = new Rect(iconAt.x - iconSize * 0.5f, iconAt.y - iconSize * 0.5f,
                     iconSize, iconSize);
-                // The nozzle picture turns with its segment, so its top points out of the wheel.
-                DrawEntryIcon(entries[i], iconRect, iconSize, i * step);
-                // Outside the ring, so a long label (NO FLUDD) cannot sit on its icon.
-                var textAt = center + new Vector2(radial.x, -radial.y) * (outer * 1.04f);
-                var textRect = new Rect(textAt.x - outer * 0.55f, textAt.y - h * 0.014f,
-                    outer * 1.1f, h * 0.028f);
-                Shadow(textRect, entries[i].Label, i == hovered ? titleStyle : label);
+                DrawEntryIcon(entries[i], iconRect, iconSize);
             }
 
             var at = entries[Mathf.Clamp(hovered, 0, entries.Count - 1)];
-            float hub = Mathf.Clamp(h * 0.055f, 30f, 68f);
-            var hubRect = new Rect(center.x - hub * 0.5f, center.y - hub * 0.5f - h * 0.006f, hub, hub);
-            DrawEntryIcon(at, hubRect, hub, 0f);
+            float hub = Mathf.Clamp(h * 0.09f, 44f, 116f);
+            var hubRect = new Rect(center.x - hub * 0.5f, center.y - hub * 0.5f - h * 0.012f, hub, hub);
+            DrawEntryIcon(at, hubRect, hub);
             var nameRect = new Rect(center.x - inner, center.y + hub * 0.55f, inner * 2f, h * 0.030f);
             Shadow(nameRect, at.Label, centerLabel);
             var hintRect = new Rect(center.x - outer, center.y - outer - h * 0.052f,
                 outer * 2f, h * 0.04f);
-            Shadow(hintRect, "FULL RS TILT TO CHOOSE  -  RELEASE TO CANCEL", label);
+            Shadow(hintRect, "Select F.L.U.D.D. Nozzle with RS", label);
             GUI.color = old;
             GUI.matrix = matrixBefore;
         }
 
-        static void DrawEntryIcon(MarioRadialEntry entry, Rect rect, float size, float rotation)
+        static void DrawEntryIcon(MarioRadialEntry entry, Rect rect, float size)
         {
+            float scale = IconScale(entry.Nozzle);
+            size *= scale;
+            rect = new Rect(rect.center.x - size * 0.5f, rect.center.y - size * 0.5f, size, size);
             var icon = entry.Icon != null ? entry.Icon() : null;
             if (!icon)
             {
@@ -415,7 +429,6 @@ namespace MarioTest
             var pivot = rect.center;
             var matrix = GUI.matrix;
             GUI.color = Color.white;
-            if (rotation != 0f) GUIUtility.RotateAroundPivot(rotation, pivot);
             GUI.DrawTexture(rect, icon, ScaleMode.ScaleToFit, true);
             if (entry.CrossOut)
             {

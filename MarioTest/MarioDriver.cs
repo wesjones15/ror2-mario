@@ -333,6 +333,9 @@ namespace MarioTest
             var step = pad.Take(move, hold == NativeBody.Hold.All, Local && MarioRadial.Open);
             // Facing from Mario toward the camera: the reverse of where the player aims.
             short cameraYaw = UnityHost.Yaw(-input.aimDirection);
+            var flightAim = AimDirection.normalized;
+            SimOps.FlightCamera(sim, (byte)(Local ? 1 : 0), UnityHost.Yaw(flightAim),
+                Mathf.Atan2(flightAim.y, new Vector2(flightAim.x, flightAim.z).magnitude));
             // The lock-on (LB; a keyboard's utility key; the brain's): FLUDD takes its aim, and
             // its head turns, to the target (or where the camera looks), on the ground or in the
             // air. L is now just the ground pound in the air (no crouch, no camera aim). Only a keyboard has L
@@ -643,9 +646,8 @@ namespace MarioTest
             MarioMeleeAttack.TryAttack(body, AimDirection);
         }
 
-        /// The radial menu chose the alternate. It is remembered for the next tap; if an
-        /// alternate is already fitted, the wheel changes it in place. On Spray only the memory
-        /// changes, so choosing an alternate does not disturb a spray.
+        /// Remember and immediately equip the alternate chosen by the wheel, including
+        /// from Spray. The native selection supplies Sunshine's pickup feedback.
         internal void ChooseAlternative(MarioNozzleChoice choice)
         {
             if (sim == IntPtr.Zero) return;
@@ -661,7 +663,6 @@ namespace MarioTest
                 if (now.has_fludd != 0) SelectNozzle(MarioNozzleChoice.None);
                 return;
             }
-            if (current == MarioNozzleChoice.Spray) return;
             SelectNozzle(choice);
         }
 

@@ -15,8 +15,12 @@ Previously `Drawing` meant the view's model table existed, which did not prove
 the playable view had drawn a frame.
 
 `CameraHandoff` in ror2-common captures the last rendered camera shot and takes
-ownership before seat ejection. It releases with a 0.35-second blend once the
-playable view has drawn. Other camera overrides retain ownership; failure,
+ownership before seat ejection. Once the playable view has drawn, it blends the
+held shot into the normal camera state over 0.35 seconds. It keeps the first
+ready frame on the held shot, advances at most 1/30 second per rendered frame,
+and returns ownership after rendering the exact endpoint. Slow frames extend
+the transition instead of skipping most of its visible motion. Player look and
+control are enabled during that blend. Other camera overrides retain ownership; failure,
 death, target changes and destruction release the hold (two-second timeout).
 `MarioStatuePod` runs its LateUpdate after the driver and remote puppet, so its
 native rider disappears in the same rendered frame as the playable rider's
@@ -28,7 +32,17 @@ in libsms's behavior spec; no replacement effects or animation assets are used.
 The footage and derived frame captures stay local under
 `../output/mario-start-video/`.
 
+The follow-up clip (`Risk of Rain 2 2026.10.31 - 17.15.14.03.mp4`) still shows a
+large camera step around 5.1 seconds with the previous build. Its installed DLL
+matches the staged DLL. A long initialization frame can consume RoR2's entire
+ordinary camera lerp: `CameraRigController.EarlyUpdate` advances it using the
+full `Time.deltaTime`. The helper therefore owns the visible blend rather than
+depending on that timer. The log now records the ready-frame duration to help
+confirm this explanation during another playthrough. Derived captures are in
+`../output/mario-start-video-2/`.
+
 Validation: `dotnet run --project ../ror2-common/tests/CameraHandoffCheck -c Release`
-checks the held shot across seat exit, explicit ready-view release, newer
-override ownership, and failed-start timeout. Mario builds against DLC4.
-In-game replay of the fixed transition remains pending.
+checks the held shot across seat exit, a 600 ms initialization frame, another
+600 ms frame during the blend, duplicate samples within one frame, the exact
+endpoint, newer override ownership, and failed-start timeout. Mario builds
+against DLC4. In-game confirmation of this revision remains pending.

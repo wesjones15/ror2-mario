@@ -392,9 +392,9 @@ namespace MarioTest
                 // Math coordinates here (y up); the screen is turned over below.
                 float a = (90f - i * step) * Mathf.Deg2Rad;
                 var radial = new Vector2(Mathf.Cos(a), Mathf.Sin(a));
-                // The left and right pictures sit slightly farther out so their centres read as
-                // their segments' centres.
-                float reach = i == 1 || i == 3 ? outer * 0.79f : outer * 0.74f;
+                // The left, right and bottom pictures sit slightly farther out so their centres
+                // read as their segments' centres; the enlarged Hover picture already does.
+                float reach = i == 0 ? outer * 0.74f : outer * 0.79f;
                 var iconAt = center + new Vector2(radial.x, -radial.y) * reach;
                 var iconRect = new Rect(iconAt.x - iconSize * 0.5f, iconAt.y - iconSize * 0.5f,
                     iconSize, iconSize);

@@ -16,8 +16,9 @@ selected the picture is left as it is.
 
 Segments, clockwise from the top: Hover, Rocket, No FLUDD, Turbo. Each is centred on an axis, so
 up chooses Hover, right Rocket, down No FLUDD and left Turbo. Each nozzle picture remains
-upright. The left and right pictures sit slightly farther from the hub (0.79 instead of 0.74 of
-the wheel radius) so they read as centred in their segments. Option labels are removed; the
+upright. The left, right and bottom pictures sit slightly farther from the hub (0.79 instead of
+0.74 of the wheel radius) so they read as centred in their segments; the enlarged Hover picture
+already does at 0.74. Option labels are removed; the
 selected name remains in the center, with "Select F.L.U.D.D. Nozzle with RS" above the wheel.
 All nozzle icons are enlarged; Hover gets the same additional 1.35x boost in the cooldown
 overlay, radial and hub. The generated cooldown portrait is unchanged. The pictures are the

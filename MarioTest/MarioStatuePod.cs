@@ -378,7 +378,16 @@ namespace MarioTest
             }
             var feet = passenger.footPosition;
             if ((target - feet).sqrMagnitude <= .0004f) return;
-            passenger.transform.position += target - feet;
+            // The body's kinematic motor keeps its own transient position and rewrites the transform
+            // from it on its next step (until MarioDriver switches it off), which put the body back at
+            // the stock ejection point after the clip's last pose. Move it through the motor.
+            var moved = passenger.transform.position + (target - feet);
+            var motor = passenger.characterMotor;
+            if (motor && motor.Motor && motor.Motor.enabled) {
+                motor.Motor.SetPosition(moved, true);
+                motor.velocity = Vector3.zero;
+            } else passenger.transform.position = moved;
+            Physics.SyncTransforms();
             Plugin.Log.LogInfo($"Statue exit: body at {passenger.footPosition} ({(exitCut ? "clip cut" : "clip complete")})");
         }
 

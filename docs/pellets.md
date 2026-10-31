@@ -32,6 +32,11 @@ velocity as a launch). Mario's machine asks the server (`0x4D10`-`0x4D18`), the 
 ownership and tells the held player's machine; poses stream at 20 Hz. All of it lives in this plugin
 because each plugin carries its own copy of ror2-common, so they cannot share message state.
 
-Not done: the held player is full size (a 1.6 m fighter dangles at Mario's chest, clipping him; the plan
-is to shrink him to hand size, which needs a per-draw scale in `ModelView` and each driver passing it);
-Olimar needs no shrink. Never played, never run on two machines.
+A held Mario is picked up by the seat of his pants: the fire hop's flailing clip (`firejmp`), looped and
+animated, with no fire yell, flames or damage (libsms `Status::Carried`, `sms_sim_set_carried`, ABI 38). The
+pose is a recorded frame op (network protocol 8), so every player sees it. He is pinned to Mario's hands by
+teleporting his sim there each step; released or thrown he falls and lands. Olimar and the Melee fighters
+have no such pose: they dangle in their own animation at full size (Olimar is small; a Melee fighter clips
+Mario's chest), so a hurt or flail clip per fighter is the next step if it looks wrong.
+
+Never played, never run on two machines.

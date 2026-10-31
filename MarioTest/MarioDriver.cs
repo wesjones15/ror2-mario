@@ -117,6 +117,17 @@ namespace MarioTest
         }
 
         internal CharacterBody Body => body;
+
+        // Another Mario holds him (MarioCarry): the seat-of-the-pants pose is asked for here and applied in
+        // the next step (so the other players' puppets get it), and the sim is put where the hands are.
+        byte carriedRequest;
+        Vector3? carriedFeet;
+        internal void SetCarried(bool on)
+        {
+            carriedRequest = (byte)(on ? 1 : 2);
+            if (!on) carriedFeet = null;
+        }
+        internal void CarriedFeet(Vector3 feet) => carriedFeet = feet;
         /// The teammate he held broke free (or the server refused him): his hands come down, and he stumbles
         /// back from the one who got away.
         internal void LetGo(CharacterBody from)
@@ -245,6 +256,18 @@ namespace MarioTest
                 if (Local) MarioCorpse.End();
             }
             driving = true;
+            if (carriedRequest != 0)
+            {
+                SimOps.SetCarried(sim, carriedRequest == 1);
+                carriedRequest = 0;
+            }
+            if (carriedFeet.HasValue)
+            {
+                var held = UnityHost.ToSim(carriedFeet.Value);
+                carriedFeet = null;
+                SimOps.Teleport(sim, ref held);
+                smoother.Reset();
+            }
 
             // Jump pads, knockback, Milky Chrysalis: whatever RoR2 put on the motor since the
             // last step throws Mario (mVel is per 30 Hz frame); a nudge under 2 m/s (a light

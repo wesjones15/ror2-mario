@@ -383,6 +383,7 @@ namespace MarioTest
             CharacterMotor motor;
             InputBankTest input;
             bool isMario;
+            MarioDriver driver;
             Vector3 hand, shown;
             float lastPose;
             bool hasPose, ended;
@@ -394,11 +395,18 @@ namespace MarioTest
                 body = GetComponent<CharacterBody>();
                 motor = GetComponent<CharacterMotor>();
                 input = GetComponent<InputBankTest>();
-                isMario = GetComponent<MarioDriver>();
+                driver = GetComponent<MarioDriver>();
+                isMario = driver;
                 lastPose = Time.time;
             }
 
-            internal void Begin(uint carrier) { lastPose = Time.time; ended = false; }
+            internal void Begin(uint carrier)
+            {
+                lastPose = Time.time;
+                ended = false;
+                // A Mario is held by the seat of his pants: the fire hop's flail, with no yell.
+                if (driver) driver.SetCarried(true);
+            }
 
             internal void Pose(Vector3 h)
             {
@@ -413,6 +421,7 @@ namespace MarioTest
                 if (ended) return;
                 ended = true;
                 Pin(0f);
+                if (driver) driver.SetCarried(false);
                 if (velocity.sqrMagnitude > 0.01f && motor)
                 {
                     motor.velocity = velocity;
@@ -471,6 +480,7 @@ namespace MarioTest
                 if (motor && motor.Motor && motor.Motor.enabled) motor.Motor.SetPosition(target, true);
                 else transform.position = target;
                 if (motor) motor.velocity = Vector3.zero;
+                if (driver) driver.CarriedFeet(target - feetOffset);
             }
         }
     }

@@ -12,7 +12,7 @@ namespace MarioTest
     internal static class Native
     {
         public const string Dll = "sms";
-        public const uint AbiVersion = 37;
+        public const uint AbiVersion = 38;
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern IntPtr sms_heat_new(byte[] dir);
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern void sms_heat_free(IntPtr heat);
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern byte sms_heat_texture(IntPtr heat, out ViewTexture texture, [Out] byte[] rgba, uint capacity);
@@ -404,6 +404,7 @@ namespace MarioTest
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern void sms_view_effect(IntPtr view, byte[] nameUtf8, ref Vec3 pos, float scale);
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern void sms_view_effects_step(IntPtr view, float dt, ref Vec3 right, ref Vec3 up);
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern void sms_sim_let_go(IntPtr sim);
+        [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern void sms_sim_set_carried(IntPtr sim, byte on);
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern IntPtr sms_fw_new();
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern void sms_sim_set_flowers(IntPtr sim, IntPtr fw);
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern void sms_fw_setup(IntPtr fw, byte[] assetsDirUtf8, ref FlowerClips clips);

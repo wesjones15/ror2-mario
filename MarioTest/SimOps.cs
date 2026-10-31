@@ -79,6 +79,13 @@ namespace MarioTest
             return result;
         }
 
+        /// Another Mario holds him (the silent fire-hop flail) or has let go.
+        public static void SetCarried(IntPtr sim, bool on)
+        {
+            Native.sms_sim_set_carried(sim, (byte)(on ? 1 : 0));
+            Rec?.Carried(on);
+        }
+
         public static void SetAim(IntPtr sim, byte on, short yaw, float pitch)
         {
             Native.sms_sim_set_aim(sim, on, yaw, pitch);

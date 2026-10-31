@@ -16,6 +16,7 @@ static class Program
     sealed class Rig : IDisposable
     {
         public IntPtr view, sim;
+        public Native.Vec3 forward = new Native.Vec3(0, 0, 1), up = new Native.Vec3(0, 1, 0);
         public Rig(float y = 0)
         {
             var dir = NativeLib.CString(assets); var pos = new Native.Vec3(0, y, 0);
@@ -25,7 +26,7 @@ static class Program
         }
         public void Frame(float dt)
         {
-            var frame = new Native.ViewFrame { dt = dt, forward = new Native.Vec3(0, 0, 1), up = new Native.Vec3(0, 1, 0) };
+            var frame = new Native.ViewFrame { dt = dt, forward = forward, up = up };
             Native.sms_view_update(view, sim, ref frame);
         }
         public void Step(Native.Pad pad, int ticks)
@@ -104,12 +105,20 @@ static class Program
         }
         using (var water = new Rig())
         {
+            // Gameplay ships the exact droplets; exercise the opt-in merged surface from across
+            // the stream (looking down its axis deliberately keeps the droplets).
+            water.forward = new Native.Vec3(-1, 0, 0);
+            Native.sms_view_set_water_cohesive(water.view, 1);
             water.Step(new Native.Pad { r_analog = 255 }, 60);
             Check(Native.sms_view_water_info(water.view, out var waterInfo) != 0, "water mesh info missing");
             uint streamQuads = Native.sms_view_water_stream_quads(water.view);
             Check(streamQuads > 0 && streamQuads <= waterInfo.drop_quads, "cohesive stream partition did not cross the native boundary");
             Native.sms_view_water_vertices(water.view, out uint waterVertices);
             Check(waterVertices == 4 * (waterInfo.drop_quads + waterInfo.splash_quads + waterInfo.wet_quads), "cohesive mesh violated quad layout");
+            Native.sms_view_set_water_cohesive(water.view, 0);
+            water.Step(new Native.Pad(), 2);
+            Native.sms_view_water_info(water.view, out waterInfo);
+            Check(Native.sms_view_water_stream_quads(water.view) == 0, "separate droplets still used the merged surface");
             var a = new Native.Vec3(0, 100, 0);
             var b = new Native.Vec3(0, 100, 500);
             Check(Native.sms_sim_water_touches_segment(water.sim, ref a, ref b, 1000) != 0, "spray did not expose real water contacts");

@@ -10,27 +10,26 @@ namespace MarioTest
     // FLUDD's water in the scene: libsms's droplets and splashes (sms_view_water_*), rebuilt
     // every frame as one world-space mesh of camera-facing quads. The game melts overlapping
     // drops into one body that bends what's behind it and mixes in a little of its tint
-    // (`drawRefracAndSpec`, 0.35). Rust merges type-0 airborne coverage from the exact
-    // watermask into one surface; its UVs describe the combined slope for matDistortion,
-    // with vertex alpha controlling the contour. Other drops retain the original mask.
-    // Splashes are the disc's sprite, fading. Unlit via the shared Cloud Remap material.
+    // (`drawRefracAndSpec`, 0.35). The native CPU merge is opt-in and left off here: in play it
+    // flattened into one card head-on and tore while moving, so gameplay keeps the exact
+    // droplets (and their mask, stretch and per-drop accumulation). Splashes are the disc's
+    // sprite, fading. Unlit via the shared Cloud Remap material.
     internal sealed class MarioWater : IDisposable
     {
         readonly GameObject go;
         readonly Mesh mesh;
-        readonly Material drops, splashes, wetness, refraction, stream, streamRefraction;
+        readonly Material drops, splashes, wetness, refraction;
         readonly Texture2D dropTex, splashTex;
         readonly List<Vector3> verts = new List<Vector3>();
         readonly List<Vector2> uvs = new List<Vector2>();
         readonly List<Color> colors = new List<Color>();
         readonly List<int> dropTris = new List<int>(), splashTris = new List<int>();
         readonly List<int> wetTris = new List<int>();
-        readonly List<int> streamTris = new List<int>();
         static readonly List<int> none = new List<int>();
         bool portraitTint;
 
         MarioWater(GameObject go, Mesh mesh, Material drops, Material splashes, Material wetness, Material refraction,
-            Texture2D dropTex, Texture2D splashTex, Material stream, Material streamRefraction)
+            Texture2D dropTex, Texture2D splashTex)
         {
             this.go = go;
             this.mesh = mesh;
@@ -40,8 +39,6 @@ namespace MarioTest
             this.refraction = refraction;
             this.dropTex = dropTex;
             this.splashTex = splashTex;
-            this.stream = stream;
-            this.streamRefraction = streamRefraction;
         }
 
         /// Null (and says why) without RoR2's Cloud Remap shader.
@@ -65,25 +62,19 @@ namespace MarioTest
             wetness.renderQueue = 2998;
             wetness.SetColor("_TintColor", new Color(0f, 0f, 0f, Mathf.Clamp01(Plugin.GroundWetness.Value)));
             var refraction = Plugin.WaterRefraction.Value > 0f ? Refraction("Mario water refraction") : null;
-            // ModelWaterManager::drawSilhouette sums coverage before shading. Rust gives
-            // one surface, with continuous sphere UVs and its coverage in vertex alpha.
-            var stream = Shaders.SeeThrough("Mario cohesive stream", Texture2D.whiteTexture, false, true);
-            stream.renderQueue = 3001;
-            var streamRefraction = refraction ? new Material(refraction) { name = "Mario cohesive stream refraction" } : null;
-            if (streamRefraction) streamRefraction.SetTexture("_MaskTex", Texture2D.whiteTexture);
             var go = new GameObject("Mario water");
             if (parent) go.transform.SetParent(parent, false);
             else UnityEngine.Object.DontDestroyOnLoad(go);
-            var mesh = new Mesh { name = "Mario water", indexFormat = IndexFormat.UInt32 };
+            var mesh = new Mesh { name = "Mario water" };
             mesh.MarkDynamic();
-            mesh.subMeshCount = refraction ? 6 : 4;
+            mesh.subMeshCount = refraction ? 4 : 3;
             go.AddComponent<MeshFilter>().sharedMesh = mesh;
             var r = go.AddComponent<MeshRenderer>();
             r.shadowCastingMode = ShadowCastingMode.Off;
             r.receiveShadows = false;
-            r.sharedMaterials = refraction ? new[] { drops, splashes, wetness, stream, refraction, streamRefraction } : new[] { drops, splashes, wetness, stream };
+            r.sharedMaterials = refraction ? new[] { drops, splashes, wetness, refraction } : new[] { drops, splashes, wetness };
             go.SetActive(false);
-            return new MarioWater(go, mesh, drops, splashes, wetness, refraction, dropTex, splashTex, stream, streamRefraction);
+            return new MarioWater(go, mesh, drops, splashes, wetness, refraction, dropTex, splashTex);
         }
 
         // Addressables' public key differs from the asset's internal Distortion/ directory.
@@ -143,7 +134,6 @@ namespace MarioTest
             var v = (Native.WaterVertex*)Native.sms_view_water_vertices(view, out uint count);
             uint waterQuads = info.drop_quads + info.splash_quads;
             uint quads = waterQuads + info.wet_quads;
-            uint streamQuads = Math.Min(info.drop_quads, Native.sms_view_water_stream_quads(view));
             if (v == null || quads == 0 || count < quads * 4) { Hide(); return; }
 
             verts.Clear();
@@ -152,7 +142,6 @@ namespace MarioTest
             dropTris.Clear();
             splashTris.Clear();
             wetTris.Clear();
-            streamTris.Clear();
             for (uint q = 0; q < quads; q++)
             {
                 int b = verts.Count;
@@ -163,8 +152,7 @@ namespace MarioTest
                     uvs.Add(new Vector2(w.u, w.v));
                     colors.Add(new Color(1f, 1f, 1f, w.alpha));
                 }
-                var tris = q < info.drop_quads - streamQuads ? dropTris : q < info.drop_quads ? streamTris
-                    : q < waterQuads ? splashTris : wetTris;
+                var tris = q < info.drop_quads ? dropTris : q < waterQuads ? splashTris : wetTris;
                 tris.Add(b); tris.Add(b + 1); tris.Add(b + 2);
                 tris.Add(b); tris.Add(b + 2); tris.Add(b + 3);
             }
@@ -172,17 +160,12 @@ namespace MarioTest
             mesh.SetVertices(verts);
             mesh.SetUVs(0, uvs);
             mesh.SetColors(colors);
-            mesh.subMeshCount = refraction ? 6 : 4;
+            mesh.subMeshCount = refraction ? 4 : 3;
             mesh.SetTriangles(dropTris, 0, false);
             mesh.SetTriangles(splashTris, 1, false);
             mesh.SetTriangles(wetTris, 2, false);
-            mesh.SetTriangles(streamTris, 3, false);
             // Water bends what's behind it; Yoshi's juice is near solid and doesn't.
-            if (refraction)
-            {
-                mesh.SetTriangles(info.a > 0.5f ? none : dropTris, 4, false);
-                mesh.SetTriangles(info.a > 0.5f ? none : streamTris, 5, false);
-            }
+            if (refraction) mesh.SetTriangles(info.a > 0.5f ? none : dropTris, 3, false);
             mesh.RecalculateBounds();
 
             // The game mixes a little of its tint into what's behind the water (0.35) and shows
@@ -190,8 +173,6 @@ namespace MarioTest
             float a = info.a > 0.5f ? 0.9f : portraitTint ? info.a : Mathf.Clamp01(Plugin.WaterOpacity.Value);
             drops.SetFloat("_AlphaBoost", info.a > 0.5f || portraitTint ? 1f : Shaders.SurfaceTintOpacity);
             drops.SetColor("_TintColor", new Color(info.r, info.g, info.b, a));
-            // One surface takes the tint once, without the per-droplet opacity reduction.
-            stream.SetColor("_TintColor", new Color(info.r, info.g, info.b, a));
             wetness.SetColor("_TintColor", new Color(0f, 0f, 0f, Mathf.Clamp01(Plugin.GroundWetness.Value)));
             if (!go.activeSelf) go.SetActive(true);
         }
@@ -224,8 +205,6 @@ namespace MarioTest
             if (splashes) UnityEngine.Object.Destroy(splashes);
             if (wetness) UnityEngine.Object.Destroy(wetness);
             if (refraction) UnityEngine.Object.Destroy(refraction);
-            if (stream) UnityEngine.Object.Destroy(stream);
-            if (streamRefraction) UnityEngine.Object.Destroy(streamRefraction);
             if (dropTex) UnityEngine.Object.Destroy(dropTex);
             if (splashTex) UnityEngine.Object.Destroy(splashTex);
         }

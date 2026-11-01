@@ -240,7 +240,7 @@ namespace MarioTest
         public void Teleport(Native.Vec3 pos) => Native.sms_sim_teleport(sim, ref pos);
         public void Tuning(in Native.Tuning tuning) { var t = tuning; Native.sms_sim_set_tuning(sim, ref t); }
         public void Refill() => Native.sms_sim_refill(sim);
-        public void SelectNozzle(byte slot) => Native.sms_sim_select_nozzle(sim, slot);
+        public void SelectNozzle(byte slot) => Native.sms_sim_switch_nozzle(sim, slot);
         public void EquipNozzle(byte slot) => Native.sms_sim_equip_nozzle(sim, slot);
         public void SyncNozzle(byte slot)
         {

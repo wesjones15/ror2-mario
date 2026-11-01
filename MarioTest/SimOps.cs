@@ -31,7 +31,7 @@ namespace MarioTest
 
         public static void SelectNozzle(IntPtr sim, uint slot)
         {
-            Native.sms_sim_select_nozzle(sim, slot);
+            Native.sms_sim_switch_nozzle(sim, slot);
             Rec?.SelectNozzle((byte)slot);
         }
 

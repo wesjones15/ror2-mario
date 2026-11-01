@@ -378,6 +378,7 @@ namespace MarioTest
         /// Fits FLUDD's nozzle at once (0 no FLUDD, 1 Spray, 2 Hover, 3 Rocket, 4 Turbo); fitting
         /// one while FLUDD is off gives it back. 0 for an unknown slot.
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern byte sms_sim_select_nozzle(IntPtr sim, uint slot);
+        [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern byte sms_sim_switch_nozzle(IntPtr sim, uint slot);
         /// Fits the radial menu's choice with Sunshine's nozzle-box pickup (sparkle and sounds).
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern byte sms_sim_equip_nozzle(IntPtr sim, uint slot);
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern void sms_sim_set_limits(IntPtr sim, ref Limits limits);
@@ -546,6 +547,7 @@ namespace MarioTest
                 sms_sim_wet(IntPtr.Zero);
                 sms_sim_set_flight_camera(IntPtr.Zero, 0, 0, 0f);
                 sms_sim_equip_nozzle(IntPtr.Zero, 0);
+                sms_sim_switch_nozzle(IntPtr.Zero, 0);
                 sms_view_water_stream_quads(IntPtr.Zero);
                 sms_view_set_water_cohesive(IntPtr.Zero, 0);
             }

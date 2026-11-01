@@ -68,7 +68,7 @@ button does nothing; Sunshine's B dive and every other control are unchanged.
 The selection is a host operation (`SimOps.SelectNozzle` for the silent quick swap,
 `SimOps.EquipNozzle` for the wheel), so it is recorded in the same
 multiplayer frame as the step; the owner's Melee clip and frame travel in that frame stream too,
-so puppets pose Sunshine identically. Network protocol 11 and native ABI 41 are required on every
+so puppets pose Sunshine identically. Network protocol 12 and native ABI 41 are required on every
 peer.
 
 ## Adding an ability

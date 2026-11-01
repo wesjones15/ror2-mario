@@ -242,6 +242,14 @@ namespace MarioTest
         public void Refill() => Native.sms_sim_refill(sim);
         public void SelectNozzle(byte slot) => Native.sms_sim_select_nozzle(sim, slot);
         public void EquipNozzle(byte slot) => Native.sms_sim_equip_nozzle(sim, slot);
+        public void SyncNozzle(byte slot)
+        {
+            // Re-fitting an already correct nozzle resets its charging/emission
+            // state. Periodic refreshes must leave an existing puppet's spray alone.
+            if (Native.sms_sim_state(sim, out var current) != 0
+                && MarioNozzleChoices.FromState(current).NativeSlot() != slot)
+                Native.sms_sim_select_nozzle(sim, slot);
+        }
         public void AddWater(float share) => Native.sms_sim_add_water(sim, share);
         public void Limits(in Native.Limits limits) { var l = limits; Native.sms_sim_set_limits(sim, ref l); }
         public void BoostJump(float factor) => Native.sms_sim_boost_jump(sim, factor);

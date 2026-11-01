@@ -518,7 +518,7 @@ namespace MarioTest
             GummyClones = Config.Bind("Look", "GummyClones", true,
                 "Marios no player controls (Goobo Jr.'s clone) are drawn in RoR2's gummy clone " +
                 "material. Off: Commando's model.");
-            ItemDisplays = Config.Bind("Look", "ItemDisplays", true,
+            ItemDisplays = Config.Bind("Look", "ItemDisplays", false,
                 "Draw RoR2's cosmetic item displays on Mario: glasses, syringes, crowns and the rest " +
                 "follow the drawn body (Mario, Luigi, Piantissimo or Yoshi) instead of being hidden " +
                 "with Commando. Off: hidden, as before.");

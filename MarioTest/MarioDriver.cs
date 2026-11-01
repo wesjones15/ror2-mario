@@ -585,6 +585,8 @@ namespace MarioTest
             }
             recorder.Begin();
             SimOps.Rec = recorder;
+            if (Native.sms_sim_state(sim, out var current) != 0)
+                recorder.Nozzle((byte)MarioNozzleChoices.FromState(current).NativeSlot());
         }
 
         void EndRecording(in Native.State st)

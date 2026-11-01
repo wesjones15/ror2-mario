@@ -5,39 +5,6 @@ using UnityEngine;
 
 namespace MarioTest
 {
-    // The nozzle a radial segment fits. `None` takes FLUDD away; the native slots are 0 for
-    // none, then 1..4. MarioRadial's constructor sets the order the segments sit in.
-    internal enum MarioNozzleChoice
-    {
-        Spray = 0,
-        Hover = 1,
-        Rocket = 2,
-        Turbo = 3,
-        None = 4,
-    }
-
-    internal static class MarioNozzleChoices
-    {
-        /// The slot `sms_sim_select_nozzle` takes.
-        public static uint NativeSlot(this MarioNozzleChoice choice) =>
-            choice == MarioNozzleChoice.None ? 0u : (uint)choice + 1u;
-
-        /// The choice the sim's state shows (Native.State.nozzle: 0 none, 1 Spray, 5 Hover,
-        /// 2 Rocket, 6 Turbo).
-        public static MarioNozzleChoice FromState(in Native.State state)
-        {
-            if (state.has_fludd == 0) return MarioNozzleChoice.None;
-            switch (state.nozzle)
-            {
-                case 1: return MarioNozzleChoice.Spray;
-                case 5: return MarioNozzleChoice.Hover;
-                case 2: return MarioNozzleChoice.Rocket;
-                case 6: return MarioNozzleChoice.Turbo;
-                default: return MarioNozzleChoice.None;
-            }
-        }
-    }
-
     // One segment of the radial menu. Nozzle entries are built in; other abilities can be
     // appended with MarioRadial.RegisterAbility, which is how the menu grows.
     internal sealed class MarioRadialEntry

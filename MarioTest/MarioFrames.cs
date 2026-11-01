@@ -18,7 +18,7 @@ namespace MarioTest
         Teleport = 1, Tuning = 2, Refill = 3, AddWater = 4, Limits = 5, BoostJump = 6, Launch = 7,
         LaunchPad = 8, KnockDown = 9, SetAim = 10, Down = 11, Step = 12, ShineGet = 13, ShineEnd = 14,
         ForeignWet = 15, Ignite = 16, SelectNozzle = 17, Melee = 18, Soaked = 19, Carried = 20, WaterImpact = 21, FlightCamera = 22,
-        EquipNozzle = 23,
+        EquipNozzle = 23, SyncNozzle = 24,
     }
 
     /// What replaying a frame does to a sim; MarioPuppet's implementation calls libsms.
@@ -31,6 +31,8 @@ namespace MarioTest
         void SelectNozzle(byte slot);
         /// Fit the radial menu's choice, with its nozzle-box pickup feedback.
         void EquipNozzle(byte slot);
+        /// Restore current equipment for a late join, silently and only if different.
+        void SyncNozzle(byte slot);
         void AddWater(float share);
         void Limits(in Native.Limits limits);
         void BoostJump(float factor);
@@ -67,7 +69,7 @@ namespace MarioTest
     internal static class FrameCodec
     {
         /// Bumped whenever the wire format changes; a batch with another number is ignored.
-        public const byte Protocol = 11;
+        public const byte Protocol = 12;
 
         static void Vec(ByteWriter w, Native.Vec3 v) { w.F32(v.x); w.F32(v.y); w.F32(v.z); }
         static Native.Vec3 Vec(ByteReader r) => new Native.Vec3(r.F32(), r.F32(), r.F32());
@@ -77,6 +79,7 @@ namespace MarioTest
         public static void WriteRefill(ByteWriter w) => w.U8((byte)Op.Refill);
         public static void WriteSelectNozzle(ByteWriter w, byte slot) { w.U8((byte)Op.SelectNozzle); w.U8(slot); }
         public static void WriteEquipNozzle(ByteWriter w, byte slot) { w.U8((byte)Op.EquipNozzle); w.U8(slot); }
+        public static void WriteSyncNozzle(ByteWriter w, byte slot) { w.U8((byte)Op.SyncNozzle); w.U8(slot); }
         public static void WriteAddWater(ByteWriter w, float share) { w.U8((byte)Op.AddWater); w.F32(share); }
         public static void WriteLimits(ByteWriter w, in Native.Limits l) { w.U8((byte)Op.Limits); w.Struct(l); }
         public static void WriteBoostJump(ByteWriter w, float f) { w.U8((byte)Op.BoostJump); w.F32(f); }
@@ -116,6 +119,7 @@ namespace MarioTest
                     case Op.Refill: sink.Refill(); break;
                     case Op.SelectNozzle: sink.SelectNozzle(r.U8()); break;
                     case Op.EquipNozzle: sink.EquipNozzle(r.U8()); break;
+                    case Op.SyncNozzle: { byte slot = r.U8(); if (r.Failed || slot > 4) return false; sink.SyncNozzle(slot); break; }
                     case Op.AddWater: sink.AddWater(r.F32()); break;
                     case Op.Limits: { var l = r.Struct<Native.Limits>(); if (!r.Failed) sink.Limits(l); break; }
                     case Op.BoostJump: sink.BoostJump(r.F32()); break;
@@ -227,6 +231,8 @@ namespace MarioTest
         readonly List<Frame> batch = new List<Frame>();
         uint seq;
         bool haveLimits, haveAim, haveWet, lastWet;
+        bool haveNozzle;
+        byte lastNozzle;
         Native.Limits lastLimits;
         bool lastAimOn;
         short lastAimYaw;
@@ -237,9 +243,19 @@ namespace MarioTest
 
         public void Begin() => ops.Clear();
 
-        /// Forget what the puppet has, so tuning, limits and aim are all sent again (a
+        /// Forget what the puppet has, so limits, aim, wet state and equipment are sent again (a
         /// periodic refresh covers a puppet that joined late).
-        public void Refresh() => haveLimits = haveAim = haveWet = false;
+        public void Refresh() => haveLimits = haveAim = haveWet = haveNozzle = false;
+
+        /// Equipment is state as well as a one-time selection. Repeat it on a
+        /// refresh so a newly created puppet need not have seen the original equip.
+        public void Nozzle(byte slot)
+        {
+            if (haveNozzle && slot == lastNozzle) return;
+            haveNozzle = true;
+            lastNozzle = slot;
+            FrameCodec.WriteSyncNozzle(ops, slot);
+        }
 
         public void Teleport(Native.Vec3 p) => FrameCodec.WriteTeleport(ops, p);
         public void Tuning(in Native.Tuning t) => FrameCodec.WriteTuning(ops, t);

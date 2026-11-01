@@ -16,9 +16,14 @@ Source identity, labelled side/head-on/moving viewer proof, headless checks and
 host approximation limits: `libsms/docs/fludd-stream-flight.md`.
 
 Install the matching **ABI 41** `sms.dll` and `MarioTest.dll` together.
-Flight-camera replay uses **network protocol 11**.
+Flight-camera and equipment replay use **network protocol 12**.
 ABI 41 adds `sms_sim_equip_nozzle` (the radial menu's pickup feedback) beside the
 silent quick-swap `sms_sim_select_nozzle`; the frame stream gains its own equip
 operation.
+The current fitted nozzle is also sent silently when it changes and in each
+periodic refresh (about three seconds), including No FLUDD. A late joiner no
+longer needs the original wheel-selection packet to use the correct nozzle.
+Existing puppets skip fitting an already correct nozzle so a refresh does not
+reset charging or spraying; it never replays the nozzle-box pickup feedback.
 The merged water surface was played and rejected; the restored droplet path is
 **not yet re-played**.

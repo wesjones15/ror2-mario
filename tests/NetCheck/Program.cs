@@ -14,6 +14,7 @@ static class Program
         public void Refill() => calls.Add("refill");
         public void SelectNozzle(byte slot) => calls.Add($"nozzle {slot}");
         public void EquipNozzle(byte slot) => calls.Add($"equip {slot}");
+        public void SyncNozzle(byte slot) => calls.Add($"sync nozzle {slot}");
         public void AddWater(float s) => calls.Add($"water {s}");
         public void Limits(in Native.Limits l) => calls.Add($"limits {l.air_extra},{l.wet_slide_seconds}");
         public void BoostJump(float f) => calls.Add($"boost {f}");
@@ -220,5 +221,37 @@ static class Program
         log.calls.Clear();
         Check(FrameCodec.Replay(new Frame { ops = flight.ToArray() }, log)
             && log.calls.Count == 1 && log.calls[0] == "flight True,-2500,0.25", "corkscrew camera replay preserves yaw and pitch");
+
+        // A player joins after the original selection packet. The next refresh
+        // must restore every fitted mode, including No FLUDD, without pickup FX.
+        byte[] kinds = { 0, 1, 5, 2, 6 };
+        for (byte slot = 0; slot <= 4; slot++)
+        {
+            var state = new Native.State { has_fludd = (byte)(slot == 0 ? 0 : 1), nozzle = kinds[slot] };
+            byte fitted = (byte)MarioNozzleChoices.FromState(state).NativeSlot();
+            Check(fitted == slot, "Sunshine nozzle kind maps to the wire slot");
+            var equipment = new FrameRecorder();
+            equipment.Begin(); equipment.Nozzle(fitted); equipment.EquipNozzle(fitted); equipment.End(default);
+            equipment.Take(77, false); // Original equip happened before this peer joined.
+            equipment.Begin(); equipment.Nozzle(fitted); equipment.End(default);
+            var silent = new List<Frame>();
+            Check(FrameCodec.ReadBatch(new ByteReader(equipment.Take(77, false)), out _, out _, silent, out _) == FrameCodec.BatchStatus.Ok,
+                "unchanged equipment batch decodes");
+            log.calls.Clear(); Check(FrameCodec.Replay(silent[0], log) && log.calls.Count == 0, "unchanged equipment is deduped");
+            equipment.Refresh();
+            equipment.Begin(); equipment.Nozzle(fitted); equipment.End(default);
+            var refresh = new List<Frame>();
+            Check(FrameCodec.ReadBatch(new ByteReader(equipment.Take(77, false)), out _, out _, refresh, out _) == FrameCodec.BatchStatus.Ok,
+                "late-join refresh decodes");
+            log.calls.Clear();
+            Check(FrameCodec.Replay(refresh[0], log) && log.calls.Count == 1 && log.calls[0] == $"sync nozzle {slot}",
+                "late join restores the fitted mode without replaying the pickup");
+        }
+        foreach (var invalid in new[] { new byte[] { (byte)Op.SyncNozzle }, new byte[] { (byte)Op.SyncNozzle, 5 } })
+        {
+            log.calls.Clear();
+            Check(!FrameCodec.Replay(new Frame { ops = invalid }, log) && log.calls.Count == 0, "invalid nozzle sync never reaches the sim");
+        }
+        Console.WriteLine("PASS: late-join refresh restores all five FLUDD modes silently; invalid sync packets are rejected");
     }
 }

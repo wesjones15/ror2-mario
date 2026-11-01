@@ -8,6 +8,7 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="../../MarioTest/MarioFrames.cs" Link="MarioFrames.cs" />
+    <Compile Include="../../MarioTest/MarioNozzleChoices.cs" Link="MarioNozzleChoices.cs" />
     <Compile Include="../../MarioTest/Native.cs" Link="Native.cs" />
     <Compile Include="../../../ror2-common/src/ByteIO.cs" Link="ByteIO.cs" />
     <Compile Include="../../../ror2-common/src/NativeLib.cs" Link="NativeLib.cs" />

@@ -779,9 +779,11 @@ namespace MarioTest
             if (DrawModel.Value)
             {
                 DisplayModel.Attach(display, Guid, MarioDisplay.Get);
-                Portrait.Request(body, MarioDisplay.Get, framing: PortraitFraming.ThreeQuarter);
+                Portrait.Request(body, () => MarioDisplay.Get(MarioSkin.Mario), framing: PortraitFraming.ThreeQuarter,
+                    assetsDir: () => AssetsDir);
                 // Luigi's alt-skin (gated on the Melee cache): its SkinDef and rendered portrait.
                 MarioSkin.Register(body, pack);
+                MarioSkillIcons.RequestSkins(body);
                 DisplayModel.BindSkins(display, body);
             }
 
@@ -843,9 +845,9 @@ namespace MarioTest
             lang.SetStringByToken("MARIOTEST_BODY_DESCRIPTION",
                 "Mario came for a vacation, but trouble follows him everywhere. This time he has FLUDD, a high-pressure " +
                 "water pack that sprays, hovers, rockets and turbo-dashes him out of any jam.\n\n" +
-                "< ! > Blast enemies with FLUDD's four nozzles: Spray, Hover, Rocket and Turbo.\n" +
-                "< ! > Stomp, dive and ground pound for heavy hits, and bounce higher with every stomp in a row.\n" +
-                "< ! > Belly slide across wet ground to dodge danger or ram straight through it.\n" +
+                "< ! > Blast enemies with FLUDD's four nozzles: Spray, Hover, Rocket and Turbo.\n\n" +
+                "< ! > Stomp, dive and ground pound for heavy hits, and bounce higher with every stomp in a row.\n\n" +
+                "< ! > Belly slide across wet ground to dodge danger or ram straight through it.\n\n" +
                 "< ! > Collect the coins enemies drop to heal.");
             MarioSkills.Tokens(lang);
             MarioSkin.Tokens(lang);

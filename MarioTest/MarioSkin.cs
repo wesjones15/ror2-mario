@@ -260,7 +260,7 @@ namespace MarioTest
                 {
                     s.Portrait = tex;
                     s.Def.icon = Sprite(tex);
-                }, framing: PortraitFraming.ThreeQuarter);
+                }, framing: PortraitFraming.ThreeQuarter, assetsDir: () => Plugin.AssetsDir, cacheKey: s.Name);
             }
         }
 

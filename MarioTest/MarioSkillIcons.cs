@@ -1,5 +1,6 @@
 using System;
 using System.Runtime.InteropServices;
+using RoR2;
 using Ror2Common;
 using UnityEngine;
 
@@ -14,10 +15,32 @@ namespace MarioTest
 
         public static void RequestAll()
         {
-            SkillCard.Request(MarioSkills.Fludd, "MarioFludd", () => Plugin.AssetsReady, Fludd, () => Plugin.AssetsDir);
+            SkillCard.Request(MarioSkills.Fludd, "MarioFludd", () => Plugin.AssetsReady, () => Fludd(MarioSkin.Mario), () => Plugin.AssetsDir);
             SkillCard.Request(MarioSkills.Air, "MarioAirFludd", () => Plugin.AssetsReady, Air, () => Plugin.AssetsDir);
-            SkillCard.Request(MarioSkills.Pound, "MarioGroundPound", () => Plugin.AssetsReady, Pound, () => Plugin.AssetsDir);
-            SkillCard.Request(MarioSkills.Slide, "MarioWetSlide", () => Plugin.AssetsReady, Slide, () => Plugin.AssetsDir);
+            SkillCard.Request(MarioSkills.Pound, "MarioGroundPound", () => Plugin.AssetsReady, () => Pound(MarioSkin.Mario), () => Plugin.AssetsDir);
+            SkillCard.Request(MarioSkills.Slide, "MarioWetSlide", () => Plugin.AssetsReady, () => Slide(MarioSkin.Mario), () => Plugin.AssetsDir);
+        }
+
+        public static void RequestSkins(GameObject body)
+        {
+            var skins = body.GetComponent<ModelLocator>()?.modelTransform?.GetComponent<ModelSkinController>()?.skins;
+            if (skins == null) return;
+            foreach (var spec in MarioSkin.Specs)
+            {
+                int index = Array.IndexOf(skins, spec.Def);
+                if (!spec.Def || index < 0) continue;
+                uint skinIndex = (uint)index, nativeSkin = spec.Id;
+                SkinPresentation.Register(body, skinIndex, spec.Token);
+                if (nativeSkin == MarioSkin.Mario) continue;
+                void Queue(RoR2.Skills.SkillDef skill, Func<uint, SkillCardStage> build)
+                    => SkillCard.Request(sprite => SkinPresentation.SetIcon(body, skinIndex, skill, sprite),
+                        skill.skillName + "_" + spec.Name, () => Plugin.AssetsReady,
+                        () => build(nativeSkin), () => Plugin.AssetsDir);
+                Queue(MarioSkills.Fludd, Fludd);
+                Queue(MarioSkills.Pound, Pound);
+                Queue(MarioSkills.Slide, Slide);
+                // Air shows only the three nozzles, so its artwork is shared by every skin.
+            }
         }
 
         static byte Ground(IntPtr user, ref Native.Vec3 pos, out Native.GroundHit hit)
@@ -26,10 +49,10 @@ namespace MarioTest
             return 1;
         }
 
-        static SkillCardStage Fludd()
+        static SkillCardStage Fludd(uint skin)
         {
             var card = Card("Mario FLUDD", new Color(0.06f, 0.26f, 0.56f), 0.95f, 0.08f, 1.05f);
-            var mario = new Pose(card, Vector3.zero, true);
+            var mario = new Pose(card, Vector3.zero, true, skin);
             mario.SetEffectOpacity(0.7f);
             mario.Step(new Native.Pad { r = 1, r_analog = 255 }, 90);
             card.Center = mario.At(0.18f, 1.5f, 0f);
@@ -49,10 +72,10 @@ namespace MarioTest
             return card;
         }
 
-        static SkillCardStage Pound()
+        static SkillCardStage Pound(uint skin)
         {
             var card = Card("Mario Ground Pound", new Color32(116, 70, 158, 255), 0.65f, 0.12f, 1.7f);
-            var mario = new Pose(card, new Vector3(0f, 200f, 0f));
+            var mario = new Pose(card, new Vector3(0f, 200f, 0f), skin: skin);
             // MarioParticle.cpp emitBlurHipDropSuper: ms_m_sphipd_a..d (0x11A..D).
             // Actually fall, so this is the airborne flame, never repeated landing bursts.
             mario.SetPortrait(1, 1, 22f, 3, 1, false);
@@ -62,10 +85,10 @@ namespace MarioTest
             return card;
         }
 
-        static SkillCardStage Slide()
+        static SkillCardStage Slide(uint skin)
         {
             var card = Card("Mario Wet Slide", new Color(0.06f, 0.30f, 0.13f), -0.785f, 0.42f, 3f);
-            var mario = new Pose(card, Vector3.zero);
+            var mario = new Pose(card, Vector3.zero, skin: skin);
             mario.SetEffectOpacity(0.7f);
             // Use the real sim's slide momentum and the existing gameplay tuning/effects.
             // MarioParticle.cpp frontSlipEffect: 0x1EA ribbon + 0x112 / 0x113 spray.
@@ -111,7 +134,7 @@ namespace MarioTest
             public IntPtr Sim { get; }
             public bool NozzleGroup;
 
-            public Pose(SkillCardStage card, Vector3 at, bool withWater = false)
+            public Pose(SkillCardStage card, Vector3 at, bool withWater = false, uint skin = MarioSkin.Mario)
             {
                 var dir = NativeLib.CString(Plugin.AssetsDir);
                 view = Native.sms_view_new(dir, 0);
@@ -123,6 +146,11 @@ namespace MarioTest
                     throw new InvalidOperationException("Mario's portrait sim didn't load");
                 }
                 Native.sms_sim_refill(Sim);
+                // Use the exact gameplay skin loader before reading its model table:
+                // 0 Mario, 1 Luigi, 2 Il Piantissimo (monteman), 3 Yoshi. No generic Pianta.
+                if (!MarioSkin.Load(view, skin)) { Dispose(); throw new InvalidOperationException("Portrait skin unavailable: " + skin); }
+                MarioSkin.Apply(view, skin);
+                MarioSkin.ApplySim(Sim, skin);
                 models = ModelView.Create(new SmsViewSource(view), "Mario skill portrait", card.Root);
                 fx = MarioFx.Create(view, card.Root);
                 water = withWater ? MarioWater.Create(view, card.Root) : null;

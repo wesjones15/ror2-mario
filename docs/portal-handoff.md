@@ -37,6 +37,29 @@ This changes host camera ownership/parameters. The native entrance animation,
 `05_gate01.bmd/.btk/.brk`, statue, particles and slope-safe exit cut are unchanged.
 Source clips and derived frames remain local in `../output/mario-start-video*/`.
 
+## Centered player framing
+
+The intro camera now aims through the landing's X/Z from its first frame:
+`(0, 180, 308.53)` in Sunshine units, rather than `(0, 180, 140)`.
+The earlier aim left the final Mario to the side of the optical axis, and adopting
+that shot retained the lateral offset throughout gameplay. Camera placement stays
+fixed; the corrected direction already exists before the exit and is handed off
+unchanged. The landing and camera share `LandingForward` in the host.
+
+The return point is the existing `ENTRANCE_RETURN` in
+`libsms-present/src/entrance.rs`, read from dolpic1's Bianco `MarioPositionObj`.
+`sms-main/src/Player/MarioAutodemo.cpp::TMario::warpOut` selects the existing
+`demo_gate_out_appear_get`, `rolling_get` and `get2` clips. This is a framing
+correction, with no new effect asset: the gate is model `05_gate01`
+(`ModelGate.cpp::loadAfter`), and the existing warp-out particle emitter is cue
+`0x40` (`MarioParticle.cpp::warpOutEffect`, kind 0).
+
+Viewer-first proof: `libsms/crates/viewer/examples/portal_fast.rs` uses
+`ENTRANCE_RETURN.z` for its aim. Local captures are
+`../output/mario-camera-centered/frame_0100.png` (fall/spin) and
+`frame_0149.png` (landing), with a screen-center guide and source labels.
+The host change followed these captures; player-camera adoption is unchanged.
+
 Validation:
 
 - `../ror2-common/tests/CameraPerspectiveCheck`: reconstructs the game's player

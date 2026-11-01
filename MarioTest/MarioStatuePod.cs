@@ -16,6 +16,9 @@ namespace MarioTest
     [DefaultExecutionOrder(200)]
     internal sealed class MarioStatuePod : MonoBehaviour
     {
+        // entrance.rs::ENTRANCE_RETURN: dolpic1 MarioPositionObj's Bianco return,
+        // relative to the gate. Also anchors the camera's aim before control starts.
+        const float LandingForward = 308.53f;
         internal static readonly string[] AssetFiles = { "05_gate01.bmd", "05_gate01.btk", "05_gate01.brk", "plaza.bmd", "scene.bin", "efdokangate.bmd", "manhole.bmd", "monumentshine.bmd", "palmleaf.bmd", "palmnormal.bmd", "ms_gatewind_a.jpa", "ms_gatewind_a2.jpa", "ms_gatewind_a3.jpa", "ms_gatewind_b.jpa" };
         public Transform travel;
         public Vector3 gateLocal;
@@ -103,7 +106,7 @@ namespace MarioTest
             var capsule = body.GetComponent<CapsuleCollider>();
             var feet = capsule ? capsule.transform.TransformPoint(capsule.center - Vector3.up * (capsule.height * .5f)) : body.footPosition;
             var originToFeet = body.transform.position - feet;
-            var landing = seat.exitPosition.position - originToFeet - rotation * Vector3.forward * (308.53f * UnityHost.Scale);
+            var landing = seat.exitPosition.position - originToFeet - rotation * Vector3.forward * (LandingForward * UnityHost.Scale);
             component.gateLocal = travel.InverseTransformPoint(landing);
             // ExitPosition is a sibling of the animated Base bone. Keep the same landing
             // point in the unanimated pod root, independently of InitialSpawn's slanted path.
@@ -156,7 +159,7 @@ namespace MarioTest
             landedExit = seat.exitPosition.position;
             if (body) {
                 origin = landedExit - (body.transform.position - body.footPosition)
-                    - rotation * Vector3.forward * (308.53f * UnityHost.Scale);
+                    - rotation * Vector3.forward * (LandingForward * UnityHost.Scale);
                 exitAligned = true;
             }
             // Travel is an animated pod bone. After impact the custom statue, camera,
@@ -173,7 +176,10 @@ namespace MarioTest
         {
             if (!portalCamera) return;
             portalCamera.position = Origin + Rotation * new Vector3(-5.5f, 3.8f, 11.5f) * (UnityHost.Scale * 100f);
-            portalCamera.rotation = Quaternion.LookRotation(Origin + Rotation * new Vector3(0, 1.8f, 1.4f) * (UnityHost.Scale * 100f) - portalCamera.position);
+            // The handoff retains this entire shot as player framing. Aim through
+            // the landing's X/Z from the start, so it carries no sideways offset
+            // around Mario. Proven in viewer/examples/portal_fast.rs.
+            portalCamera.rotation = Quaternion.LookRotation(Origin + Rotation * new Vector3(0, 180f, LandingForward) * UnityHost.Scale - portalCamera.position);
         }
 
         void Prepare()

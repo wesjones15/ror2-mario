@@ -386,8 +386,8 @@ static class Program
             Check(Sample(1.95f, true, true, true, true), "visible spent portal stopped sampling");
             Native.sms_view_entrance_update(reference, 1.95f, 0, ref camera, out _);
             Check(!Image(view).SequenceEqual(Image(reference)), "portal snapped to swirl immediately after handoff");
-            Check(Sample(5.5f, true, true, true, true), "closing transition stopped sampling");
-            Native.sms_view_entrance_update(reference, 5.5f, 0, ref camera, out _);
+            Check(Sample(4.5f, true, true, true, true), "closing transition stopped sampling");
+            Native.sms_view_entrance_update(reference, 4.5f, 0, ref camera, out _);
             Check(!Image(view).SequenceEqual(Image(reference)), "closing skipped the intermediate BRK frames");
             Check(Sample(6.5f, true, true, true, true), "completed portal stopped sampling");
             Native.sms_view_entrance_update(reference, 6.5f, 0, ref camera, out _);

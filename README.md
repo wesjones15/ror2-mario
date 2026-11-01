@@ -74,7 +74,12 @@ Mario's first-stage pod shows the Sunshine Pianta statue and animated M portal.
 Interact/X opens the Delfino Plaza still, plays the arrival sting and original
 portal-exit sound, then runs the approved 0.8-second particle reveal, wahoo,
 normal-rate spin with a gentle 0.8-second descent, and ordinary jump landing.
-The portal returns to swirling colors; Luigi uses green cap particles and his
+The portal uses Sunshine's `05_gate01.brk` material transition, holds the Plaza
+for three seconds after control returns, then fades to swirling colors at the
+source gate's closing rate (about 1.7 seconds). Player control still returns at
+the original 1.75-second handoff. The first asset preparation rebuilds its v5
+animation cache; the old snap-transition cache is not reused.
+Luigi uses green cap particles and his
 existing pitched voice. The full cap-in-hand Sunshine sequence remains in the
 Rust viewer and original native playback API, but the game uses the short profile.
 Luigi is Mario's alt-skin and is unlocked by holding 2401 coins at one time.

@@ -385,9 +385,15 @@ static class Program
             Check(fx.vertices == 0, "offscreen handoff retained portal exit particles");
             Check(Sample(1.95f, true, true, true, true), "visible spent portal stopped sampling");
             Native.sms_view_entrance_update(reference, 1.95f, 0, ref camera, out _);
-            Check(Image(view).SequenceEqual(Image(reference)), "visible slope-cut portal stayed on Delfino after closing");
+            Check(!Image(view).SequenceEqual(Image(reference)), "portal snapped to swirl immediately after handoff");
+            Check(Sample(5.5f, true, true, true, true), "closing transition stopped sampling");
+            Native.sms_view_entrance_update(reference, 5.5f, 0, ref camera, out _);
+            Check(!Image(view).SequenceEqual(Image(reference)), "closing skipped the intermediate BRK frames");
+            Check(Sample(6.5f, true, true, true, true), "completed portal stopped sampling");
+            Native.sms_view_entrance_update(reference, 6.5f, 0, ref camera, out _);
+            Check(Image(view).SequenceEqual(Image(reference)), "portal did not return to swirling colors after its fade");
             version = Native.sms_view_texture_version(view, texture);
-            for (int i = 1; i <= 300; i++) Check(!Sample(1.95f + i / 60f, true, true, true, false), "hidden spent portal kept sampling");
+            for (int i = 1; i <= 300; i++) Check(!Sample(6.5f + i / 60f, true, true, true, false), "hidden spent portal kept sampling");
             Check(Native.sms_view_texture_version(view, texture) == version, "hidden spent portal changed texture version");
             Check(Sample(31.27f, true, true, true, true) && playback.Time == 31.27f, "spent resume replayed or clamped time");
             Native.sms_view_entrance_update(reference, 31.27f, 0, ref camera, out _);
@@ -439,7 +445,7 @@ static class Program
             Check(luigi ? green > red : red > green, "wrong red/green particle palette for rider");
             bool done = false, particles = false, rider = false;
             uint gateTexture = 0;
-            for (int i = 0; i <= 180; i++) {
+            for (int i = 0; i <= 420; i++) {
                 float time = i / 60f;
                 var result = Native.sms_view_entrance_update(view, time, done ? (byte)2 : (byte)1, ref camera, out var feet);
                 Check(result != 0, "fast entrance update failed");
@@ -465,16 +471,18 @@ static class Program
                 particles |= colored > 0;
                 if (time >= .8f) Check(colored == 0, "colored particles linger after materialization");
                 if (result == 2) {
-                    Check(time >= 1.74f && time <= 3f && Math.Abs(feet.y) < .001f, "wrong fall/completion timing"); done = true;
+                    if (!done) Check(time >= 1.74f && time <= 1.8f, "portal fade delayed player control");
+                    Check(Math.Abs(feet.y) < .001f, "completed rider moved above the landing");
+                    done = true;
                 }
             }
             Check(done && particles && rider, "fast exit missed rider, particles or completion");
-            Native.sms_view_entrance_update(view, 3, 2, ref camera, out _);
+            Native.sms_view_entrance_update(view, 7, 2, ref camera, out _);
             Native.sms_view_texture(view, gateTexture, out var ti, null, 0);
             var returned = new byte[ti.width * ti.height * 4]; Native.sms_view_texture(view, gateTexture, out _, returned, (uint)returned.Length);
             Check(ti.width == 256 && ti.height == 256, "portal used the low-resolution cache");
             Check(Enumerable.Range(0, returned.Length / 4).Any(i => returned[i * 4 + 3] > 0 && returned[i * 4 + 3] < 255), "portal cache lost smooth edge coverage");
-            Native.sms_view_entrance_update(view, 3, 0, ref camera, out _);
+            Native.sms_view_entrance_update(view, 7, 0, ref camera, out _);
             var idleImage = new byte[returned.Length]; Native.sms_view_texture(view, gateTexture, out _, idleImage, (uint)idleImage.Length);
             Check(returned.SequenceEqual(idleImage), "portal didn't return to original swirling colors");
             Console.WriteLine("PASS: fast " + (luigi ? "late-selected Luigi/green" : "Mario/red") + " exit, static retention, timing, control handoff and portal reset");

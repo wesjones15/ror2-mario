@@ -50,6 +50,9 @@ namespace MarioTest
         static float IconScale(MarioNozzleChoice? nozzle) => nozzle == MarioNozzleChoice.Hover ? 1.35f : 1f;
 
         static bool open, wasHeld, armed, tapPending;
+        // This RB press has already opened the wheel (or been cancelled). It must be released
+        // before another hold can open the wheel again.
+        static bool pressSpent;
         static float heldSince, openedAt;
         static int hovered, builtinEntries;
         static MarioRadialEntry pending;
@@ -124,6 +127,7 @@ namespace MarioTest
                 // tap, which the driver applies as the Spray/alternate swap.
                 open = false;
                 armed = false;
+                pressSpent = false;
                 heldSince = Time.unscaledTime;
             }
             wasHeld = held;
@@ -131,11 +135,18 @@ namespace MarioTest
             {
                 if (!held)
                 {
-                    if (letGo && Time.unscaledTime - heldSince < OpenHold) tapPending = true;
+                    // Only a press too short to open the wheel is a tap. A hold that opened or
+                    // chose a segment never swaps on release.
+                    if (letGo && !pressSpent && Time.unscaledTime - heldSince < OpenHold)
+                        tapPending = true;
                     return;
                 }
+                // Once this hold has shown the wheel, releasing is the only way back in: a
+                // choice closes it while RB is still down and it must stay closed.
+                if (pressSpent) return;
                 if (Time.unscaledTime - heldSince < OpenHold) return;
                 open = true;
+                pressSpent = true;
                 openedAt = Time.unscaledTime;
                 var soundView = MarioView.Player;
                 if (soundView != null)
@@ -170,11 +181,11 @@ namespace MarioTest
             if (at < 0) return;
             hovered = at;
             if (!armed || dir.sqrMagnitude < Commit * Commit) return;
-            // Commit on the first full tilt and close at once; the step applies it.
+            // Commit on the first full tilt and close at once; the step applies it. The press
+            // stays spent, so the wheel does not pop back up while RB is still down.
             pending = entries[at];
             open = false;
             armed = false;
-            wasHeld = true;
         }
 
         /// A short press: the driver swaps Spray and the selected alternate.
@@ -200,13 +211,16 @@ namespace MarioTest
             armed = false;
             pending = null;
             tapPending = false;
-            wasHeld = true; // a held button must be released before the menu opens again
+            // A held button must be released before the menu opens again, and a cancelled
+            // press must not become a tap on release.
+            pressSpent = true;
         }
 
         public static void Reset()
         {
             Cancel();
             wasHeld = false;
+            pressSpent = false;
             selectedAlt = MarioNozzleChoice.Hover;
             hovered = -1;
             ringHovered = ringCount = -1;

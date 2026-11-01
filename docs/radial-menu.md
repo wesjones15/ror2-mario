@@ -11,7 +11,7 @@ selected the picture is left as it is.
 | Tap RB (pad) / Special (keyboard) | Spray ↔ selected alternate |
 | Hold RB / Special 0.5 s | Open the alternate wheel |
 | RS (pad) / mouse move (keyboard) | Highlight an alternate |
-| Full RS tilt / far mouse move | Choose it and close |
+| Full RS tilt / far mouse move | Choose it and close; the rest of that hold does nothing |
 | Release RB / Special, pause, UI focus | Cancel (the button must be released before opening again) |
 
 Segments, clockwise from the top: Hover, Rocket, No FLUDD, Turbo. Each is centred on an axis, so

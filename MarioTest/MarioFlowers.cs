@@ -15,6 +15,11 @@ namespace MarioTest
     //  * a ring of hopping flower heads (TSamboHead) that chase Mario and bite,
     //  * a flower tower (THanaSambo) that bursts out of the ground near Mario, bites and sinks again.
     // Stomping or pounding a flower enemy kills it (coins drop); a spray freezes a tower for a while.
+    // While a tower or head is under the ground, a plain flower stands where it is
+    // (`THanaSambo::initFlower` / `TSamboHead::initFlower`, kind 3): the tower leaves it as it
+    // sinks and the head grows one when it hides, and it goes as the enemy bursts out through
+    // it (`TNerveHanaSamboAppear` / `TNerveSamboHeadAppear`: `unk1A8->hide()`). Spraying it
+    // opens it (`TSamboFlower::bloom`, pollen only: no coin unit, no chime).
     //
     // Multiplayer: the server owns the one world (placement, the step, bites and coins). Every
     // client holds a mirror of it, refreshed by snapshots of the things near the players, and
@@ -26,10 +31,12 @@ namespace MarioTest
     // view (one posed instance per view), made when it comes near and freed when it leaves.
     internal sealed class MarioFlowers : MonoBehaviour
     {
-        // The three kinds (Native.FlowerItem.kind) and the look codes of their views.
-        const byte Flower = 0, Tower = 1, Head = 2;
-        static readonly byte[] Looks = { 5, 6, 7 };
-        const int MaxViews = 16, MaxItems = 512;
+        // The three kinds (Native.FlowerItem.kind) and the look codes of their views. Kind 3 is a
+        // buried tower's or head's stand-in flower (`THanaSambo::initFlower`): the same plain
+        // flower model, so the same look and clips as kind 0.
+        const byte Flower = 0, Tower = 1, Head = 2, StandIn = 3;
+        static readonly byte[] Looks = { 5, 6, 7, 5 };
+        const int MaxViews = 24, MaxItems = 512;
         const float DrawRange = 90f, SnapRange = 130f, MinSpawnDistance = 18f, LingerSeconds = 3f;
         const float SnapEvery = 0.125f, HitResend = 0.3f;
 
@@ -41,6 +48,7 @@ namespace MarioTest
                     "sambo_fhide", "sambo_hit", "sambo_down" },
             new[] { "sambohead_set", "sambohead_wait", "sambohead_jump_start", "sambohead_jump_end",
                     "sambohead_land", "sambohead_hit", "sambohead_down" },
+            new[] { "flower_wait", "flower_hit", "flower_fwait" },
         };
 
         sealed class Prop
@@ -140,7 +148,9 @@ namespace MarioTest
             return true;
         }
 
-        /// Clip lengths in ticks, read once from the models' own clips.
+        /// Clip lengths in ticks, read once from the models' own clips. The disc's clips are
+        /// authored at 60 frames a second (`SMSGetAnmFrameRate`) and the sim is 120 Hz, so a clip
+        /// is two ticks a frame.
         void ReadClips()
         {
             clipsRead = true;
@@ -444,7 +454,9 @@ namespace MarioTest
             switch (kind)
             {
                 case 1:
-                    Sound("MSD_SE_OBJ_FLOWER_OPEN_" + Mathf.Clamp(a, 0, 11), pos);
+                    // `a` -1: the stand-in flower a buried enemy leaves, which the game opens
+                    // with pollen only (`bloom`: `unk164` null, so no open chime).
+                    if (a >= 0) Sound("MSD_SE_OBJ_FLOWER_OPEN_" + Mathf.Clamp(a, 0, 11), pos);
                     Emit("ms_smb_kafun_ow", pos);
                     break;
                 case 3: Sound("MSD_SE_SY_COIN_APPEAR", pos); break;
@@ -554,9 +566,11 @@ namespace MarioTest
             foreach (var key in stale) { Free(props[key]); props.Remove(key); }
         }
 
-        /// Hidden towers and sleeping heads are not drawn (under the ground / not there yet).
+        /// Hidden towers and sleeping heads are not drawn (under the ground / not there yet);
+        /// the stand-in flower a buried one leaves there is (`THanaSambo::initFlower`).
         static bool Visible(byte kind, byte state) =>
-            kind == Flower || (kind == Tower ? state != 0 && state != 9 : state != 0 && state != 4);
+            kind == Flower || kind == StandIn
+            || (kind == Tower ? state != 0 && state != 9 : state != 0 && state != 4);
 
         Prop Make(byte kind)
         {
@@ -588,6 +602,7 @@ namespace MarioTest
             switch (kind)
             {
                 case Flower: // Closed, Opening, Open, Closing
+                case StandIn: // the same bloom phases: a buried enemy's flower
                     clip = state == 0 ? 0 : state == 2 ? 2 : 1;
                     reverse = state == 3;
                     loop = state == 0 || state == 2;

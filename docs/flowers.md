@@ -13,7 +13,20 @@ Rare finds on a stage, from `libsms::flower` (decomp: `Enemy/hanasambo.cpp`). Co
   posed by the same clip the model plays), so it only hurts a Mario the head actually reaches
   (about 260 units out in its attack, a bite at most every half second, none while frozen). A stomp
   or pound kills it; water freezes it a while.
+- **The flower a buried enemy leaves**: while a tower or a head is under the ground, a plain
+  flower stands where it is (`THanaSambo::initFlower` / `TSamboHead::initFlower`). The tower grows
+  it at tick 75 of its sink and keeps it while hidden; the head grows one when it hides. It goes
+  the moment the enemy bursts out through it (`TNerveHanaSamboAppear` / `TNerveSamboHeadAppear`:
+  `unk1A8->hide()`), so a player sees a flower, then the enemy. Spraying that flower opens it
+  (`TSamboFlower::receiveMessage` -> `bloom`) — pollen only, since the stand-in has no coin unit —
+  and it wilts `mSLBloomTimer` ticks later. This is item kind 3.
 Dead enemies drop coins. Bites take `BitePercent` of max health and knock Mario down.
+
+The plain flower is drawn with `enemy/samboflower/flower_orange.bmt` swapped in as its material
+table (`TSamboFlowerManager::load` + `TSamboFlower::setMActorAndKeeper`): `flower.bmd`'s own
+material draws only the placeholder `K_name_dummy` texture, and drawing it without the table
+gives chrome shards instead of petals and leaves. `libsms_present::Look::Flower` and the viewer's
+`SMS_FLOWER` do the swap; the models and clips come from the same fight's `bck` files.
 
 Particles are the disc's own `.jpa` effects (`ms_smb_kafun_ow` pollen on a bloom, `_oa` on a bite,
 `ms_smb_ap_*` rising, `ms_smb_hd_*` sinking, `ms_enm_disap_*` dying), emitted by every machine from the

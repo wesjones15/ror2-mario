@@ -456,7 +456,7 @@ namespace MarioTest
             else if (unstuck.ThroughFloor(stepFrom, UnityHost.ToUnity(st.pos), UnityHost.MarioHeight * UnityHost.Scale,
                 UnityHost.RecoveryGround, out var overFloor))
             {
-                Plugin.Log.LogInfo($"Mario fell through the floor to {UnityHost.ToUnity(st.pos)}; back on the surface at {overFloor}");
+                Plugin.Log.LogInfo($"Mario fell through the floor from {stepFrom} to {UnityHost.ToUnity(st.pos)} (status {status}); back on the surface at {overFloor}");
                 if (Local && NetworkServer.active && body)
                     body.AddTimedBuff(RoR2Content.Buffs.HiddenInvincibility, 1.5f);
                 transform.position = overFloor + feetToOrigin;

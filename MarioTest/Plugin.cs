@@ -17,7 +17,7 @@ namespace MarioTest
     // the body moved by the sim instead of RoR2's character controller, and drawn and heard
     // as the disc's Mario. No R2API: content goes in through RoR2's own content-pack hook
     // (ror2-common's ContentProvider).
-    [BepInPlugin(Guid, "Mario", "0.5.0")]
+    [BepInPlugin(Guid, "Mario", "0.5.1")]
     // Use the pack's fixes first when installed; no pack APIs are required by this plugin.
     [BepInDependency("___riskofthunder.RoR2BepInExPack", BepInDependency.DependencyFlags.SoftDependency)]
     [BepInDependency("com.libpikmin.olimartest", BepInDependency.DependencyFlags.SoftDependency)]

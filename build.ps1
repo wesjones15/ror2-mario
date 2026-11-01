@@ -13,6 +13,9 @@ param(
     [switch]$NoInstall
 )
 $ErrorActionPreference = "Stop"
+if (-not $NoInstall) {
+    & (Join-Path $PSScriptRoot '../ror2-common/tests/CheckReleaseBranches.ps1') -HostDir $PSScriptRoot -NativeDir $LibSms
+}
 if ([string]::IsNullOrWhiteSpace($InstallDir)) {
     $InstallDir = [System.IO.Path]::GetFullPath((Join-Path $RoR2Dir "..\..\target"))
 }

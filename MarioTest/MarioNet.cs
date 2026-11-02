@@ -26,6 +26,9 @@ namespace MarioTest
         public const short CoinMsg = 0x4D05;
         /// A client's Mario got a Shine at a charged teleporter: client to server.
         public const short ShineMsg = 0x4D06;
+        /// A client's Mario touched a Shine: server to that body, which must not be hit during
+        /// the pose (Sunshine stops the world for it).
+        public const short ShineGuardMsg = 0x4D0D;
 
         /// A client's Mario touched a coin: client to server.
         public const short CoinTouchMsg = 0x4D07;
@@ -61,6 +64,7 @@ namespace MarioTest
             Mp.Register(WaterMsg, null, OnWater);
             Mp.Register(CoinMsg, null, OnCoin);
             Mp.Register(ShineMsg, OnShine, null);
+            Mp.Register(ShineGuardMsg, OnShineGuard, null);
             Mp.Register(CoinTouchMsg, OnCoinTouch, null);
             Mp.Register(FireMsg, null, OnFire);
             Mp.Register(FlowerSnapMsg, null, (from, r) => { if (!NetworkServer.active) MarioFlowers.OnSnapshot(r); });
@@ -352,6 +356,29 @@ namespace MarioTest
             if (!tele || !body || !body.GetComponent<MarioDriver>() || body.hasEffectiveAuthority
                 || !body.healthComponent || !body.healthComponent.alive) return;
             MarioShine.Trigger(tele, body);
+        }
+
+        /// A client's Mario touched the Shine: ask the server to keep hits off him while the
+        /// pickup and the pose play (Sunshine stops the world for it).
+        public static void SendShineGuard(CharacterBody by)
+        {
+            if (!by || by.netId.Value == 0) return;
+            var w = new ByteWriter(9);
+            w.U8(FrameCodec.Protocol);
+            w.U32(by.netId.Value);
+            Mp.SendToServer(ShineGuardMsg, w.ToArray());
+        }
+
+        static void OnShineGuard(NetworkConnection from, ByteReader r)
+        {
+            if (r.U8() != FrameCodec.Protocol) return;
+            var bodyObject = Mp.Find(r.U32());
+            if (r.Failed || !bodyObject) return;
+            var body = bodyObject.GetComponent<CharacterBody>();
+            // Only another player's living Mario: the host's own guards itself.
+            if (!body || !body.GetComponent<MarioDriver>() || body.hasEffectiveAuthority
+                || !body.healthComponent || !body.healthComponent.alive) return;
+            body.AddTimedBuff(RoR2Content.Buffs.HiddenInvincibility, MarioShine.ShineGuardSeconds);
         }
 
         /// Sends one body's recorded frames.

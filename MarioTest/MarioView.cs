@@ -18,6 +18,10 @@ namespace MarioTest
     {
         static bool tried;
         static MarioView player;
+        // Same pacing as libsms-ffi's water manager (sms_sim_new): the Spray and the rest of
+        // FLUDD's water run 40% fast for RoR2. Movement-thrown water (the wet slide's spray) is
+        // its own JPA clip, so the view needs the same rate.
+        const float WaterPlaybackSpeed = 1.4f;
 
         IntPtr view;
         ModelView models;
@@ -33,6 +37,19 @@ namespace MarioTest
 
         /// The native view (for sms_sim_step's sounds and sms_view_update), or zero.
         public IntPtr Handle => view;
+        bool frozen;
+        /// The body is frozen (RoR2's `FrozenState`, a Glacial elite's death blast): every draw is
+        /// paled to the icy sheen a frozen Pikmin already gets from the shared ModelView.
+        public bool Frozen
+        {
+            get => frozen;
+            set
+            {
+                frozen = value;
+                if (models != null) models.FrozenFor = value ? AllFrozen : null;
+            }
+        }
+        static bool AllFrozen(ViewDraw _) => true;
         /// The turn the body was last drawn at (the sim's facing plus the corkscrew tilt).
         public Quaternion DrawnRotation
         {
@@ -170,6 +187,7 @@ namespace MarioTest
             Native.sms_view_set_fx(view, (byte)(Plugin.Effects.Value ? 1 : 0),
                 (byte)(Plugin.PoundFlames.Value ? 1 : 0));
             Native.sms_view_set_smoke_speed(view, Plugin.SmokeSpeed.Value);
+            Native.sms_view_set_water_speed(view, WaterPlaybackSpeed);
             // RoR2's pause menu stops Mario's sounds where they are.
             Native.sms_view_set_paused(view, (byte)(PauseManager.isPaused ? 1 : 0));
             Native.sms_view_update(view, sim, ref frame);

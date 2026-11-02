@@ -27,6 +27,7 @@ namespace MarioTest
             c.others = otherPlayers;
             c.sim = sim;
             c.view = view;
+            if (view != null) view.Frozen = false;
             c.host = UnityHost.Table();
             c.left = Mathf.Clamp(seconds, 0f, 30f);
             if (!otherPlayers) current = c;

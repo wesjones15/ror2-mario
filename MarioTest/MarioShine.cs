@@ -33,6 +33,11 @@ namespace MarioTest
         // unless the host raises its reach (Shine.TouchRadius).
         const float ReachUp = 1.7f;
         const float AppearSeconds = 1.6f;
+        /// Hits can't cut the pickup or the pose short: Sunshine stops the world for it. RoR2's
+        /// hidden invincibility is granted as soon as the touch is accepted, and again by the
+        /// server for a client's Mario (MarioNet.ShineGuardMsg), so neither the fall into the pose
+        /// nor the demo can be interrupted.
+        internal const float ShineGuardSeconds = 20f;
         // The Shine turns two degrees a 120 Hz tick, faster as it appears (`unk16C` falls from 7).
         const float SpinDegrees = 240f, AppearSpinDegrees = 840f;
 
@@ -159,13 +164,18 @@ namespace MarioTest
                     // The sim takes the pose at once and lands before the demo starts (the event that
                     // starts it). If he never has it (he died, or the touch was refused), the Shine waits
                     // again.
-                    if (touchAge > 0.5f && (!toucher || !toucher.WinPose))
+                    if (touchAge > 0.5f && (!toucher || !toucher.WinPose || !toucher.Alive))
                     {
                         phase = Phase.Waiting;
                         toucher = null;
                     }
                     break;
-                case Phase.Demo: RunDemo(dt); break;
+                case Phase.Demo:
+                    // The pose is the demo: if it is gone (a hit that got past the guard, a death),
+                    // stop the Shine too instead of playing it beside an idle Mario.
+                    if (!demoDriver || !demoDriver.WinPose || !demoDriver.Alive) Reset(true);
+                    else RunDemo(dt);
+                    break;
             }
         }
 
@@ -227,10 +237,21 @@ namespace MarioTest
             toCamera.y = 0f;
             if (toCamera.sqrMagnitude < 0.01f) toCamera = -driver.transform.forward;
             if (!driver.TouchShine(rest, UnityHost.Yaw(toCamera))) return;
+            GuardShine(driver.Body);
             toucher = driver;
             touchAge = 0f;
             phase = Phase.Touched;
             Plugin.Log.LogInfo("Mario touches the Shine Sprite");
+        }
+
+        /// Sunshine stops the world while Mario takes a Shine, so a hit can't cut the fall into
+        /// the pose or the demo short. The server grants the body's hidden invincibility; a client
+        /// asks it to for its own Mario.
+        static void GuardShine(CharacterBody body)
+        {
+            if (!body) return;
+            if (NetworkServer.active) body.AddTimedBuff(RoR2Content.Buffs.HiddenInvincibility, ShineGuardSeconds);
+            else MarioNet.SendShineGuard(body);
         }
 
         /// The sim's `ShineDemo` event (inside the driver's step, `body` his): he has landed with the

@@ -717,6 +717,7 @@ namespace MarioTest
             flames.Set((Plugin.PoundFlames.Value && pounding == 2 && !view.HasEffects)
                     || (Plugin.BurnPanic.Value && (MarioFire.Burning(body) || Time.time < fireUntil)),
                 feet + Vector3.up * (height * 0.5f), height);
+            view.Frozen = native && native.Frozen;
             view.Draw(feet);
             ShowMario(true);
             if (ItemDisplayRig.Enabled && !itemDisplaysTried)

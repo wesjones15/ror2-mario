@@ -202,6 +202,7 @@ namespace MarioTest
             if (view.Models == null) return;
             var feet = anchor.transform.position;
             view.Effects(feet);
+            view.Frozen = NativeBody.Of(body ? body.gameObject : null)?.Frozen == true;
             view.Draw(feet);
             GameSettings.HideModel(body, ref hidden, true);
             drawn = true;

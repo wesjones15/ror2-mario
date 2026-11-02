@@ -35,6 +35,12 @@ namespace MarioTest
         // buried tower's or head's stand-in flower (`THanaSambo::initFlower`): the same plain
         // flower model, so the same look and clips as kind 0.
         const byte Flower = 0, Tower = 1, Head = 2, StandIn = 3;
+        // The snapshot's handle field is 16 bits, but a stand-in's sim handle is 0x10000 + tower or
+        // 0x20000 + head. Send it as a plain flower (kind 0) with bit 15 set and bit 14 picking head
+        // from tower, the index in the low 14 bits. A client from before stand-ins reads it as a
+        // flower of an impossible unit (>= 512) and its mirror drops it, so the wire stays compatible;
+        // a current client turns it back into kind 3. Real flowers and enemies never reach bit 15.
+        const ushort StandInWire = 0x8000, StandInHeadWire = 0x4000, StandInMask = 0x3FFF;
         static readonly byte[] Looks = { 5, 6, 7, 5 };
         const int MaxViews = 24, MaxItems = 512;
         const float DrawRange = 90f, SnapRange = 130f, MinSpawnDistance = 18f, LingerSeconds = 3f;
@@ -359,9 +365,19 @@ namespace MarioTest
             {
                 if (items[i].kind == Flower ? !unitNear[items[i].handle / 64] : !near[i]) continue;
                 var it = items[i];
-                w.U8(it.kind);
+                byte kind = it.kind;
+                ushort handle = (ushort)it.handle;
+                if (kind == StandIn)
+                {
+                    // 0x10000 + tower or 0x20000 + head, packed into the 16-bit handle field.
+                    int packed = StandInWire | (it.handle >= 0x20000u ? StandInHeadWire : 0)
+                        | (int)(it.handle & StandInMask);
+                    handle = (ushort)packed;
+                    kind = Flower;
+                }
+                w.U8(kind);
                 w.U8(it.state);
-                w.U16((ushort)it.handle);
+                w.U16(handle);
                 w.U32(it.age);
                 w.F32(it.pos.x); w.F32(it.pos.y); w.F32(it.pos.z);
                 w.F32(it.yaw);
@@ -382,11 +398,22 @@ namespace MarioTest
             var list = new Native.FlowerItem[Math.Min(count, MaxItems)];
             for (int i = 0; i < list.Length; i++)
             {
+                byte kind = r.U8();
+                byte state = r.U8();
+                ushort raw = r.U16();
+                uint handle = raw;
+                if (kind == Flower && (raw & StandInWire) != 0)
+                {
+                    // A stand-in packed into a flower's slot (SendSnapshot): no real flower has a
+                    // unit this high, so unpack it back into a kind-3 item on the tower or head.
+                    kind = StandIn;
+                    handle = ((raw & StandInHeadWire) != 0 ? 0x20000u : 0x10000u) | (uint)(raw & StandInMask);
+                }
                 list[i] = new Native.FlowerItem
                 {
-                    kind = r.U8(),
-                    state = r.U8(),
-                    handle = r.U16(),
+                    kind = kind,
+                    state = state,
+                    handle = handle,
                     age = r.U32(),
                     pos = new Native.Vec3(r.F32(), r.F32(), r.F32()),
                     yaw = r.F32(),

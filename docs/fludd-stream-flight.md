@@ -10,7 +10,13 @@ Separated droplets and their per-drop accumulation are unchanged otherwise.
 Both Turbo and regular corkscrews follow the local camera left/right. Looking
 up/down relative to the camera angle when the roll starts gently changes the
 flight angle (35% of the change, at most 15 degrees). Returning the camera to
-that starting pitch levels the flight. Stick circles still sustain the roll.
+that starting pitch levels the flight.
+
+`[Sim] CorkscrewHold` is how far the stick must keep turning to hold the roll
+once a circle has started it: degrees of sweep the same way round inside the
+roll's grace (a fifth of a second). 60 (the default) is a sixth of a turn, which a
+slow, gentle circle meets; 360 asks for a whole circle that fast; 0 holds it while
+the stick is merely moved.
 
 Source identity, labelled side/head-on/moving viewer proof, headless checks and
 host approximation limits: `libsms/docs/fludd-stream-flight.md`.

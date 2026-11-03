@@ -1138,6 +1138,7 @@ namespace MarioTest
                 slide_splashes = (byte)(Plugin.SlideSplashes.Value ? 1 : 0),
                 slide_fx_scale = Mathf.Max(0.1f, Plugin.SlideSprayScale.Value),
                 knockdown_cancel = (byte)(Plugin.KnockdownGetUpEarly.Value ? 1 : 0),
+                corkscrew_hold_degrees = Plugin.CorkscrewHold.Value,
             };
             if (t.Equals(tuning)) return;
             tuning = t;

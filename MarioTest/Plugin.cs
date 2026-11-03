@@ -57,6 +57,7 @@ namespace MarioTest
         internal static ConfigEntry<float> PoundJump;
         internal static ConfigEntry<float> StompJump;
         internal static ConfigEntry<float> ShortHop;
+        internal static ConfigEntry<float> CorkscrewHold;
         internal static ConfigEntry<float> PoundPerMetre;
         internal static ConfigEntry<bool> SuperPoundIgnites;
         internal static ConfigEntry<bool> PoundFlames;
@@ -201,6 +202,14 @@ namespace MarioTest
             RocketHeight = Config.Bind("Fludd", "RocketHeight", 2f,
                 "The Rocket nozzle launches Mario about this many times as high as in Sunshine " +
                 "(1: about 17 Marios).");
+            CorkscrewHold = Config.Bind("Sim", "CorkscrewHold", 60f,
+                new ConfigDescription(
+                    "A Turbo corkscrew, once a stick circle has started it, only asks the stick to keep " +
+                    "turning: this many degrees of sweep (the same way round) hold it before the roll " +
+                    "runs out, so a slow, gentle circle holds it where a full fast one used to be " +
+                    "needed. 360 is a whole circle per fifth of a second (the strict reading); 0 holds " +
+                    "it while the stick is merely moved.",
+                    new AcceptableValueRange<float>(0f, 360f)));
             UnlimitedWater = Config.Bind("Fludd", "UnlimitedWater", false,
                 "FLUDD's tank never runs dry. Off is Sunshine's: it empties as it sprays and fills " +
                 "back up when you hold spray standing in water, and on each new stage.");

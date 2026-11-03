@@ -4,7 +4,7 @@ using Ror2Common;
 
 namespace MarioTest
 {
-    // The libsms C ABI (libsms/crates/libsms-ffi, SMS_ABI_VERSION 42). Layouts mirror the
+    // The libsms C ABI (libsms/crates/libsms-ffi, SMS_ABI_VERSION 43). Layouts mirror the
     // #[repr(C)] structs there field for field; Load checks them with sms_struct_sizes. Sim
     // units: about 1 cm, Y up, a facing angle a (i16, 0x10000 per turn) points along
     // (sin a, 0, cos a). The view's structs are ror2-common's (ViewModelInfo...), which
@@ -193,6 +193,9 @@ namespace MarioTest
             public byte slide_splashes;
             /// 1: A, the stick, B, L or R gets him up once a knock-down's slide has nearly spent itself.
             public byte knockdown_cancel;
+            /// Degrees the stick must keep sweeping about its circle to hold the corkscrew dive
+            /// once it has started (60: a sixth of a turn per grace, which a slow circle meets).
+            public float corkscrew_hold_degrees;
         }
 
         /// The host's own limits on FLUDD and the slide (libsms::Limits); zeroes are the game's.

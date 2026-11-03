@@ -21,7 +21,8 @@ the stick is merely moved.
 Source identity, labelled side/head-on/moving viewer proof, headless checks and
 host approximation limits: `libsms/docs/fludd-stream-flight.md`.
 
-Install the matching **ABI 41** `sms.dll` and `MarioTest.dll` together.
+Install the matching **ABI 44** `sms.dll` and `MarioTest.dll` together (ABI 43
+added `sms_view_set_water_speed`; 44 grows `SmsTuning` with the corkscrew hold).
 Flight-camera and equipment replay use **network protocol 12**.
 ABI 41 adds `sms_sim_equip_nozzle` (the radial menu's pickup feedback) beside the
 silent quick-swap `sms_sim_select_nozzle`; the frame stream gains its own equip

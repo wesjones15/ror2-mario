@@ -13,7 +13,9 @@
     <CopyLocalLockFileAssemblies>false</CopyLocalLockFileAssemblies>
     <GenerateDependencyFile>false</GenerateDependencyFile>
     <!-- ror2-common's IL hooks (ItemHooks, MinionHit): needs the MonoMod references below. -->
-    <DefineConstants>$(DefineConstants);ROR2COMMON_HOOKS</DefineConstants>
+    <!-- ROR2COMMON_VR: ror2-common's optional VR support (Blowntobytes' VR mod when installed; no link to it):
+         needs the XR references below. -->
+    <DefineConstants>$(DefineConstants);ROR2COMMON_HOOKS;ROR2COMMON_VR</DefineConstants>
   </PropertyGroup>
 
   <ItemDefinitionGroup>
@@ -50,6 +52,8 @@
     <Reference Include="UnityEngine.ParticleSystemModule"><HintPath>$(Managed)\UnityEngine.ParticleSystemModule.dll</HintPath></Reference>
     <Reference Include="UnityEngine.IMGUIModule"><HintPath>$(Managed)\UnityEngine.IMGUIModule.dll</HintPath></Reference>
     <Reference Include="UnityEngine.TextRenderingModule"><HintPath>$(Managed)\UnityEngine.TextRenderingModule.dll</HintPath></Reference>
+    <Reference Include="UnityEngine.XRModule"><HintPath>$(Managed)\UnityEngine.XRModule.dll</HintPath></Reference>
+    <Reference Include="UnityEngine.VRModule"><HintPath>$(Managed)\UnityEngine.VRModule.dll</HintPath></Reference>
     <Reference Include="UnityEngine.InputLegacyModule"><HintPath>$(Managed)\UnityEngine.InputLegacyModule.dll</HintPath></Reference>
     <Reference Include="UnityEngine.UnityWebRequestModule"><HintPath>$(Managed)\UnityEngine.UnityWebRequestModule.dll</HintPath></Reference>
     <Reference Include="com.unity.multiplayer-hlapi.Runtime"><HintPath>$(Managed)\com.unity.multiplayer-hlapi.Runtime.dll</HintPath></Reference>

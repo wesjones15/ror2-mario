@@ -99,6 +99,8 @@ namespace MarioTest
         internal static ConfigEntry<bool> ExternalForces;
         internal static ConfigEntry<bool> CrowdControl;
         internal static ConfigEntry<bool> CameraAim, LockOn, AimAtCrosshair, SprayDiag;
+        internal static ConfigEntry<bool> VrControls, VrHideBody, VrCrosshair, VrFlips;
+        internal static ConfigEntry<float> VrHeadFollow;
         internal static ConfigEntry<bool> SprayBursts;
         internal static ConfigEntry<float> TriggerCurve;
         internal static ConfigEntry<float> LightTapSeconds;
@@ -511,6 +513,26 @@ namespace MarioTest
                 "nearest where the camera points (within Controls.LockRange, 60 m, in line of sight) and aim FLUDD " +
                 "at it, so the spray trigger sprays it without Mario crouching. Right bumper " +
                 "then cycles targets. Needs CameraAim.");
+            // Only read with Blowntobytes' VR mod running in a headset (ror2-common's Vr).
+            VrControls = Config.Bind("VR", "Controls", true,
+                "In VR with motion controls, Mario's own layout (right-handed; the VR mod's left-handed " +
+                "mode mirrors it): right trigger sprays at its pressure, left trigger is L (crouch, ground " +
+                "pound), left grip holds the lock-on, right grip taps the nozzle or holds the nozzle wheel " +
+                "(cycles the target while locked), A jumps, B dives. The VR mod's own interact, equipment, " +
+                "pause, ping, sprint and turning stay where it puts them. FLUDD sprays where the dominant " +
+                "hand points. False: the VR mod's skill buttons (as on keyboard).");
+            VrHideBody = Config.Bind("VR", "HideBody", true,
+                "In VR, don't draw your own Mario (his water, effects and sounds stay; other players still " +
+                "see him). The arms are drawn on the controllers.");
+            VrCrosshair = Config.Bind("VR", "Crosshair", true,
+                "In VR, a ring where the dominant hand's pointer lands.");
+            VrHeadFollow = Config.Bind("VR", "HeadFollow", 1f,
+                new ConfigDescription("In VR, how much the view follows Mario's head down and up (a wet slide " +
+                    "drops it low, a crouch a little): 0 never, 1 fully. Never sideways or round in a spin.",
+                    new AcceptableValueRange<float>(0f, 1f)));
+            VrFlips = Config.Bind("VR", "FlipCamera", false,
+                "In VR, the view turns over with Mario through a somersault and a backflip. Off: the view " +
+                "is only ever turned by you (spins and the corkscrew never turn it either way).");
             DeathFall = Config.Bind("Look", "DeathFall", true,
                 "When Mario dies he falls down as in Sunshine, with his voice, and lies there.");
             DeathFallSeconds = Config.Bind("Look", "DeathFallSeconds", 6f,

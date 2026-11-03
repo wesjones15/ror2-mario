@@ -1,5 +1,6 @@
 using Rewired;
 using RoR2;
+using Ror2Common;
 using UnityEngine;
 
 namespace MarioTest
@@ -55,6 +56,11 @@ namespace MarioTest
 
         /// A brain presses this Mario's buttons (Press), so the input bank's are ignored.
         public bool Brained;
+
+        /// The local player is in VR with motion controls (MarioVr.Controls): the controllers are
+        /// read as they are (ror2-common's VrPad) in Sunshine's layout, the analog trigger kept.
+        public bool MotionControls;
+        readonly VrPad vr = new VrPad();
 
         /// The lock-on is held: the left bumper on a gamepad, the brain's for an AI, else (a
         /// keyboard has no spare key) the same button as L (LockSharesL).
@@ -121,8 +127,38 @@ namespace MarioTest
                 return;
             }
             sprint = input && input.sprint.down;
-            var gp = Gamepad(player);
-            if (gp != null)
+            var gp = MotionControls ? null : Gamepad(player);
+            if (MotionControls)
+            {
+                // Right-handed (the VR mod's left-handed mode swaps the hands): dominant A jump,
+                // B dive, trigger spray, grip RB; off-hand trigger L, grip the lock-on (LB). The
+                // VR mod's interact (A) and jump (B) still go to RoR2 too, which Mario's moves
+                // don't read. Its right stick turns, so the stick is only read at a cycle (and by
+                // the wheel, which takes the pointer in VR: MarioRadial).
+                vr.Read(false);
+                var d = vr.Dominant;
+                var o = vr.Off;
+                a = d.Primary;
+                b = d.Secondary;
+                l = o.Trigger > 0.5f;
+                LockHeld = o.Grip > 0.5f;
+                LockSharesL = false;
+                bool bumper = d.Grip > 0.5f;
+                if (LockHeld && bumper && !rb)
+                {
+                    cycle = true;
+                    cycleDirection = d.Stick;
+                }
+                MenuHeld = bumper && !LockHeld;
+                MenuFromGamepad = true;
+                MenuDirection = d.Stick;
+                x = false;
+                rb = bumper;
+                float t = d.Trigger;
+                r = t >= 0.98f ? 1f : Mathf.Pow(t, Mathf.Clamp(Plugin.TriggerCurve.Value, 0.2f, 5f));
+                down = up = false;
+            }
+            else if (gp != null)
             {
                 a = gp.a.value;
                 b = gp.b.value;

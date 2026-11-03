@@ -331,9 +331,12 @@ namespace MarioTest
                 SimOps.Refill(sim);
             bool secret = pad.TakeUp();
             var step = pad.Take(move, hold == NativeBody.Hold.All, Local && MarioRadial.Open);
-            // Facing from Mario toward the camera: the reverse of where the player aims.
-            short cameraYaw = UnityHost.Yaw(-input.aimDirection);
-            var flightAim = AimDirection.normalized;
+            // Facing from Mario toward the camera: the reverse of where the player aims. In VR the
+            // camera is the headset and the aim is the hand's pointer (MarioVr): the stick's
+            // circle and the corkscrew's steering follow the head, never the pointer.
+            bool firstPerson = Local && MarioVr.FirstPerson(body);
+            short cameraYaw = UnityHost.Yaw(-(firstPerson ? MarioVr.ViewForward(input.aimDirection) : input.aimDirection));
+            var flightAim = (firstPerson ? MarioVr.HeadLook(AimDirection) : AimDirection).normalized;
             SimOps.FlightCamera(sim, (byte)(Local ? 1 : 0), UnityHost.Yaw(flightAim),
                 Mathf.Atan2(flightAim.y, new Vector2(flightAim.x, flightAim.z).magnitude));
             // The lock-on (LB; a keyboard's utility key; the brain's): FLUDD takes its aim, and
@@ -601,6 +604,7 @@ namespace MarioTest
         void Update()
         {
             FindLocalUser();
+            pad.MotionControls = Local && MarioVr.Controls(body);
             pad.Read(localUser, input);
             if (!driving)
             {
@@ -718,7 +722,11 @@ namespace MarioTest
                     || (Plugin.BurnPanic.Value && (MarioFire.Burning(body) || Time.time < fireUntil)),
                 feet + Vector3.up * (height * 0.5f), height);
             view.Frozen = native && native.Frozen;
-            view.Draw(feet);
+            // In VR the player is inside him: his body (and what hangs on it) isn't drawn for
+            // them, though it's still posed for his sounds, water and effects (MarioVr).
+            bool inside = Local && MarioVr.HideBody(body);
+            if (inside) view.Models.HideAll();
+            else view.Draw(feet);
             ShowMario(true);
             if (ItemDisplayRig.Enabled && !itemDisplaysTried)
             {
@@ -726,16 +734,19 @@ namespace MarioTest
                 itemDisplays = ItemDisplayRig.Attach(body, new MarioItemAnchors(view));
             }
             itemDisplays?.Pose(feet, view.DrawnRotation, UnityHost.Scale);
+            if (inside) itemDisplays?.SetVisible(false);
             drawn = true;
             if (Local)
             {
                 // The life meter for the player's health, and the marker on the locked enemy
-                // as seen from Mario's chest.
+                // as seen from Mario's chest (in VR, from the headset).
                 MarioLife.Update(view.Handle, health);
                 MarioCoinHud.Update(view.Handle, body, localUser);
                 MarioHudLayout.Update(true, localUser);
+                var head = MarioVr.FirstPerson(body) ? Vr.Head() : null;
                 lockMarker.Update(view.Handle, lockShown,
-                    feet + Vector3.up * (height * 0.55f));
+                    head ? head.position : feet + Vector3.up * (height * 0.55f));
+                if (MarioVr.Controls(body)) MarioVr.Crosshair(body, lockShown);
             }
         }
 
@@ -776,12 +787,21 @@ namespace MarioTest
             }
             var origin = input.aimOrigin;
             var dir = input.aimDirection;
+            // In VR the crosshair is the dominant hand's pointer, wherever the head looks.
+            Ray pointer = default;
+            bool pointing = Local && MarioVr.Controls(body) && MarioVr.Pointer(out pointer);
+            if (pointing)
+            {
+                origin = pointer.origin;
+                dir = pointer.direction;
+            }
+            float maxTurn = pointing ? MarioVr.PointerMaxTurn : MaxCrosshairTurn;
             var nozzle = transform.position - feetToOrigin
                 + Vector3.up * (UnityHost.MarioHeight * UnityHost.Scale * 0.55f);
             Vector3 target;
             string note = locked ? "locked" : "";
             if (locked) target = locked.corePosition;
-            else target = CrosshairTarget(origin, dir, out note);
+            else target = CrosshairTarget(origin, dir, out note, pointing ? MarioVr.PointerMinHit : MinCrosshairHit);
             var d = target - nozzle;
             Vector3 aim;
             if (ai)
@@ -798,7 +818,7 @@ namespace MarioTest
                 // A crosshair hit that is not out where the camera looks (a collider beside him, or anything close
                 // that sits above the nozzle, which would send the water straight up) is not the target: the water
                 // goes the way the camera looks. Not for a locked enemy, which can be anywhere.
-                if (!locked && d.sqrMagnitude > 1e-4f && Vector3.Angle(d, dir) > MaxCrosshairTurn)
+                if (!locked && d.sqrMagnitude > 1e-4f && Vector3.Angle(d, dir) > maxTurn)
                 {
                     note += " turn " + Vector3.Angle(d, dir).ToString("0");
                     d = dir;
@@ -852,9 +872,9 @@ namespace MarioTest
         const float MinCrosshairHit = 2f, MaxCrosshairTurn = 35f;
         static readonly RaycastHit[] crosshairHits = new RaycastHit[24];
 
-        /// Where the camera's ray lands, past Mario's own colliders and anything closer than MinCrosshairHit.
-        /// `note` says what was passed over, for SprayDiag.
-        Vector3 CrosshairTarget(Vector3 origin, Vector3 dir, out string note)
+        /// Where the camera's ray (in VR the pointer's) lands, past Mario's own colliders and anything closer
+        /// than `minHit`. `note` says what was passed over, for SprayDiag.
+        Vector3 CrosshairTarget(Vector3 origin, Vector3 dir, out string note, float minHit)
         {
             note = "";
             int n = Physics.RaycastNonAlloc(origin, dir, crosshairHits, 300f,
@@ -870,7 +890,7 @@ namespace MarioTest
                     note += " own:" + h.collider.name + "@" + h.distance.ToString("0.00");
                     continue;
                 }
-                if (h.distance < MinCrosshairHit)
+                if (h.distance < minHit)
                 {
                     note += " near:" + h.collider.name + "@" + h.distance.ToString("0.00");
                     continue;

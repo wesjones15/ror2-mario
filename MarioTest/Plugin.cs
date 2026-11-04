@@ -100,7 +100,7 @@ namespace MarioTest
         internal static ConfigEntry<bool> CrowdControl;
         internal static ConfigEntry<bool> CameraAim, LockOn, AimAtCrosshair, SprayDiag;
         internal static ConfigEntry<bool> VrControls, VrHideBody, VrCrosshair, VrFlips;
-        internal static ConfigEntry<float> VrHeadFollow;
+        internal static ConfigEntry<float> VrHeadFollow, VrArmPitch, VrArmRoll, VrArmForward;
         internal static ConfigEntry<bool> SprayBursts;
         internal static ConfigEntry<float> TriggerCurve;
         internal static ConfigEntry<float> LightTapSeconds;
@@ -530,6 +530,15 @@ namespace MarioTest
                 new ConfigDescription("In VR, how much the view follows Mario's head down and up (a wet slide " +
                     "drops it low, a crouch a little): 0 never, 1 fully. Never sideways or round in a spin.",
                     new AcceptableValueRange<float>(0f, 1f)));
+            VrArmPitch = Config.Bind("VR", "ArmPitch", 0f,
+                "In VR, Mario's forearms and gloves on the controllers tip this many degrees about the " +
+                "controller's side (positive: fingers down).");
+            VrArmRoll = Config.Bind("VR", "ArmRoll", 0f,
+                "In VR, the arms roll this many degrees about the controller's length (positive turns the " +
+                "right glove's back outward; the left mirrors it).");
+            VrArmForward = Config.Bind("VR", "ArmForward", 0f,
+                "In VR, the arms sit this far forward (metres; negative: back) along the controller from " +
+                "the glove's middle in the grip.");
             VrFlips = Config.Bind("VR", "FlipCamera", false,
                 "In VR, the view turns over with Mario through a somersault and a backflip. Off: the view " +
                 "is only ever turned by you (spins and the corkscrew never turn it either way).");

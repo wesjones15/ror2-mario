@@ -40,6 +40,37 @@ namespace MarioTest
         // nozzle on his back and the hand are apart, so near targets need more than the camera's 35.
         internal const float PointerMaxTurn = 60f;
 
+        // ---- the arms ----------------------------------------------------------------------------
+        //
+        // His own forearms and gloves, cut from his body by libsms (sms_view_set_vr_arms), each on
+        // its controller: the glove's middle in the hand's grip, the fingers along the controller,
+        // the back of the glove up, the forearm trailing back toward the elbow. They animate with
+        // him (a fist, a wave) and flash and freeze with him. While they're drawn the VR mod's
+        // stand-in hand is hidden on that controller; a skin with no cut arms (Luigi's and
+        // Yoshi's bodies aren't on Mario's rig) keeps the VR mod's hands.
+
+        /// Draws his arms on the controllers in place of his body.
+        internal static void DrawArms(CharacterBody body, MarioView view, Vector3 feet)
+        {
+            bool hands = Vr.HandsReady;
+            int drawn = view.DrawArms(feet, side => hands ? ArmAt(side) : null);
+            Vr.ShowHandModel(true, drawn == 0);
+            Vr.ShowHandModel(false, drawn == 0);
+        }
+
+        // Where a side's arm space goes: on that controller (Mario's right arm on the right one),
+        // turned by VR.ArmPitch / VR.ArmRoll (the left's roll mirrored) and VR.ArmForward along it.
+        static (Vector3, Quaternion)? ArmAt(int side)
+        {
+            bool left = side == 1;
+            var hand = Vr.HandBySide(left);
+            if (!hand) return null;
+            float roll = Plugin.VrArmRoll.Value * (left ? -1f : 1f);
+            var rot = hand.rotation * Quaternion.Euler(Plugin.VrArmPitch.Value, 0f, roll);
+            var at = hand.position + rot * (Vector3.forward * Plugin.VrArmForward.Value);
+            return (at, rot);
+        }
+
         // ---- the eye -----------------------------------------------------------------------------
         //
         // The VR mod holds the view at a fixed eye height on the body (ror2-common's VrRig). His

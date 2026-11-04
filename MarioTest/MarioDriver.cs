@@ -728,7 +728,9 @@ namespace MarioTest
             // In VR the player is inside him: his body (and what hangs on it) isn't drawn for
             // them, though it's still posed for his sounds, water and effects (MarioVr).
             bool inside = Local && MarioVr.HideBody(body);
-            view.Draw(feet, inside ? HideAll : null);
+            view.SetVrArms(inside);
+            if (inside) MarioVr.DrawArms(body, view, feet);
+            else view.Draw(feet);
             if (Local) MarioVr.FollowHead(body, view, feet, simStatus, grounded, height);
             ShowMario(true);
             if (ItemDisplayRig.Enabled && !itemDisplaysTried)
@@ -752,8 +754,6 @@ namespace MarioTest
                 if (MarioVr.Controls(body)) MarioVr.Crosshair(body, lockShown);
             }
         }
-
-        static bool HideAll(ViewDraw _) => true;
 
         // Mario's models in place of Commando's, or back.
         void ShowMario(bool show)

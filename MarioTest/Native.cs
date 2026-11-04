@@ -4,7 +4,7 @@ using Ror2Common;
 
 namespace MarioTest
 {
-    // The libsms C ABI (libsms/crates/libsms-ffi, SMS_ABI_VERSION 44). Layouts mirror the
+    // The libsms C ABI (libsms/crates/libsms-ffi, SMS_ABI_VERSION 45). Layouts mirror the
     // #[repr(C)] structs there field for field; Load checks them with sms_struct_sizes. Sim
     // units: about 1 cm, Y up, a facing angle a (i16, 0x10000 per turn) points along
     // (sin a, 0, cos a). The view's structs are ror2-common's (ViewModelInfo...), which
@@ -12,7 +12,7 @@ namespace MarioTest
     internal static class Native
     {
         public const string Dll = "sms";
-        public const uint AbiVersion = 44;
+        public const uint AbiVersion = 45;
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern IntPtr sms_heat_new(byte[] dir);
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern void sms_heat_free(IntPtr heat);
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern byte sms_heat_texture(IntPtr heat, out ViewTexture texture, [Out] byte[] rgba, uint capacity);
@@ -505,6 +505,10 @@ namespace MarioTest
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern byte sms_view_fx_texture_world_space(IntPtr view, uint texture);
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern void sms_view_set_smoke_speed(IntPtr view, float speed);
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern void sms_view_set_water_speed(IntPtr view, float speed);
+        /// Each forearm and glove drawn on its own in arm space (VR): body-model draws keyed
+        /// VrArmKey + side (0 right, 1 left) in the low byte.
+        [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern void sms_view_set_vr_arms(IntPtr view, byte on);
+        public const ulong VrArmKey = 0x10;
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern IntPtr sms_view_fx_vertices(IntPtr view, out uint count);
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern IntPtr sms_view_fx_batches(IntPtr view, out uint count);
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern uint sms_view_fx_texture_version(IntPtr view, uint which);

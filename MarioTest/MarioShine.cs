@@ -287,7 +287,7 @@ namespace MarioTest
             MarioScreenFx.ShineGet();
             SpawnMusic.PlayCue("shineget");
             // In VR the view stays the player's own head (MarioVr): no shot taken over.
-            if (Plugin.ShineCameraOn.Value && !MarioVr.FirstPerson(driver.GetComponent<CharacterBody>())) TakeCamera(driver);
+            if (Plugin.ShineCameraOn.Value && !MarioVr.Character.FirstPerson(driver.GetComponent<CharacterBody>())) TakeCamera(driver);
             Plugin.Log.LogInfo($"Shine Get: the stage ends in about {Plugin.ShineSeconds.Value:F1} s " +
                 $"(teleporter asked at {requestAt:F1} s, camera {(demoInside ? "inside" : "outside")}); Mario: {driver.DrawNote()}");
         }

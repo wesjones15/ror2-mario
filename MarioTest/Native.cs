@@ -506,9 +506,8 @@ namespace MarioTest
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern void sms_view_set_smoke_speed(IntPtr view, float speed);
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern void sms_view_set_water_speed(IntPtr view, float speed);
         /// Each forearm and glove drawn on its own in arm space (VR): body-model draws keyed
-        /// VrArmKey + side (0 right, 1 left) in the low byte.
+        /// VrCharacter.ArmKey + side (0 right, 1 left) under the model byte.
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern void sms_view_set_vr_arms(IntPtr view, byte on);
-        public const ulong VrArmKey = 0x10;
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern IntPtr sms_view_fx_vertices(IntPtr view, out uint count);
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern IntPtr sms_view_fx_batches(IntPtr view, out uint count);
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern uint sms_view_fx_texture_version(IntPtr view, uint which);

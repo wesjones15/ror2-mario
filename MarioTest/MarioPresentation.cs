@@ -71,15 +71,15 @@ namespace MarioTest
         void LateUpdate()
         {
             Refresh();
-            if (Active && MarioVr.WristHud) VrPanel.Show();
+            if (Active && MarioVr.Character.WristHud) VrPanel.Show();
         }
 
         void OnGUI()
         {
             if (!Active) return;
-            // In VR the HUD goes on the wrist panel instead (MarioVr.WristHud), drawn only as it
+            // In VR the HUD goes on the wrist panel instead (MarioVr.Character.WristHud), drawn only as it
             // repaints; the Air Pump overlay sits on RoR2's own HUD, which the VR mod moves.
-            bool wrist = MarioVr.WristHud;
+            bool wrist = MarioVr.Character.WristHud;
             if (wrist && !VrPanel.Begin()) return;
             try
             {

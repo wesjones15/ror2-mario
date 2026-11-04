@@ -336,9 +336,9 @@ namespace MarioTest
             // Facing from Mario toward the camera: the reverse of where the player aims. In VR the
             // camera is the headset and the aim is the hand's pointer (MarioVr): the stick's
             // circle and the corkscrew's steering follow the head, never the pointer.
-            bool firstPerson = Local && MarioVr.FirstPerson(body);
-            short cameraYaw = UnityHost.Yaw(-(firstPerson ? MarioVr.ViewForward(input.aimDirection) : input.aimDirection));
-            var flightAim = (firstPerson ? MarioVr.HeadLook(AimDirection) : AimDirection).normalized;
+            bool firstPerson = Local && MarioVr.Character.FirstPerson(body);
+            short cameraYaw = UnityHost.Yaw(-(firstPerson ? MarioVr.Character.ViewForward(input.aimDirection) : input.aimDirection));
+            var flightAim = (firstPerson ? MarioVr.Character.HeadLook(AimDirection) : AimDirection).normalized;
             SimOps.FlightCamera(sim, (byte)(Local ? 1 : 0), UnityHost.Yaw(flightAim),
                 Mathf.Atan2(flightAim.y, new Vector2(flightAim.x, flightAim.z).magnitude));
             // The lock-on (LB; a keyboard's utility key; the brain's): FLUDD takes its aim, and
@@ -727,12 +727,12 @@ namespace MarioTest
             view.Frozen = native && native.Frozen;
             // In VR the player is inside him: his body (and what hangs on it) isn't drawn for
             // them, though it's still posed for his sounds, water and effects (MarioVr).
-            bool inside = Local && MarioVr.HideBody(body);
+            bool inside = Local && MarioVr.Character.HideBody(body);
             // The view follows his head (posed by Update) first, so the arms drawn on the
             // controllers turn with it through a flip.
             if (Local) MarioVr.FollowHead(body, view, feet, simStatus, grounded, height);
             view.SetVrArms(inside);
-            if (inside) MarioVr.DrawArms(body, view, feet);
+            if (inside) MarioVr.DrawArms(view, feet);
             else view.Draw(feet);
             ShowMario(true);
             if (ItemDisplayRig.Enabled && !itemDisplaysTried)
@@ -750,10 +750,10 @@ namespace MarioTest
                 MarioLife.Update(view.Handle, health);
                 MarioCoinHud.Update(view.Handle, body, localUser);
                 MarioHudLayout.Update(true, localUser);
-                var head = MarioVr.FirstPerson(body) ? Vr.Head() : null;
+                var head = MarioVr.Character.FirstPerson(body) ? Vr.Head() : null;
                 lockMarker.Update(view.Handle, lockShown,
                     head ? head.position : feet + Vector3.up * (height * 0.55f));
-                if (MarioVr.Controls(body)) MarioVr.Crosshair(body, lockShown);
+                if (MarioVr.Controls(body)) MarioVr.Character.Crosshair(body, lockShown);
             }
         }
 
@@ -787,7 +787,7 @@ namespace MarioTest
             // In VR the crosshair is the dominant hand's pointer, wherever the head looks: the
             // lock picks, keeps and cycles round it too (EnemyLock.Aim).
             Ray pointer = default;
-            bool pointing = Local && MarioVr.Controls(body) && MarioVr.Pointer(out pointer);
+            bool pointing = Local && MarioVr.Controls(body) && MarioVr.Character.Pointer(out pointer);
             enemyLock.Aim = pointing ? pointer : (Ray?)null;
             enemyLock.Range = Plugin.LockRange.Value;
             var locked = ai ? ai : enemyLock.Update(body, lockHeld && input, cycle, direction);
@@ -810,7 +810,7 @@ namespace MarioTest
             Vector3 target;
             string note = locked ? "locked" : "";
             if (locked) target = locked.corePosition;
-            else target = CrosshairTarget(origin, dir, out note, pointing ? MarioVr.PointerMinHit : MinCrosshairHit);
+            else target = CrosshairTarget(origin, dir, out note, pointing ? MarioVr.Character.PointerMinHit : MinCrosshairHit);
             var d = target - nozzle;
             Vector3 aim;
             if (ai)

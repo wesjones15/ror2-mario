@@ -228,34 +228,13 @@ namespace MarioTest
             Native.sms_view_set_vr_arms(view, (byte)(on ? 1 : 0));
         }
 
-        /// The side (0 right, 1 left) of a VR arm draw, or -1 for any other.
-        public static int ArmSide(ViewDraw d)
-        {
-            ulong low = d.key & 0xFF;
-            return d.model == 0 && low >= Native.VrArmKey && low < Native.VrArmKey + 2 ? (int)(low - Native.VrArmKey) : -1;
-        }
-
-        /// Draws only the VR arms (after Update), each where `arm` puts its side (null: that
-        /// side isn't drawn); the rest of him is posed but not shown. How many arms were drawn.
-        public int DrawArms(Vector3 feet, Func<int, (Vector3, Quaternion)?> arm)
+        /// Draws only the VR arms (after Update), each on its controller (VrCharacter.DrawArms);
+        /// the rest of him is posed but not shown. How many arms were drawn.
+        public int DrawArms(Vector3 feet, VrCharacter vr)
         {
             using var timing = MarioPerformance.Measure(MarioPerformance.Part.Models);
             drawFeet = feet;
-            if (models == null) return 0;
-            var placed = new (Vector3, Quaternion)?[2];
-            placed[0] = arm(0);
-            placed[1] = arm(1);
-            int drawn = 0;
-            models.Update(UnityHost.Scale,
-                d => { int s = ArmSide(d); return s >= 0 ? placed[s] : placement(d); },
-                d =>
-                {
-                    int s = ArmSide(d);
-                    bool show = s >= 0 && placed[s].HasValue;
-                    if (show) drawn++;
-                    return !show;
-                });
-            return drawn;
+            return vr.DrawArms(models, UnityHost.Scale, placement);
         }
 
         /// Where his head is from his feet this frame, in world metres (after Draw), or false.

@@ -242,7 +242,7 @@ namespace MarioTest
 
         void LateUpdate()
         {
-            if (Showing && MarioVr.Character.WristHud) VrPanel.Show();
+            if (Showing) MarioVr.Character.ShowWrist();
         }
 
         void OnGUI()
@@ -250,10 +250,7 @@ namespace MarioTest
             if (!Showing || Event.current.type != EventType.Repaint) return;
             // Over everything of RoR2's own, its HUD and menus too.
             GUI.depth = -1000;
-            bool wrist = MarioVr.Character.WristHud;
-            if (wrist && !VrPanel.Begin()) return;
-            try { Draw(); }
-            finally { if (wrist) VrPanel.End(); }
+            MarioVr.Character.OnWrist(Draw);
         }
 
         void Draw()

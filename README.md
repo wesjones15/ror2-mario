@@ -412,7 +412,9 @@ flight. The layout (`VR.Controls`) is right-handed, and the VR mod's left-handed
 The HUD is on a panel over the off-hand's wrist (`VR.WristHud`); point at the nozzle wheel's
 segments to pick one. The heat haze is off in a headset (`VR.HeatHaze`). `VR.FlipCamera` (off by
 default) turns the view over with him through a somersault or backflip, for that frame's render
-only, with his arms and the wrist panel turned too.
+only, with his arms and the wrist panel turned too. `VR.ThirdPerson` (off by default) puts the view
+behind and above him instead (`VR.ThirdPersonBack`, `VR.ThirdPersonUp`), behind as you turn, with
+all of him and the VR mod's hands drawn; FLUDD still sprays where you point.
 
 Not done: Luigi and Yoshi skins have no cut arms and keep the VR mod's hands. Full-screen
 fades (Too Bad, Game Over, the Shine letters) still go only to the desktop window. The carry

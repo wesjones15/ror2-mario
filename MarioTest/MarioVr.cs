@@ -46,6 +46,7 @@ namespace MarioTest
         /// VR.FlipCamera, turns over through a flip.
         internal static void FollowHead(CharacterBody body, MarioView view, Vector3 feet, string status, bool grounded, float height)
         {
+            Character.PlaceBehind(body);
             if (view == null || !Character.FirstPerson(body) || !view.HeadOffset(out var head)) return;
             Character.FollowHead(body, head, view.DrawnRotation * Vector3.forward, feet, height, Pose(status, grounded));
         }

@@ -82,7 +82,8 @@ namespace MarioTest
             float roll = Plugin.VrArmRoll.Value * (left ? -1f : 1f);
             var rot = hand.rotation * Quaternion.Euler(Plugin.VrArmPitch.Value, 0f, roll);
             var at = hand.position + rot * (Vector3.forward * Plugin.VrArmForward.Value);
-            return (at, rot);
+            // With the view turned over in a flip, the hands are seen turned with it.
+            return VrRig.Turned(at, rot);
         }
 
         // ---- the eye -----------------------------------------------------------------------------

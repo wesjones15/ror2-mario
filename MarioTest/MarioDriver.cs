@@ -728,10 +728,12 @@ namespace MarioTest
             // In VR the player is inside him: his body (and what hangs on it) isn't drawn for
             // them, though it's still posed for his sounds, water and effects (MarioVr).
             bool inside = Local && MarioVr.HideBody(body);
+            // The view follows his head (posed by Update) first, so the arms drawn on the
+            // controllers turn with it through a flip.
+            if (Local) MarioVr.FollowHead(body, view, feet, simStatus, grounded, height);
             view.SetVrArms(inside);
             if (inside) MarioVr.DrawArms(body, view, feet);
             else view.Draw(feet);
-            if (Local) MarioVr.FollowHead(body, view, feet, simStatus, grounded, height);
             ShowMario(true);
             if (ItemDisplayRig.Enabled && !itemDisplaysTried)
             {

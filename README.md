@@ -388,6 +388,37 @@ Headless checks: `dotnet run --project tests/FallDamageCheck -c Release` and lib
 an extreme normal fall, a dive from the same height, and a ground pound; repeat with
 H3AD-5T v2 and Frailty/Eclipse when relevant. Multiplayer remains untested.
 
+### VR
+
+With Blowntobytes' VR mod in a headset (built on `feature/vr`, the `[VR]` config section),
+Mario is played in first person from his head. The view is turned only by you: the head follows
+Mario's height (low in a wet slide, `VR.HeadFollow`), never his spins or the corkscrew. The Shine
+and statue-pod cameras don't take the headset. Your own Mario isn't drawn for you, but his water,
+effects and sounds still are, and other players see all of him. His forearms and gloves are cut
+from his model by libsms (`sms_view_set_vr_arms`, ABI 45) and drawn on the controllers; tune them
+with `VR.ArmPitch`, `VR.ArmRoll` and `VR.ArmForward`.
+
+The dominant hand's pointer is the crosshair (a ring where it lands). FLUDD sprays there and the
+lock-on picks and cycles about it. The head steers the sim's camera heading and the corkscrew's
+flight. The layout (`VR.Controls`) is right-handed, and the VR mod's left-handed mode mirrors it:
+
+- Right trigger sprays at its pressure.
+- Left trigger is L.
+- Left grip holds the lock-on.
+- Right grip taps the nozzle swap, or holds it to open the wheel (it cycles the target while
+  locked).
+- A jumps and B dives.
+
+The HUD is on a panel over the off-hand's wrist (`VR.WristHud`); point at the nozzle wheel's
+segments to pick one. The heat haze is off in a headset (`VR.HeatHaze`). `VR.FlipCamera` (off by
+default) turns the view over with him through a somersault or backflip, for that frame's render
+only, with his arms and the wrist panel turned too.
+
+Not done: Luigi and Yoshi skins have no cut arms and keep the VR mod's hands. Full-screen
+fades (Too Bad, Game Over, the Shine letters) still go only to the desktop window. The carry
+escape is still on RoR2's jump, which is B in the VR mod. Nothing here has been played in a
+headset yet.
+
 ### Not there yet
 
 - Multiplayer is implemented but has never been run in a two-player game: other players see

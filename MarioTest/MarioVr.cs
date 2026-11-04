@@ -40,6 +40,58 @@ namespace MarioTest
         // nozzle on his back and the hand are apart, so near targets need more than the camera's 35.
         internal const float PointerMaxTurn = 60f;
 
+        // ---- the eye -----------------------------------------------------------------------------
+        //
+        // The VR mod holds the view at a fixed eye height on the body (ror2-common's VrRig). His
+        // head's height above his feet moves it from there: down low in a wet slide or a crouch,
+        // back up as he stands. Only the height: a spin or the corkscrew swings the head round
+        // him, and following that would orbit the view. The height is smoothed (the headset's own
+        // motion never is), and a somersault or backflip holds the standing eye unless VR.FlipCamera
+        // turns the view over with him instead, about his middle and only while it's drawn.
+
+        // His head's height standing about, as the view's zero (learnt as he waits and runs).
+        static float standing = -1f;
+        static float eyeOffset;
+        static Quaternion flipTurn = Quaternion.identity;
+        // The offset settles toward the head this quickly (seconds), and a cut-short flip turns back.
+        const float EyeSmoothing = 0.08f, FlipRecover = 0.15f;
+
+        static bool Flip(string status) => status == "UltraJump" || status == "BackJump";
+        static bool Standing(string status) => status == "Wait" || status == "Run";
+
+        /// After the frame's draw: moves the view with his head (VR.HeadFollow) and, with
+        /// VR.FlipCamera, over through a flip.
+        internal static void FollowHead(CharacterBody body, MarioView view, Vector3 feet, string status, bool grounded, float height)
+        {
+            if (!FirstPerson(body) || view == null || !view.HeadOffset(out var head)) return;
+            float h = head.y;
+            if (standing < 0f) standing = h;
+            if (grounded && Standing(status)) standing += (h - standing) * (1f - Mathf.Exp(-Time.deltaTime / 1f));
+            bool flip = Flip(status);
+            float target = flip ? 0f : (h - standing) * Mathf.Clamp01(Plugin.VrHeadFollow.Value);
+            target = Mathf.Clamp(target, -standing * 0.85f, standing * 0.15f);
+            eyeOffset += (target - eyeOffset) * (1f - Mathf.Exp(-Time.deltaTime / EyeSmoothing));
+            VrRig.EyeOffset(body, eyeOffset);
+
+            var want = Quaternion.identity;
+            var up = Vector3.up;
+            var forward = view.DrawnRotation * Vector3.forward;
+            forward.y = 0f;
+            if (flip && Plugin.VrFlips.Value && forward.sqrMagnitude > 1e-4f && head.sqrMagnitude > 1e-6f)
+            {
+                forward.Normalize();
+                // How far round he has gone: his head's angle from straight up, forward positive
+                // (a somersault pitches the view down, a backflip up), about his right.
+                float angle = Mathf.Atan2(Vector3.Dot(head, forward), Vector3.Dot(head, up)) * Mathf.Rad2Deg;
+                want = Quaternion.AngleAxis(angle, Vector3.Cross(up, forward));
+                flipTurn = want;
+            }
+            else flipTurn = Quaternion.Slerp(flipTurn, want, 1f - Mathf.Exp(-Time.deltaTime / FlipRecover));
+            if (Quaternion.Angle(flipTurn, Quaternion.identity) > 0.5f)
+                VrRig.RenderTurn(flipTurn, feet + Vector3.up * (height * 0.5f));
+            else flipTurn = Quaternion.identity;
+        }
+
         /// Draws the pointer's crosshair this frame (VR.Crosshair), `hot` with a lock.
         internal static void Crosshair(CharacterBody body, bool hot)
         {

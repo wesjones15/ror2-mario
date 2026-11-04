@@ -210,13 +210,25 @@ namespace MarioTest
             fx.Update(view, UnityHost.Scale, offset);
         }
 
-        /// Poses the models at `feet` (after Update).
-        public void Draw(Vector3 feet)
+        /// Poses the models at `feet` (after Update), leaving out the draws `hide` picks.
+        public void Draw(Vector3 feet, Func<ViewDraw, bool> hide = null)
         {
             using var timing = MarioPerformance.Measure(MarioPerformance.Part.Models);
             drawFeet = feet;
-            models?.Update(UnityHost.Scale, placement);
+            models?.Update(UnityHost.Scale, placement, hide);
         }
+
+        /// Where his head is from his feet this frame, in world metres (after Draw), or false.
+        public bool HeadOffset(out Vector3 offset)
+        {
+            offset = default;
+            if (view == IntPtr.Zero || models == null || models.DrawCount == 0) return false;
+            if (Native.sms_view_anchor(view, (uint)ItemAnchor.Head, headMatrix) != 1) return false;
+            // ModelView mirrors the models across their own X (as ItemDisplayRig does).
+            offset = DrawnRotation * new Vector3(-headMatrix[12], headMatrix[13], headMatrix[14]) * UnityHost.Scale;
+            return true;
+        }
+        readonly float[] headMatrix = new float[16];
 
         /// Hides the models, the water and the effects (until the next Update).
         public void Hide()

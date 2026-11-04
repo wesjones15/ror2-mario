@@ -45,6 +45,8 @@ namespace MarioTest
         // (ror2-common's StepSmoother).
         StepSmoother smoother;
         string lastStatus;
+        // The sim's status after the last step (MarioVr's head follow).
+        string simStatus = "";
         bool bodyHidden;
         // How far behind the sim the body is drawn (Update's smoothing), in 120 Hz ticks.
         float lagTicks;
@@ -544,6 +546,7 @@ namespace MarioTest
                 direction.moveVector = facing;
             }
 
+            simStatus = status;
             EndRecording(st);
 
             if (Plugin.LogStatus.Value)
@@ -725,8 +728,8 @@ namespace MarioTest
             // In VR the player is inside him: his body (and what hangs on it) isn't drawn for
             // them, though it's still posed for his sounds, water and effects (MarioVr).
             bool inside = Local && MarioVr.HideBody(body);
-            if (inside) view.Models.HideAll();
-            else view.Draw(feet);
+            view.Draw(feet, inside ? HideAll : null);
+            if (Local) MarioVr.FollowHead(body, view, feet, simStatus, grounded, height);
             ShowMario(true);
             if (ItemDisplayRig.Enabled && !itemDisplaysTried)
             {
@@ -749,6 +752,8 @@ namespace MarioTest
                 if (MarioVr.Controls(body)) MarioVr.Crosshair(body, lockShown);
             }
         }
+
+        static bool HideAll(ViewDraw _) => true;
 
         // Mario's models in place of Commando's, or back.
         void ShowMario(bool show)

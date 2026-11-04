@@ -777,6 +777,11 @@ namespace MarioTest
         void Aim(bool camera, bool lockHeld, CharacterBody ai, bool cycle, Vector2 direction, bool crosshair = false)
         {
             camera = ((camera && Plugin.CameraAim.Value) || crosshair) && input;
+            // In VR the crosshair is the dominant hand's pointer, wherever the head looks: the
+            // lock picks, keeps and cycles round it too (EnemyLock.Aim).
+            Ray pointer = default;
+            bool pointing = Local && MarioVr.Controls(body) && MarioVr.Pointer(out pointer);
+            enemyLock.Aim = pointing ? pointer : (Ray?)null;
             enemyLock.Range = Plugin.LockRange.Value;
             var locked = ai ? ai : enemyLock.Update(body, lockHeld && input, cycle, direction);
             lockShown = lockHeld && Local ? locked : null;
@@ -787,9 +792,6 @@ namespace MarioTest
             }
             var origin = input.aimOrigin;
             var dir = input.aimDirection;
-            // In VR the crosshair is the dominant hand's pointer, wherever the head looks.
-            Ray pointer = default;
-            bool pointing = Local && MarioVr.Controls(body) && MarioVr.Pointer(out pointer);
             if (pointing)
             {
                 origin = pointer.origin;

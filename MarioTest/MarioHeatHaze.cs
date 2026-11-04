@@ -80,6 +80,8 @@ namespace MarioTest
             // This deliberately follows the owner's camera rather than a live Mario body.
             if (!camera || !Plugin.HeatHaze.Value || !Plugin.AssetsReady || !MarioPresentation.Active
                 || camera != MarioPresentation.Camera || Ror2Common.GameSettings.CameraOverride) return;
+            // In a headset the sheet would ride the head, distorting the view as it turns.
+            if (Ror2Common.Vr.Active && !Plugin.VrHeatHaze.Value) return;
             if (!Ensure() || Native.sms_heat_frame(native, Time.time, frame, 8) == 0) return;
             float distance = frame[0] * UnityHost.Scale * DepthScale;
             if (distance <= camera.nearClipPlane || distance >= camera.farClipPlane) return;

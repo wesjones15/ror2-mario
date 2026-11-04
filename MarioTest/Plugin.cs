@@ -99,7 +99,7 @@ namespace MarioTest
         internal static ConfigEntry<bool> ExternalForces;
         internal static ConfigEntry<bool> CrowdControl;
         internal static ConfigEntry<bool> CameraAim, LockOn, AimAtCrosshair, SprayDiag;
-        internal static ConfigEntry<bool> VrControls, VrHideBody, VrCrosshair, VrFlips;
+        internal static ConfigEntry<bool> VrControls, VrHideBody, VrCrosshair, VrFlips, VrWristHud, VrHeatHaze;
         internal static ConfigEntry<float> VrHeadFollow, VrArmPitch, VrArmRoll, VrArmForward;
         internal static ConfigEntry<bool> SprayBursts;
         internal static ConfigEntry<float> TriggerCurve;
@@ -539,6 +539,13 @@ namespace MarioTest
             VrArmForward = Config.Bind("VR", "ArmForward", 0f,
                 "In VR, the arms sit this far forward (metres; negative: back) along the controller from " +
                 "the glove's middle in the grip.");
+            VrWristHud = Config.Bind("VR", "WristHud", true,
+                "In VR with motion controls, Mario's HUD (life meter, coins, FLUDD's tank, the nozzle wheel) " +
+                "on a panel over the off-hand's wrist; point at the wheel's segments to pick one. False: " +
+                "it's drawn on the desktop window only.");
+            VrHeatHaze = Config.Bind("VR", "HeatHaze", false,
+                "In VR, Sunshine's distant heat haze too (it sits on a sheet that moves with your head). " +
+                "Look.HeatHaze must also be on.");
             VrFlips = Config.Bind("VR", "FlipCamera", false,
                 "In VR, the view turns over with Mario through a somersault and a backflip. Off: the view " +
                 "is only ever turned by you (spins and the corkscrew never turn it either way).");

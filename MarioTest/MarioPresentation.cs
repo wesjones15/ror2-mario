@@ -68,13 +68,26 @@ namespace MarioTest
             // nonexistent drone/spectator tank is advanced or given gameplay powers.
         }
 
-        void LateUpdate() => Refresh();
+        void LateUpdate()
+        {
+            Refresh();
+            if (Active && MarioVr.WristHud) VrPanel.Show();
+        }
 
         void OnGUI()
         {
             if (!Active) return;
-            MarioHud.Draw(); MarioLife.Draw(); MarioCoinHud.Draw();
-            MarioRadial.Draw(); MarioRadial.DrawAltIcon();
+            // In VR the HUD goes on the wrist panel instead (MarioVr.WristHud), drawn only as it
+            // repaints; the Air Pump overlay sits on RoR2's own HUD, which the VR mod moves.
+            bool wrist = MarioVr.WristHud;
+            if (wrist && !VrPanel.Begin()) return;
+            try
+            {
+                MarioHud.Draw(); MarioLife.Draw(); MarioCoinHud.Draw();
+                MarioRadial.Draw();
+                if (!wrist) MarioRadial.DrawAltIcon();
+            }
+            finally { if (wrist) VrPanel.End(); }
         }
 
         internal static void Clear()

@@ -40,6 +40,20 @@ namespace MarioTest
         // nozzle on his back and the hand are apart, so near targets need more than the camera's 35.
         internal const float PointerMaxTurn = 60f;
 
+        // ---- the wrist HUD -----------------------------------------------------------------------
+
+        /// His HUD goes on the off-hand's wrist panel (VR.WristHud), for whoever is the local
+        /// player now: Mario, spectating, or flying a drone.
+        internal static bool WristHud => Plugin.VrWristHud.Value && Vr.HandsReady;
+
+        /// The nozzle wheel's pick: where the dominant pointer meets the wheel on the wrist panel,
+        /// else `stick`.
+        internal static Vector2 WheelDirection(Vector2 stick)
+        {
+            if (!WristHud || !Pointer(out var ray) || !VrPanel.PointAt(ray, out var gui)) return stick;
+            return MarioRadial.PointDirection(gui);
+        }
+
         // ---- the arms ----------------------------------------------------------------------------
         //
         // His own forearms and gloves, cut from his body by libsms (sms_view_set_vr_arms), each on

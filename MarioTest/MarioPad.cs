@@ -151,7 +151,7 @@ namespace MarioTest
                 }
                 MenuHeld = bumper && !LockHeld;
                 MenuFromGamepad = true;
-                MenuDirection = d.Stick;
+                MenuDirection = MarioVr.WheelDirection(d.Stick);
                 x = false;
                 rb = bumper;
                 float t = d.Trigger;

@@ -251,6 +251,19 @@ namespace MarioTest
             return index >= 0 && index < entries.Count ? index : -1;
         }
 
+        /// The wheel direction (y up, as the stick's) for a point in GUI coordinates: the VR
+        /// pointer on the wrist panel. Pointing over a segment's band is a full tilt; zero near
+        /// the middle.
+        public static Vector2 PointDirection(Vector2 gui)
+        {
+            float h = Mathf.Min(Screen.width, Screen.height);
+            float outer = h * 0.18f;
+            var d = gui - WheelCentre(outer, h);
+            d.y = -d.y;
+            float reach = outer * 0.8f;
+            return d.magnitude < outer * 0.15f ? Vector2.zero : d.normalized * Mathf.Clamp01(d.magnitude / reach);
+        }
+
         static Vector2 MouseDirection(Vector2 center)
         {
             var mouse = new Vector2(Input.mousePosition.x, Input.mousePosition.y);

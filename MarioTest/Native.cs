@@ -360,6 +360,7 @@ namespace MarioTest
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern byte sms_find_disc(byte[] dirsUtf8, byte[] pathUtf8, uint pathLen);
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern byte sms_extract(byte[] discUtf8, byte[] outDirUtf8, byte[] msgUtf8, uint msgLen);
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern byte sms_extract_extras(byte[] discUtf8, byte[] outDirUtf8, byte[] msgUtf8, uint msgLen);
+        [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern byte sms_bake_vr_arms(byte[] dirUtf8, byte[] meleeDirUtf8, byte[] msgUtf8, uint msgLen);
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern byte sms_render_stings(byte[] dirUtf8, byte[] msgUtf8, uint msgLen);
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern uint sms_struct_sizes([Out] uint[] sizes, uint max);
 

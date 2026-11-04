@@ -706,6 +706,10 @@ namespace MarioTest
                                 Log.LogInfo($"Sunshine wipe pictures, Shine Sprite and camera: {Utf8(msg)}");
                             else Log.LogWarning($"Sunshine wipe pictures, Shine Sprite and camera unavailable: {Utf8(msg)}");
                         }
+                        // Every skin's forearms and hands for the VR mod's controllers (ror2-common VrArmsBake).
+                        string melee = MarioSkin.MeleeDir;
+                        VrArmsBake.Run(AssetsDir, "Mario", "0.5.4|" + melee, (buf, len) =>
+                            Native.sms_bake_vr_arms(NativeLib.CString(AssetsDir), string.IsNullOrEmpty(melee) ? null : NativeLib.CString(melee), buf, len));
                         if (!Array.Exists(MarioStatuePod.AssetFiles, file => !File.Exists(Path.Combine(AssetsDir, "portal", file))))
                         {
                             if (Native.sms_prepare_entrance(NativeLib.CString(AssetsDir), msg, (uint)msg.Length) != 0)

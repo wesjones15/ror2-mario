@@ -615,7 +615,7 @@ namespace MarioTest
             MarioNet.Register();
             // The HUD's skill icons name the buttons Mario's sim reads (MarioPad), not RoR2's binds.
             PauseControls.Install(gameObject);
-            PauseControls.Register("MarioTestBody", body => MarioControls.Sheet(body));
+            PauseControls.Register("MarioTestBody", body => MarioVr.Controls(body) ? MarioControls.VrSheet(body) : MarioControls.Sheet(body));
             GlyphOverride.Install();
             GlyphOverride.Set("MarioTestBody", null, new Dictionary<SkillSlot, PadButton[]>
             {

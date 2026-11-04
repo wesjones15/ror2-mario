@@ -131,10 +131,11 @@ namespace MarioTest
             if (MotionControls)
             {
                 // Right-handed (the VR mod's left-handed mode swaps the hands): dominant A jump,
-                // B dive, trigger spray, grip RB; off-hand trigger L, grip the lock-on (LB). The
-                // VR mod's interact (A) and jump (B) still go to RoR2 too, which Mario's moves
-                // don't read. Its right stick turns, so the stick is only read at a cycle (and by
-                // the wheel, which takes the pointer in VR: MarioRadial).
+                // B dive, trigger spray, grip RB; off-hand trigger L, grip the lock-on (LB). RoR2
+                // reads this layout, not the VR mod's own buttons (VrBank): off-hand X interacts,
+                // Y uses equipment, its stick click sprints, the dominant stick click pings. Its
+                // right stick turns, so the stick is only read at a cycle (and by the wheel,
+                // which takes the pointer in VR: MarioRadial).
                 vr.Read(false);
                 var d = vr.Dominant;
                 var o = vr.Off;
@@ -157,6 +158,12 @@ namespace MarioTest
                 float t = d.Trigger;
                 r = t >= 0.98f ? 1f : Mathf.Pow(t, Mathf.Clamp(Plugin.TriggerCurve.Value, 0.2f, 5f));
                 down = up = false;
+                VrBank.Drive(input, new VrBank.Buttons
+                {
+                    Skill1 = t > 0.5f, Skill2 = b, Skill3 = l, Skill4 = bumper,
+                    Interact = o.Primary, Equipment = o.Secondary, Jump = a,
+                    Sprint = o.StickClick, Ping = d.StickClick,
+                });
             }
             else if (gp != null)
             {

@@ -408,6 +408,11 @@ flight. The layout (`VR.Controls`) is right-handed, and the VR mod's left-handed
 - Right grip taps the nozzle swap, or holds it to open the wheel (it cycles the target while
   locked).
 - A jumps and B dives.
+- Off-hand X interacts and Y uses equipment; the left stick click sprints, the right stick click pings.
+
+RoR2 reads this layout, not the VR mod's own buttons (ror2-common's `VrBank`), so the VR mod's A
+(interact) and B (jump) no longer fire beside his moves. The pause sheet shows the VR layout in a
+headset; the flat sheet is unchanged.
 
 The HUD is on a panel over the off-hand's wrist (`VR.WristHud`); point at the nozzle wheel's
 segments to pick one. The heat haze is off in a headset (`VR.HeatHaze`). `VR.FlipCamera` (off by

@@ -77,5 +77,32 @@ namespace MarioTest
             ControlSheetLayout.SpaceRows(sheet);
             return sheet;
         }
+
+        // His VR layout (MarioPad, MarioVr.Controls). The flat sheet above is left as it is. Both
+        // sections carry it, since the window picks one by the last device.
+        public static ControlSheet VrSheet(CharacterBody body)
+        {
+            var skin = MarioSkin.Current(body);
+            var sheet = new ControlSheet { Title = skin.Title, Subtitle = skin.Quip, Portrait = skin.Portrait };
+            foreach (var section in new[] { sheet.Pad(""), sheet.Keys("") })
+                section
+                    .Add("A", "Jump")
+                    .Add("B", "Dive (try sliding on\n<pos=170>wet terrain!)")
+                    .Add("L stick", "Move (click: Sprint)\n<pos=170>(spin: Spin)")
+                    .Add("L trigger in air", "Ground Pound")
+                    .Add("X / Y", "Interact / Use equipment")
+                    .Add("click R stick", "Ping");
+            foreach (var section in new[] { sheet.Pad("F.L.U.D.D."), sheet.Keys("F.L.U.D.D.") })
+                section
+                    .Add("Point", "Aim F.L.U.D.D.")
+                    .Add("R trigger", "Spray Water / Use Nozzle")
+                    .Add("R grip", "Tap: Spray <-> Alternate")
+                    .Add("hold R grip 0.6s", "Choose Alternate (point\n<pos=170>at the wheel)")
+                    .Add("hold L grip", "Lock on to Target")
+                    .Add("L grip + R trigger", "Spray Target")
+                    .Add("L grip + tap R grip", "Cycle target");
+            ControlSheetLayout.SpaceRows(sheet);
+            return sheet;
+        }
     }
 }

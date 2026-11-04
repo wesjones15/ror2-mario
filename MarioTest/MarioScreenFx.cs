@@ -235,11 +235,29 @@ namespace MarioTest
             GUI.color = before;
         }
 
+        // In VR a flat OnGUI reaches only the desktop window, so with the wrist HUD on, the effects go
+        // onto its panel, over Mario's HUD there (MarioPresentation draws it first), and the panel shows
+        // while they play, a game over's too, when the HUD itself has gone.
+        bool Showing => view != IntPtr.Zero && info.kind != 0;
+
+        void LateUpdate()
+        {
+            if (Showing && MarioVr.Character.WristHud) VrPanel.Show();
+        }
+
         void OnGUI()
         {
-            if (view == IntPtr.Zero || info.kind == 0 || Event.current.type != EventType.Repaint) return;
+            if (!Showing || Event.current.type != EventType.Repaint) return;
             // Over everything of RoR2's own, its HUD and menus too.
             GUI.depth = -1000;
+            bool wrist = MarioVr.Character.WristHud;
+            if (wrist && !VrPanel.Begin()) return;
+            try { Draw(); }
+            finally { if (wrist) VrPanel.End(); }
+        }
+
+        void Draw()
+        {
             float h = Screen.height, scale = h / info.screen_h, w = info.screen_w * scale;
             float x0 = (Screen.width - w) * 0.5f;
             // Back to front, as libsms lists them: the black a miss opens from, the letters and

@@ -57,6 +57,10 @@ namespace MarioTest
         /// A brain presses this Mario's buttons (Press), so the input bank's are ignored.
         public bool Brained;
 
+        /// The Spray is the fitted nozzle: only it bursts by press time (the others read the
+        /// trigger as is).
+        public bool SprayFitted = true;
+
         /// The local player is in VR with motion controls (MarioVr.Controls): the controllers are
         /// read as they are (ror2-common's VrPad) in Sunshine's layout, the analog trigger kept.
         public bool MotionControls;
@@ -157,6 +161,7 @@ namespace MarioTest
                 rb = bumper;
                 float t = d.Trigger;
                 r = t >= 0.98f ? 1f : Mathf.Pow(t, Mathf.Clamp(Plugin.TriggerCurve.Value, 0.2f, 5f));
+                r = Timed(r, r > 0.03f, Plugin.LightTapSeconds.Value);
                 down = up = false;
                 VrBank.Drive(input, new VrBank.Buttons
                 {
@@ -188,6 +193,7 @@ namespace MarioTest
                 rb = bumper;
                 float t = Mathf.Clamp01(gp.rightTrigger.value);
                 r = t >= 0.98f ? 1f : Mathf.Pow(t, Mathf.Clamp(Plugin.TriggerCurve.Value, 0.2f, 5f));
+                r = Timed(r, r > 0.03f, Plugin.LightTapSeconds.Value);
                 bool d = gp.dPad.down.value;
                 downTap |= d && !down;
                 down = d;
@@ -230,14 +236,30 @@ namespace MarioTest
         }
 
         // The keyboard primary as a trigger: light at first, full once held past the tap time.
-        float Primary(bool down)
+        float Primary(bool down) => Timed(down ? 0.6f : 0f, down, Plugin.LightTapSeconds.Value);
+
+        // The spray's burst is a matter of time, not of how far the trigger goes: a press let go
+        // within `tap` seconds is a light splash (the burst), a press held past it is the
+        // trigger's own pressure, a full spray. Pressing again before a burst has run out gives
+        // the sim a one-frame gap, so rapid presses chain bursts. `raw` is what the trigger would
+        // give held; `tap` <= 0 (or SprayBursts off) passes it through.
+        float Timed(float raw, bool down, float tap)
         {
-            float tap = Plugin.LightTapSeconds.Value;
+            if (!Plugin.SprayBursts.Value || !SprayFitted) tap = 0f;
             float now = Time.unscaledTime;
-            if (down && !primary) primaryAt = now;
+            bool gap = false;
+            if (down && !primary)
+            {
+                primaryAt = now;
+                // A fresh press over the end of the last burst: release for a frame so the
+                // sim sees a new press.
+                gap = tap > 0f && now < lightUntil;
+                lightUntil = -1f;
+            }
             if (!down && primary && tap > 0f && now - primaryAt < tap) lightUntil = primaryAt + LightBurst;
             primary = down;
-            if (down) return tap > 0f && now - primaryAt < tap ? Light : 0.6f;
+            if (gap) return 0f;
+            if (down) return tap > 0f && now - primaryAt < tap ? Light : raw;
             return now < lightUntil ? Light : 0f;
         }
 

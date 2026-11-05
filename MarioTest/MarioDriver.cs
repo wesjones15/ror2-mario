@@ -608,6 +608,8 @@ namespace MarioTest
         {
             FindLocalUser();
             pad.MotionControls = Local && MarioVr.Controls(body);
+            // Only the Spray (nozzle 1) bursts by press time; the others read the trigger as is.
+            pad.SprayFitted = sim != IntPtr.Zero && Native.sms_sim_state(sim, out var fitted) != 0 && fitted.nozzle == 1;
             pad.Read(localUser, input);
             if (!driving)
             {

@@ -487,10 +487,10 @@ namespace MarioTest
             QuailScale = Config.Bind("Items", "WaxQuail", 1f,
                 "Wax Quail's boost to a sprinting jump, times this (1: RoR2's).");
             SprayBursts = Config.Bind("Fludd", "SprayBursts", true,
-                "Sunshine's spray pressure: each press of the trigger is a burst. A light press " +
-                "drops a short splash just ahead (handy for wet slides); a full one sprays at full " +
-                "reach for about 5 s, then fades until you let go or press deeper. Off: a steady " +
-                "stream for as long as the trigger is held.");
+                "Sunshine's spray pressure, by time: a press let go within Controls.LightTapSeconds is a " +
+                "short splash just ahead (handy for wet slides), and pressing again rapidly chains " +
+                "bursts. Held longer, it sprays at full reach for about 5 s, then fades until you " +
+                "let go or press deeper. Off: a steady stream for as long as the trigger is held.");
             TriggerCurve = Config.Bind("Controls", "TriggerCurve", 2f,
                 "The spray trigger's travel is raised to this power, so a gamepad's light press is " +
                 "easier to hold (Sunshine's light zone is the first tenth of a GameCube trigger). " +

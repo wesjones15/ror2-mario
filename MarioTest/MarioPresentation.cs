@@ -72,6 +72,8 @@ namespace MarioTest
         {
             Refresh();
             if (Active) MarioVr.Character.ShowWrist();
+            // The nozzle wheel is held over the dominant hand, not on the wrist.
+            if (Active && MarioVr.Character.WristHud) VrHandPanel.Show();
         }
 
         void OnGUI()
@@ -84,9 +86,10 @@ namespace MarioTest
             MarioVr.Character.OnWrist(() =>
             {
                 MarioHud.Draw(); MarioLife.Draw(); MarioCoinHud.Draw();
-                MarioRadial.Draw();
+                if (!wrist) MarioRadial.Draw();
                 if (!wrist) MarioRadial.DrawAltIcon();
             });
+            if (wrist) MarioRadial.DrawInHand();
         }
 
         internal static void Clear()

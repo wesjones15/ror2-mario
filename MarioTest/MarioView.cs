@@ -228,13 +228,36 @@ namespace MarioTest
             Native.sms_view_set_vr_arms(view, (byte)(on ? 1 : 0));
         }
 
-        /// Draws only the VR arms (after Update), each on its controller (VrCharacter.DrawArms);
-        /// the rest of him is posed but not shown. How many arms were drawn.
+        /// Draws the VR arms (after Update), each on its controller (VrCharacter.DrawArms), and
+        /// his first-person body: the VR body draw (torso and legs, no head or forearms), the cap
+        /// (its brim over the eyes), FLUDD, its nozzles and the water-boost cone, where they are.
+        /// His whole body and his hands are posed but not shown. How many arms were drawn.
         public int DrawArms(Vector3 feet, VrCharacter vr)
         {
             using var timing = MarioPerformance.Measure(MarioPerformance.Part.Models);
             drawFeet = feet;
-            return vr.DrawArms(models, UnityHost.Scale, placement);
+            return vr.DrawArms(models, UnityHost.Scale, placement, FirstPersonShown);
+        }
+
+        // libsms-present view.rs models: 5 the cap, 6 FLUDD, 7-11 the nozzles, 12 the water boost.
+        static bool FirstPersonShown(ViewDraw d)
+        {
+            if (VrCharacter.IsBody(d)) return true;
+            ulong model = d.key >> 56;
+            return model >= 5 && model <= 12;
+        }
+
+        float vrEye = -1f;
+        static bool vrEyeMissing;
+        /// VR first person: the eye is `metres` above his feet (0: not in first person).
+        public void SetVrEye(float metres)
+        {
+            if (view == IntPtr.Zero || vrEyeMissing) return;
+            float eye = metres > 0f ? metres / UnityHost.Scale : 0f;
+            if (Mathf.Abs(eye - vrEye) < 0.5f) return;
+            vrEye = eye;
+            try { Native.sms_view_set_vr_eye(view, eye); }
+            catch (EntryPointNotFoundException) { vrEyeMissing = true; }
         }
 
         /// Where his head is from his feet this frame, in world metres (after Draw), or false.

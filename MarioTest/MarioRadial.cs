@@ -345,24 +345,52 @@ namespace MarioTest
             GUI.color = old;
         }
 
+        /// From MarioPresentation.OnGUI in VR (instead of Draw): the wheel held over the dominant
+        /// hand (Ror2Common.VrHandPanel), big, picked with that hand's stick.
+        public static void DrawInHand()
+        {
+            if (!open || entries.Count == 0 || Event.current.type != EventType.Repaint) return;
+            if (PauseManager.isPaused || !RoR2.UI.HUD.cvHudEnable.value) return;
+            // Laid out in the middle of the screen-sized panel texture, as large as it fits with
+            // the hint over it, so the panel shows it sharp.
+            float h = Mathf.Min(Screen.width, Screen.height);
+            float outer = h * 0.4f;
+            var center = new Vector2(Screen.width * 0.5f, Screen.height * 0.5f + outer * 0.1f);
+            var region = new Rect(center.x - outer * 1.1f, center.y - outer * 1.3f, outer * 2.2f, outer * 2.4f);
+            if (!Ror2Common.VrHandPanel.Begin(region)) return;
+            try { DrawWheel(center, outer, h, true); }
+            finally { Ror2Common.VrHandPanel.End(); }
+        }
+
         /// From MarioPresentation.OnGUI, after the HUD.
         public static void Draw()
         {
             if (!open || entries.Count == 0 || Event.current.type != EventType.Repaint) return;
             if (PauseManager.isPaused || !RoR2.UI.HUD.cvHudEnable.value) return;
             float h = Mathf.Min(Screen.width, Screen.height);
-            float outer = h * 0.18f, inner = outer * 0.57f;
-            var center = WheelCentre(outer, h);
-            EnsureStyles(h);
+            DrawWheel(WheelCentre(h * 0.18f, h), h * 0.18f, h, false);
+        }
+
+        // The wheel at `center`, `outer` its radius; `hand`: on the VR hand panel (no screen dim,
+        // no rise from the tank, sizes from the wheel instead of the screen).
+        static void DrawWheel(Vector2 center, float outer, float h, bool hand)
+        {
+            float inner = outer * 0.57f;
+            // The flat wheel's sizes are the screen's; on the hand they're the wheel's own.
+            float unit = hand ? outer / 0.18f : h;
+            EnsureStyles(hand ? Mathf.Min(unit, 1600f) : h);
             EnsureRing();
             if (!ring) return;
 
             var old = GUI.color;
             // A quiet dim behind the wheel so the segments read on any stage.
-            float progress = Mathf.Clamp01((Time.unscaledTime - openedAt) / EmergeTime);
+            float progress = hand ? 1f : Mathf.Clamp01((Time.unscaledTime - openedAt) / EmergeTime);
             float grow = 1f - (1f - progress) * (1f - progress) * (1f - progress);
-            GUI.color = new Color(0f, 0f, 0f, 0.30f * grow);
-            GUI.DrawTexture(new Rect(0f, 0f, Screen.width, Screen.height), Texture2D.whiteTexture);
+            if (!hand)
+            {
+                GUI.color = new Color(0f, 0f, 0f, 0.30f * grow);
+                GUI.DrawTexture(new Rect(0f, 0f, Screen.width, Screen.height), Texture2D.whiteTexture);
+            }
             GUI.color = Color.white;
             // Lift a small wheel from the tank's actual nozzle head into position.
             var matrixBefore = GUI.matrix;
@@ -380,7 +408,7 @@ namespace MarioTest
                 ring, ScaleMode.StretchToFill, true);
 
             float step = 360f / entries.Count;
-            float iconSize = Mathf.Clamp(h * 0.08f, 40f, 104f);
+            float iconSize = hand ? unit * 0.08f : Mathf.Clamp(h * 0.08f, 40f, 104f);
             for (int i = 0; i < entries.Count; i++)
             {
                 // Math coordinates here (y up); the screen is turned over below.
@@ -396,14 +424,14 @@ namespace MarioTest
             }
 
             var at = entries[Mathf.Clamp(hovered, 0, entries.Count - 1)];
-            float hub = Mathf.Clamp(h * 0.09f, 44f, 116f);
-            var hubRect = new Rect(center.x - hub * 0.5f, center.y - hub * 0.5f - h * 0.012f, hub, hub);
+            float hub = hand ? unit * 0.09f : Mathf.Clamp(h * 0.09f, 44f, 116f);
+            var hubRect = new Rect(center.x - hub * 0.5f, center.y - hub * 0.5f - unit * 0.012f, hub, hub);
             DrawEntryIcon(at, hubRect, hub);
-            var nameRect = new Rect(center.x - inner, center.y + hub * 0.55f, inner * 2f, h * 0.030f);
+            var nameRect = new Rect(center.x - inner, center.y + hub * 0.55f, inner * 2f, unit * 0.030f);
             Shadow(nameRect, at.Label, centerLabel);
-            var hintRect = new Rect(center.x - outer, center.y - outer - h * 0.052f,
-                outer * 2f, h * 0.04f);
-            Shadow(hintRect, "Select F.L.U.D.D. Nozzle with RS", label);
+            var hintRect = new Rect(center.x - outer, center.y - outer - unit * 0.052f,
+                outer * 2f, unit * 0.04f);
+            Shadow(hintRect, hand ? "Select F.L.U.D.D. Nozzle with the stick" : "Select F.L.U.D.D. Nozzle with RS", label);
             GUI.color = old;
             GUI.matrix = matrixBefore;
         }
@@ -454,13 +482,13 @@ namespace MarioTest
             label = new GUIStyle(GUI.skin.label)
             {
                 alignment = TextAnchor.MiddleCenter,
-                fontSize = Mathf.RoundToInt(Mathf.Clamp(h * 0.017f, 12f, 28f)),
+                fontSize = Mathf.RoundToInt(Mathf.Clamp(h * 0.017f, 12f, 40f)),
                 fontStyle = FontStyle.Bold,
             };
             label.normal.textColor = new Color(0.90f, 0.94f, 1f, 0.88f);
             titleStyle = new GUIStyle(label)
             {
-                fontSize = Mathf.RoundToInt(Mathf.Clamp(h * 0.021f, 14f, 34f)),
+                fontSize = Mathf.RoundToInt(Mathf.Clamp(h * 0.021f, 14f, 48f)),
             };
             titleStyle.normal.textColor = Color.white;
             centerLabel = new GUIStyle(titleStyle) { alignment = TextAnchor.MiddleCenter };

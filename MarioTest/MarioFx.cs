@@ -156,12 +156,17 @@ namespace MarioTest
         /// as alpha, so the crests show even where the refraction itself shows nothing.
         Material TintFor(uint texture)
         {
-            const uint Tint = 0x40 | 2;
+            // In VR first person the waves are a stronger tint of their own: the refraction alone
+            // (and the flat tint's faint wash over it) didn't show in a headset.
+            bool vr = VrFirstPerson;
+            uint tintKey = vr ? 0xC0u | 2 : 0x40u | 2;
             float opacity = Mathf.Clamp01(Plugin.SlideWaveTint.Value);
+            if (vr) opacity = Mathf.Max(opacity, VrSlideWaveTint);
             if (opacity <= 0f || texture >= refractionMasks.Length || !refractionMasks[texture]) return null;
-            long key = ((long)texture << 8) | Tint;
+            long key = ((long)texture << 8) | tintKey;
             if (materials.TryGetValue(key, out var m)) return m;
-            m = Shaders.SeeThrough("Mario slide wave tint", refractionMasks[texture], false, true, Shaders.SurfaceTintOpacity);
+            m = Shaders.SeeThrough(vr ? "Mario slide wave tint (VR)" : "Mario slide wave tint", refractionMasks[texture], false, true,
+                vr ? 1f : Shaders.SurfaceTintOpacity);
             if (m)
             {
                 m.renderQueue = 3001;
@@ -170,6 +175,11 @@ namespace MarioTest
             materials[key] = m;
             return m;
         }
+
+        /// The local Mario is seen from inside in a headset (MarioVr sets it each frame).
+        internal static bool VrFirstPerson;
+        const float VrSlideWaveTint = 0.6f;
+        static bool vrSlideLogged;
 
         /// This frame's effects (after sms_view_update): sim units times `scale`, shifted by
         /// `offset` for attached effects. Smoke stays at its emitted world position.
@@ -223,6 +233,13 @@ namespace MarioTest
                 }
                 // Slide waves (refraction) get a pale tint pass first, then the refraction.
                 var tint = batch.blend == 2 ? TintFor(batch.texture) : null;
+                if (batch.blend == 2 && VrFirstPerson && !vrSlideLogged)
+                {
+                    // Once, for a headset report: what the slide waves were drawn with.
+                    vrSlideLogged = true;
+                    Plugin.Log.LogInfo($"VR slide waves: {batch.vertex_count / 4} quads, tint {(tint ? tint.name : "none")}, " +
+                        $"refraction {(material ? material.shader.name : "none")}, from vertex {batch.first_vertex}");
+                }
                 if (tint)
                 {
                     mesh.SetTriangles(tris, shown.Count, false);

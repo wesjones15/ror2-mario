@@ -291,8 +291,13 @@ namespace MarioTest
             if (Plugin.DrawModel.Value)
             {
                 DisplayModel.Attach(display, Plugin.Guid + ".koopajr", () => MarioDisplay.Get(MarioSkin.Shadow));
-                Portrait.Request(body, () => MarioDisplay.Get(MarioSkin.Shadow), framing: PortraitFraming.ThreeQuarter,
-                    assetsDir: () => Plugin.AssetsDir);
+                // libsms-present view::models: FLUDD's wg_mdl1.bmd (WaterGun.cpp, TWaterGun::init)
+                // followed by its nozzle draws. The portrait should frame Shadow Mario and his brush.
+                const uint fluddPack = 6, lastFluddNozzle = 11;
+                Portrait.Request(body, () => MarioDisplay.Get(MarioSkin.Shadow),
+                    hide: draw => draw.model >= fluddPack && draw.model <= lastFluddNozzle,
+                    framing: PortraitFraming.ThreeQuarter, assetsDir: () => Plugin.AssetsDir,
+                    revision: "shadow-character-v2");
             }
 
             var survivor = ScriptableObject.CreateInstance<SurvivorDef>();

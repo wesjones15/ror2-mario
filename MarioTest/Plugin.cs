@@ -365,12 +365,12 @@ namespace MarioTest
                 "The Turbo corkscrew (a full stick circle in a jump with the Turbo held; it goes on at the same " +
                 "height while the stick keeps circling, then dives) hitting an enemy: it carries the Turbo's " +
                 "speed plus a dive's, so it hits harder than a dive.");
-            SuperCorkscrewDamage = Config.Bind("Damage", "SuperCorkscrew", 20f,
-                "A corkscrew that has spun for 1 second is in flames, and its one hit does this much " +
-                "instead of Corkscrew: 20 is 2000%. It bonks Mario over on impact.");
-            RocketSpinDamage = Config.Bind("Damage", "RocketSpin", 10f,
+            SuperCorkscrewDamage = Config.Bind("Damage", "SuperCorkscrew", 40f,
+                "A corkscrew that has spun for 1 second is in flames (and steers sharply: the camera aims it), and " +
+                "its one hit does this much instead of Corkscrew: 40 is 4000%. It bonks Mario over on impact.");
+            RocketSpinDamage = Config.Bind("Damage", "RocketSpin", 20f,
                 "A stick circle during the Rocket's climb doubles the climb and sets the spin burning while it " +
-                "rises; each enemy it hits above Mario takes this much: 10 is 1000%.");
+                "rises (the stick steers it); each enemy it hits above Mario takes this much: 20 is 2000%.");
             SuperCorkscrewRecoil = Config.Bind("Damage", "SuperCorkscrewRecoil", 0.04f,
                 "The share of Mario's max health the super corkscrew's impact costs him (it goes through " +
                 "armor and fall-damage items like a fall does). 0.04 is 4%.");

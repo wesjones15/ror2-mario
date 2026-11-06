@@ -311,8 +311,9 @@ namespace MarioTest
             survivor.primaryColor = cb.bodyColor;
             survivor.desiredSortPosition = 101.5f; // After Mario and Olimar in either lobby mode, before Melee.
             pack.bodyPrefabs.Add(new[] { body });
-            pack.survivorDefs.Add(new[] { survivor });
-            Plugin.Log.LogInfo("Bowser Jr. registered");
+            // Hidden for this release: his body stays registered (the goop world and net messages need it),
+            // but he is not a survivor, so he does not show in character select.
+            Plugin.Log.LogInfo("Bowser Jr. registered (hidden from character select)");
         }
 
         static void AddSkills(GameObject body, RoR2.ContentManagement.ContentPack pack)

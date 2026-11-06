@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Runtime.InteropServices;
 using System.Threading;
 using BepInEx;
 using BepInEx.Configuration;
@@ -33,6 +34,11 @@ namespace MarioTest
         internal static string LibraryRoot;
         static volatile bool assetsBusy, assetsReady;
         bool musicInitialized;
+        static bool nativeLoaded;
+
+        // Native panics caught at the C boundary (libcommon::ffi::guard); drained into the log each frame.
+        [DllImport(Native.Dll, CallingConvention = CallingConvention.Cdecl)]
+        static extern uint sms_take_panic([Out] byte[] out_, uint len);
         internal static bool AssetsSettled => !assetsBusy;
         internal static bool AssetsReady => !assetsBusy && assetsReady;
         internal static ConfigEntry<bool> LogStatus;
@@ -593,6 +599,7 @@ namespace MarioTest
                 Log.LogError(error);
                 return;
             }
+            nativeLoaded = true;
             Log.LogInfo($"libsms ABI {Native.sms_abi_version()}, assets {AssetsDir} ({assetsFrom})" +
                         (LibraryRoot != null ? $", GameCube library {LibraryRoot}" : ""));
             PrepareAssets(disc.Value, here);
@@ -732,6 +739,7 @@ namespace MarioTest
 
         void Update()
         {
+            if (nativeLoaded) NativeLib.DrainPanics("sms.dll", sms_take_panic, Log.LogError);
             MarioPerformance.Report();
             UpdateShipRepairLock();
             if (musicInitialized || !AssetsSettled) return;

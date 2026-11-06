@@ -121,7 +121,7 @@ namespace MarioTest
             => UpdateOwned(view, body ? body.master : null, user);
 
         /// Also works when this player's Mario body is dead or replaced by a drone.
-        public static void UpdateOwned(IntPtr view, CharacterMaster master, LocalUser user)
+        public static void UpdateOwned(IntPtr view, CharacterMaster master, LocalUser user, NetworkUser lunarOwner = null)
         {
             yellowShown = blueShown = false;
             if (view == IntPtr.Zero || !Plugin.ShowCoins.Value || !master)
@@ -131,7 +131,7 @@ namespace MarioTest
                 return;
             }
             uint gold = master.money;
-            uint lunar = LunarCoins(user);
+            uint lunar = lunarOwner ? lunarOwner.lunarCoins : LunarCoins(user);
             // A lunar coin picked up (not spent, and not the first reading): the jingle.
             if (lunarSeen >= 0 && lunar > lunarSeen)
                 SpawnMusic.PlayCue("bluecoin");

@@ -41,6 +41,8 @@ namespace MarioTest
 
         /// The native view (for sms_sim_step's sounds and sms_view_update), or zero.
         public IntPtr Handle => view;
+        /// This is the Mario the local player is spectating: it takes the water gauge (set each frame by its puppet).
+        internal bool Spectated;
         bool frozen;
         /// The body is frozen (RoR2's `FrozenState`, a Glacial elite's death blast): every draw is
         /// paled to the icy sheen a frozen Pikmin already gets from the shared ModelView.
@@ -198,7 +200,7 @@ namespace MarioTest
             Native.sms_view_update(view, sim, ref frame);
             water?.Update(view, UnityHost.Scale);
             swirl?.Update(view);
-            if (hud) MarioHud.Update(view);
+            if (hud || Spectated) MarioHud.Update(view);
         }
 
         /// Draws this frame's particle effects (after Update) with Mario drawn at `feet`: they

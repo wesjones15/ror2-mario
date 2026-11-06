@@ -35,6 +35,8 @@ namespace MarioTest
         FrameQueue queue;
         bool playing, hidden, failed, drawn;
         internal bool Drawing => playing && drawn;
+        /// His view's native handle (the life meter, coin counters and water gauge are read from it), or zero.
+        internal IntPtr HudHandle => view != null ? view.Handle : IntPtr.Zero;
         float lagTicks;
         Native.State state;
         // The owner's Melee A pose, replayed from the frame stream.
@@ -219,6 +221,7 @@ namespace MarioTest
             drawn = false;
             if (sim == IntPtr.Zero || view == null) return;
             MarioMelee.ApplyPose(view, meleeMove, meleeFrame);
+            view.Spectated = LocalUsers.IsSpectated(body);
             view.Update(sim, lagTicks);
             if (view.Models == null) return;
             var feet = anchor.transform.position;

@@ -29,6 +29,9 @@ namespace MarioTest
             nozzleInfo = default;
         }
 
+        /// Stops drawing the gauge (nobody's Mario is being shown).
+        public static void Hide() => shown = false;
+
         /// After sms_view_update: takes this frame's gauge.
         public static void Update(IntPtr view)
         {

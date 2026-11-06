@@ -304,7 +304,7 @@ namespace MarioTest
             survivor.outroFlavorToken = "KOOPAJRTEST_BODY_OUTRO";
             survivor.mainEndingEscapeFailureFlavorToken = "KOOPAJRTEST_BODY_FAIL";
             survivor.primaryColor = cb.bodyColor;
-            survivor.desiredSortPosition = 100.5f;
+            survivor.desiredSortPosition = 101.5f; // After Mario and Olimar in either lobby mode, before Melee.
             pack.bodyPrefabs.Add(new[] { body });
             pack.survivorDefs.Add(new[] { survivor });
             Plugin.Log.LogInfo("Bowser Jr. registered");

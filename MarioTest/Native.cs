@@ -12,7 +12,7 @@ namespace MarioTest
     internal static class Native
     {
         public const string Dll = "sms";
-        public const uint AbiVersion = 46;
+        public const uint AbiVersion = 47;
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern IntPtr sms_heat_new(byte[] dir);
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern void sms_heat_free(IntPtr heat);
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern byte sms_heat_texture(IntPtr heat, out ViewTexture texture, [Out] byte[] rgba, uint capacity);
@@ -463,6 +463,24 @@ namespace MarioTest
             public short tint_r, tint_g, tint_b, tint_a;
         }
 
+        /// SmsGoopOp.kind (goop.rs `op`).
+        public static class GoopOpKind
+        {
+            public const byte Stamp = 1, Sign = 2, Clean = 3, GoopShot = 4, Seed = 5, Stomp = 6, Water = 7;
+        }
+
+        /// One change a client's mirror world logged for the server to redo.
+        [StructLayout(LayoutKind.Sequential)]
+        public struct GoopOp
+        {
+            public ulong id;
+            public Vec3 pos, vel;
+            public float a, b;
+            public byte kind, goop;
+            public short attack;
+            public uint pad;
+        }
+
         [StructLayout(LayoutKind.Sequential)]
         public struct JrState
         {
@@ -493,6 +511,15 @@ namespace MarioTest
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern byte sms_goop_chunk(IntPtr goop, int kx, int kz,
             [Out] byte[] density, [Out] byte[] kinds, [Out] float[] heights);
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern byte sms_goop_chunk_image_at(IntPtr goop, int kx, int kz, uint res, float time, [Out] byte[] rgba);
+        /// Multiplayer: a client's world is a mirror of the server's (its critters drawn from
+        /// sms_goop_mirror_critters, its sims' changes logged for sms_goop_take_ops).
+        [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern void sms_goop_set_mirror(IntPtr goop, byte on);
+        [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern void sms_goop_mirror_critters(IntPtr goop, [In] Critter[] list, uint count);
+        [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern uint sms_goop_take_ops(IntPtr goop, [Out] GoopOp[] output, uint max);
+        [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern uint sms_goop_apply_ops(IntPtr goop, ref Host host, [In] GoopOp[] ops, uint count, ulong owner);
+        [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern void sms_goop_chunk_set(IntPtr goop, int kx, int kz,
+            [In] byte[] density, [In] byte[] kinds, [In] float[] heights);
+        [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern void sms_goop_chunk_drop(IntPtr goop, int kx, int kz);
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern void sms_sim_set_koopajr(IntPtr sim, byte on, ulong id);
         /// 0 change form, 1 hide in goop, 2 come out, 3 the sign, 4 goop ball, 5 Piranha seed, 6 sprayed, 7 next paint kind.
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern byte sms_jr_action(IntPtr sim, ref Host host, uint action);
@@ -683,6 +710,7 @@ namespace MarioTest
                 ("CameraShot", NativeLib.Size<CameraShot>()),
                 ("GoopEvent", NativeLib.Size<GoopEvent>()), ("GoopTarget", NativeLib.Size<GoopTarget>()),
                 ("Critter", NativeLib.Size<Critter>()), ("JrState", NativeLib.Size<JrState>()),
+                ("GoopOp", NativeLib.Size<GoopOp>()),
             });
             if (diff != null)
             {

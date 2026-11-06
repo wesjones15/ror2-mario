@@ -41,6 +41,20 @@ namespace MarioTest
         /// A client's Mario sprayed or stomped a flower thing: client to server.
         public const short FlowerHitMsg = 0x4D0C;
 
+        // Bowser Jr.'s goop world (KoopaJrGoopNet) and his state (KoopaJrBody).
+        /// The server's goop chunks that changed, or went: server to the clients.
+        public const short GoopChunksMsg = 0x4D20;
+        /// The server's critters near the players: server to the clients.
+        public const short GoopCrittersMsg = 0x4D21;
+        /// What a client's sims did to its mirror (paint, cleaning, shots, hits): client to server.
+        public const short GoopOpsMsg = 0x4D22;
+        /// Goop sounds and bursts: client to server (relayed), server to the clients.
+        public const short GoopFxMsg = 0x4D23;
+        /// A client's mirror is new and wants every chunk: client to server.
+        public const short GoopHelloMsg = 0x4D24;
+        /// A Bowser Jr.'s form, hiding and clip: owner to server, relayed to the others.
+        public const short JrStateMsg = 0x4D25;
+
         /// One hit a client's Mario made, for the server to land.
         public struct HitRecord
         {
@@ -74,6 +88,8 @@ namespace MarioTest
                 string runId = reader.Str();
                 if (!NetworkServer.active && !reader.Failed && reader.Done) MarioSkin.MithrixDefeated(runId);
             });
+            KoopaJrGoop.RegisterNet();
+            KoopaJrBody.RegisterNet();
             Run.onRunDestroyGlobal += run => queues.Clear();
         }
 

@@ -22,8 +22,9 @@ namespace MarioTest
     //  * D-pad up (keyboard 1): Bowser Jr.'s sign (Shadow Mario) or a Piranha seed (Bowser Jr.);
     //  * D-pad down (keyboard 2): sink into the goop under him, or come back out.
     // The goop world (KoopaJrGoop) steps the goop, the Stus and the Piranhas and deals their
-    // damage. Multiplayer: the world runs on the host only, so a client's Bowser Jr. paints into
-    // his own machine's world and nobody else sees it (not done yet).
+    // damage. Multiplayer: his machine runs his sim and sends his form, hiding and clip
+    // (JrStateMsg) for the others to draw on his puppet; the server keeps hits off him while he
+    // hides. His paint goes through the goop world's mirror (KoopaJrGoopNet).
     internal sealed class KoopaJrBody : MonoBehaviour
     {
         public const string BodyName = "KoopaJrTestBody";
@@ -54,8 +55,16 @@ namespace MarioTest
 
         public static bool Is(CharacterBody b) => b && b.GetComponent<KoopaJrBody>();
 
-        /// His sim's id for him (his own goop shots pass through him).
-        public ulong Id => 0x2_0000_0000UL | (uint)gameObject.GetInstanceID();
+        /// His sim's id for him (his own goop shots pass through him): the same on every machine.
+        public ulong Id => IdFor(body);
+
+        public static ulong IdFor(CharacterBody b) =>
+            0x2_0000_0000UL | (b && b.netId.Value != 0 ? b.netId.Value : (uint)(b ? b.gameObject.GetInstanceID() : 0));
+
+        // What his machine last sent (or this machine was told), and when.
+        Native.JrState sent;
+        float sentAt = -10f, stateAt = -10f;
+        const float StateKeepAlive = 1f, StateStale = 3f;
 
         /// Mario's model is not drawn: he is Bowser Jr. now, or under the goop.
         public bool HidesMario => haveState && (state.form == 1 || state.hidden != 0);
@@ -63,6 +72,14 @@ namespace MarioTest
         public bool JrForm => haveState && state.form == 1;
 
         void Awake() => body = GetComponent<CharacterBody>();
+
+        void FixedUpdate()
+        {
+            // Another player's Bowser Jr. under the goop: nothing hits him (his sim is on his machine).
+            if (NetworkServer.active && body && !body.hasEffectiveAuthority && sim == IntPtr.Zero
+                && Hidden && Time.time - stateAt < StateStale)
+                body.AddTimedBuff(RoR2Content.Buffs.HiddenInvincibility, 0.25f);
+        }
 
         void OnDestroy() => FreeJr();
 
@@ -129,17 +146,71 @@ namespace MarioTest
             Read();
             if (Hidden && NetworkServer.active && body)
                 body.AddTimedBuff(RoR2Content.Buffs.HiddenInvincibility, 0.25f);
+            if (haveState && Mp.Networked) SendState();
         }
 
-        /// Bowser Jr.'s own model at his feet, facing as the sim's body does.
-        public void Draw(Vector3 feet)
+        // ---- multiplayer ----
+
+        public static void RegisterNet() => Mp.Register(MarioNet.JrStateMsg, OnServer, OnClient);
+
+        /// His form, hiding, clip and paint when they change (and now and then), for the others.
+        void SendState()
         {
-            if (!JrForm || Hidden || sim == IntPtr.Zero || !EnsureJr())
+            bool changed = state.form != sent.form || state.hidden != sent.hidden || state.jr_clip != sent.jr_clip
+                || state.paint_kind != sent.paint_kind;
+            if (!changed && Time.time - sentAt < StateKeepAlive) return;
+            if (!body || body.netId.Value == 0) return;
+            sent = state;
+            sentAt = Time.time;
+            var w = new ByteWriter(12);
+            w.U8(1);
+            w.U32(body.netId.Value);
+            w.U8(state.form);
+            w.U8(state.hidden);
+            w.U8(state.jr_clip);
+            w.U8(state.paint_kind);
+            Mp.SendToServer(MarioNet.JrStateMsg, w.ToArray());
+        }
+
+        static KoopaJrBody Apply(ByteReader r)
+        {
+            if (r.U8() != 1) return null;
+            var go = Mp.Find(r.U32());
+            byte form = r.U8(), hidden = r.U8(), clip = r.U8(), kind = r.U8();
+            if (r.Failed || !go) return null;
+            var jr = go.GetComponent<KoopaJrBody>();
+            // His own machine reads his sim.
+            if (!jr || !jr.body || jr.body.hasEffectiveAuthority) return null;
+            jr.state = new Native.JrState { form = (byte)(form != 0 ? 1 : 0), hidden = (byte)(hidden != 0 ? 1 : 0), jr_clip = clip, paint_kind = kind };
+            jr.haveState = true;
+            jr.stateAt = Time.time;
+            return jr;
+        }
+
+        static void OnServer(NetworkConnection from, ByteReader r)
+        {
+            // The host's own comes in with `from` null: its client side gets it below.
+            if (from != null && Apply(r) == null) return;
+            Mp.SendToAllExcept(MarioNet.JrStateMsg, r.Raw, from);
+        }
+
+        static void OnClient(NetworkConnection from, ByteReader r)
+        {
+            if (!NetworkServer.active) Apply(r);
+        }
+
+        /// Bowser Jr.'s own model at his feet, facing as the sim's body does: his own sim, or on
+        /// another player's machine the puppet's shadow sim (`puppetSim`).
+        public void Draw(Vector3 feet, IntPtr puppetSim = default)
+        {
+            var from = sim != IntPtr.Zero ? sim : puppetSim;
+            bool fresh = sim != IntPtr.Zero || Time.time - stateAt < StateStale;
+            if (!JrForm || Hidden || !fresh || from == IntPtr.Zero || !EnsureJr())
             {
                 jrModels?.HideAll();
                 return;
             }
-            Native.sms_sim_state(sim, out var st);
+            Native.sms_sim_state(from, out var st);
             int clip = Mathf.Clamp(state.jr_clip, 0, ClipNames.Length - 1);
             if (clip != lastClip)
             {

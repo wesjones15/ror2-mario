@@ -23,8 +23,9 @@ namespace MarioTest
     // goop as textured patches over its chunks (sms_goop_chunk_image_at, each kind's look from the
     // disc swimming as the pollution layers' btk do) and the critters as posed props.
     //
-    // Multiplayer: only the host's world is stepped and drawn; clients see none of it (not done).
-    internal sealed class KoopaJrGoop : MonoBehaviour
+    // Multiplayer (KoopaJrGoopNet.cs): the server's world is the real one; each client draws and
+    // stands in a mirror of it and sends what its own sims did to it for the server to redo.
+    internal sealed partial class KoopaJrGoop : MonoBehaviour
     {
         const int MaxViews = 24, MaxCritters = 64, MaxTargets = 128, MaxChunks = 256;
         const float DrawRange = 90f, TargetRange = 80f, LingerSeconds = 2f;
@@ -139,6 +140,7 @@ namespace MarioTest
         {
             if (ready) Native.sms_goop_clear(world);
             ClearDrawn();
+            NetReset();
         }
 
         void ClearDrawn()
@@ -213,7 +215,14 @@ namespace MarioTest
                 var d = b ? b.GetComponent<MarioDriver>() : null;
                 if (d && d.SimHandle != IntPtr.Zero) Native.sms_sim_set_goop(d.SimHandle, world);
             }
-            if (NetworkServer.active) ServerStep();
+            // A client's world is a mirror of the server's.
+            Native.sms_goop_set_mirror(world, (byte)(NetworkServer.active ? 0 : 1));
+            if (NetworkServer.active)
+            {
+                ServerStep();
+                NetServer();
+            }
+            else NetClient();
         }
 
         void ServerStep()
@@ -346,12 +355,21 @@ namespace MarioTest
                     }
                     break;
                 case Native.GoopEv.Sound:
-                    if (e.name != IntPtr.Zero) Sound(Name(e.name), e.pos);
+                    if (e.name != IntPtr.Zero)
+                    {
+                        Sound(Name(e.name), e.pos);
+                        QueueFx(true, e.name, e.pos, 1f);
+                    }
                     break;
                 case Native.GoopEv.Effect:
                 case Native.GoopEv.Ambient:
                 case Native.GoopEv.Erased:
-                    if (e.name != IntPtr.Zero) Emit(Name(e.name), e.pos, e.kind == Native.GoopEv.Erased ? 1f : Mathf.Max(0.1f, e.value));
+                    if (e.name != IntPtr.Zero)
+                    {
+                        float scale = e.kind == Native.GoopEv.Erased ? 1f : Mathf.Max(0.1f, e.value);
+                        Emit(Name(e.name), e.pos, scale);
+                        QueueFx(false, e.name, e.pos, scale);
+                    }
                     break;
             }
         }
@@ -554,11 +572,13 @@ namespace MarioTest
             int n = (int)Math.Min(total, (uint)MaxCritters);
             if (n == 0 && props.Count == 0) return;
             float now = Time.time;
+            if (shown.Count > 4 * MaxCritters) shown.Clear();
             for (int i = 0; i < n; i++)
             {
                 var c = critters[i];
                 // The goop ball has no model (its trail is the world's particles).
                 if (c.kind == 2) continue;
+                Smooth(ref c);
                 if ((UnityHost.ToUnity(c.pos) - eye).sqrMagnitude > DrawRange * DrawRange) continue;
                 if (!props.TryGetValue(c.id, out var prop))
                 {

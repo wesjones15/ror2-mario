@@ -224,14 +224,27 @@ namespace MarioTest
             var feet = anchor.transform.position;
             view.Effects(feet);
             view.Frozen = NativeBody.Of(body ? body.gameObject : null)?.Frozen == true;
-            view.Draw(feet);
+            // Another player's Bowser Jr.: Shadow Mario's body hides while he is Bowser Jr. or under the goop.
+            if (!jrLooked)
+            {
+                jrLooked = true;
+                jr = GetComponent<KoopaJrBody>();
+            }
+            if (jr && jr.HidesMario) view.Draw(feet, HideEverything);
+            else view.Draw(feet);
+            if (jr) jr.Draw(feet, sim);
             GameSettings.HideModel(body, ref hidden, true);
             drawn = true;
         }
 
+        KoopaJrBody jr;
+        bool jrLooked;
+        static bool HideEverything(ViewDraw _) => true;
+
         void Teardown()
         {
             drawn = false;
+            if (jr) jr.Draw(Vector3.zero, IntPtr.Zero);
             if (view != null)
             {
                 view.Hide();

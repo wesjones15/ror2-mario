@@ -503,6 +503,8 @@ namespace MarioTest
             uint spawnInterval, float marioRange, float burstWater, byte goopKind);
         /// The big goop Piranha: how many at once (0 none), the pile's texels (0 keep), its life in ticks (0 keep).
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern void sms_goop_keeper_tune(IntPtr goop, uint max, uint pileTexels, uint lifeTicks);
+        /// A prop view's texture scrolls at `seconds` (the Gatekeeper's goop); before sms_view_prop_update.
+        [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern void sms_view_prop_scroll(IntPtr view, float seconds);
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern uint sms_goop_clean(IntPtr goop, ref Vec3 pos, float radius);
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern int sms_goop_kind_at(IntPtr goop, ref Vec3 pos);
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern uint sms_goop_step(IntPtr goop, ref Host host, ref Vec3 owner,

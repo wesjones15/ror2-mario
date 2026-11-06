@@ -681,8 +681,10 @@ namespace MarioTest
         }
 
         // One native prop view, one host-placed instance (the Shine's way).
-        internal sealed class PropSource : IViewSource
+        // Animated textures pass through (the Gatekeeper's scrolling goop); other props' stay 0.
+        internal sealed class PropSource : IViewSource, IAnimatedTextureSource
         {
+            public uint TextureVersion(uint id) => native.TextureVersion(id);
             readonly SmsViewSource native;
             public ViewDraw draw;
             public PropSource(IntPtr view) { native = new SmsViewSource(view); }

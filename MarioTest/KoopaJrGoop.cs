@@ -687,6 +687,8 @@ namespace MarioTest
             }
             float degrees = c.yaw * Mathf.Rad2Deg;
             short yaw = (short)Mathf.RoundToInt(degrees / 180f * 32768f);
+            // The Gatekeeper's goop flows over it (TMultiBtk, game time).
+            if (c.kind == 4) Native.sms_view_prop_scroll(prop.view, Time.time);
             Native.sms_view_prop_update(prop.view, yaw, clip, frame, 1);
             var rot = Quaternion.Euler(0f, degrees, 0f) * Quaternion.Euler(c.lean * Mathf.Rad2Deg, 0f, 0f);
             prop.source.draw = new ViewDraw

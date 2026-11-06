@@ -241,8 +241,42 @@ namespace MarioTest
         public void Teleport(Native.Vec3 pos) => Native.sms_sim_teleport(sim, ref pos);
         public void Tuning(in Native.Tuning tuning) { var t = tuning; Native.sms_sim_set_tuning(sim, ref t); }
         public void Refill() => Native.sms_sim_refill(sim);
-        public void SelectNozzle(byte slot) => Native.sms_sim_switch_nozzle(sim, slot);
-        public void EquipNozzle(byte slot) => Native.sms_sim_equip_nozzle(sim, slot);
+        // The swap cue (MSD_SE_SY_SELECT_POMP) and the nozzle-box chime are Sunshine's system
+        // sounds, for the player who pressed the button. A spectator's replay fits the same
+        // nozzle without them (select_nozzle is switch_nozzle less its cue), so another player's
+        // swaps never sound from across the map or pile up when ops replay in a catch-up burst.
+        // The pickup sparkle and chime still play for an Equip when he is near.
+        const float EquipSoundRange = 25f;
+        int nozzleOps;
+        float nozzleOpsAt;
+
+        void CountNozzleOp(string what)
+        {
+            // A replay that fits nozzles many times in a second is worth a line in the log.
+            float now = Time.unscaledTime;
+            if (now - nozzleOpsAt > 1f) { nozzleOpsAt = now; nozzleOps = 0; }
+            if (++nozzleOps == 4 && body)
+                Plugin.Log.LogInfo($"Nozzle churn from {body.GetDisplayName()}: {what} replayed 4+ times in a second");
+        }
+
+        bool NearListener()
+        {
+            var cam = Camera.main;
+            return !cam || !body || (cam.transform.position - body.footPosition).sqrMagnitude <= EquipSoundRange * EquipSoundRange;
+        }
+
+        public void SelectNozzle(byte slot)
+        {
+            CountNozzleOp("select");
+            Native.sms_sim_select_nozzle(sim, slot);
+        }
+
+        public void EquipNozzle(byte slot)
+        {
+            CountNozzleOp("equip");
+            if (NearListener()) Native.sms_sim_equip_nozzle(sim, slot);
+            else Native.sms_sim_select_nozzle(sim, slot);
+        }
         public void SyncNozzle(byte slot)
         {
             // Re-fitting an already correct nozzle resets its charging/emission

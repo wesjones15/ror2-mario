@@ -46,8 +46,18 @@ namespace MarioTest
         // Clips that loop: a Stu's wait and walk, a Piranha's wait.
         static readonly bool[] StuLoops = { false, false, false, false, false, false, true, true };
         static readonly bool[] PiranhaLoops = { false, false, false, false, false, false, false, false, false, true };
+        // The Gatekeeper's clips in its changeBck order (goop_critters::keeper_clip); wait1/2,
+        // wait2_loop, wait2_openloop and wait3 loop.
+        static readonly string[] KeeperClips = { "gene_pakkun_appear1", "gene_pakkun_appear1_end", "gene_pakkun_appear1_start",
+            "gene_pakkun_damage1", "gene_pakkun_damage2", "gene_pakkun_dead1", "gene_pakkun_dive1", "gene_pakkun_iyaiya1",
+            "gene_pakkun_shoot1", "gene_pakkun_towait2", "gene_pakkun_wait1", "gene_pakkun_wait2", "gene_pakkun_wait2_close",
+            "gene_pakkun_wait2_end", "gene_pakkun_wait2_loop", "gene_pakkun_wait2_open", "gene_pakkun_wait2_openloop",
+            "gene_pakkun_wait2_start", "gene_pakkun_wait3" };
+        static readonly bool[] KeeperLoops = { false, false, false, false, false, false, false, false, false, false, true, true,
+            false, false, true, false, true, false, true };
 
-        public static ConfigEntry<float> GoopDamage, CritterDamage, ContactPeriod;
+        public static ConfigEntry<float> GoopDamage, CritterDamage, ContactPeriod, GateKeeperSeconds;
+        public static ConfigEntry<int> GateKeepers;
         public static ConfigEntry<bool> HurtEnemies;
         public static ConfigEntry<float> SwirlRefraction;
 
@@ -65,6 +75,12 @@ namespace MarioTest
                 "the disc's scrolling warp as its map). 0: off (his baked swirl only).");
             CritterDamage = config.Bind("BowserJr", "CritterDamage", 1.5f,
                 "Bowser Jr.'s damage times this, for each hit by a Swoopin' Stu, a goop Piranha or a goop ball.");
+            GateKeepers = config.Bind("BowserJr", "GateKeepers", 1,
+                "How many big goop Piranhas (the Gatekeeper) may be up at once. One grows out of a big pile of goop " +
+                "near Bowser Jr., hurls goop at enemies from its mouth and dives back in when its time is up or its " +
+                "pile is cleaned. 0: none. A host choice.");
+            GateKeeperSeconds = config.Bind("BowserJr", "GateKeeperSeconds", 20f,
+                "How long a Gatekeeper stays up.");
         }
 
         /// The world, once its disc files have been read (zero before that).
@@ -188,6 +204,8 @@ namespace MarioTest
                 try
                 {
                     Native.sms_goop_setup(w, dir);
+                    Native.sms_goop_keeper_tune(w, (uint)Mathf.Clamp(GateKeepers.Value, 0, 4), 0,
+                        (uint)Mathf.Clamp(GateKeeperSeconds.Value * 120f, 120f, 120f * 600f));
                     ready = true;
                 }
                 catch (Exception e)
@@ -627,15 +645,16 @@ namespace MarioTest
         {
             // A goop ball (2) is a TPakkunSeed shot straight: the seed's model (pakkun.cpp loads
             // seed.bmd for both), as are Shadow Mario's brush blobs.
-            byte look = kind == 0 ? Native.LookStu : kind == 1 ? Native.LookPiranha : Native.LookSeed;
+            byte look = kind == 0 ? Native.LookStu : kind == 1 ? Native.LookPiranha : kind == 4 ? Native.LookGateKeeper : Native.LookSeed;
             var view = Native.sms_view_new_look(NativeLib.CString(Plugin.AssetsDir), 0, look);
             if (view == IntPtr.Zero) return null;
-            var names = kind == 0 ? StuClips : kind == 1 ? PiranhaClips : Array.Empty<string>();
+            var names = kind == 0 ? StuClips : kind == 1 ? PiranhaClips : kind == 4 ? KeeperClips : Array.Empty<string>();
             var prop = new Prop { view = view, clip = new int[names.Length], frames = new float[names.Length] };
             for (int i = 0; i < names.Length; i++)
                 prop.clip[i] = Native.sms_view_prop_clip(view, NativeLib.CString(names[i]), out prop.frames[i]);
             prop.source = new MarioFlowers.PropSource(view);
-            prop.models = ModelView.Create(prop.source, kind == 0 ? "Swoopin' Stu" : kind == 1 ? "goop Piranha" : kind == 2 ? "goop ball" : "Piranha seed");
+            prop.models = ModelView.Create(prop.source, kind == 0 ? "Swoopin' Stu" : kind == 1 ? "goop Piranha" : kind == 2 ? "goop ball"
+                : kind == 4 ? "Gatekeeper" : "Piranha seed");
             if (prop.models == null) { Free(prop); return null; }
             if (kind == 0)
             {
@@ -660,7 +679,7 @@ namespace MarioTest
             {
                 int i = Mathf.Clamp(c.clip, 0, prop.clip.Length - 1);
                 clip = prop.clip[i];
-                bool loop = c.kind == 0 ? StuLoops[i] : PiranhaLoops[i];
+                bool loop = c.kind == 0 ? StuLoops[i] : c.kind == 4 ? KeeperLoops[i] : PiranhaLoops[i];
                 // Two 120 Hz ticks a 60 fps frame.
                 frame = c.clip_time * 0.5f;
                 float length = prop.frames[i];

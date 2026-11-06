@@ -109,25 +109,58 @@ namespace MarioTest
             if (!attacker.teamComponent || !victim.teamComponent
                 || !TeamMask.GetEnemyTeams(attacker.teamComponent.teamIndex).HasTeam(victim.teamComponent.teamIndex)) return;
             if (!rewarded.Add(victim.GetInstanceID()) || !EnsureModel()) return;
-            var side = UnityEngine.Random.insideUnitSphere;
-            side.y = 0f;
-            var coin = new Coin
+            int count = CoinCount(victim);
+            float phase = UnityEngine.Random.value * Mathf.PI * 2f;
+            for (int n = 0; n < count; n++)
             {
-                pos = victim.corePosition,
-                velocity = side * PopSide + Vector3.up * PopUp,
-                team = attacker.teamComponent.teamIndex,
-            };
-            Plan(coin);
-            if (!droppedThisStage)
-            {
-                droppedThisStage = true;
-                Plugin.Log.LogInfo(coin.planned
-                    ? $"Mario's coins: the first this stage pops from {coin.pos} and rests at height {coin.path.rest:F2}"
-                    : $"Mario's coins: the first this stage pops from {coin.pos} with no ground under it (it falls)");
+                // One coin pops about as a stomped enemy's does; a bigger kill throws a ring of them.
+                Vector3 side;
+                if (count == 1)
+                {
+                    side = UnityEngine.Random.insideUnitSphere;
+                    side.y = 0f;
+                }
+                else
+                {
+                    float angle = phase + n * Mathf.PI * 2f / count;
+                    side = new Vector3(Mathf.Cos(angle), 0f, Mathf.Sin(angle)) * RingSpread;
+                }
+                var coin = new Coin
+                {
+                    pos = victim.corePosition,
+                    velocity = side * PopSide + Vector3.up * PopUp,
+                    team = attacker.teamComponent.teamIndex,
+                };
+                Plan(coin);
+                if (!droppedThisStage)
+                {
+                    droppedThisStage = true;
+                    Plugin.Log.LogInfo(coin.planned
+                        ? $"Mario's coins: the first this stage pops from {coin.pos} and rests at height {coin.path.rest:F2}"
+                        : $"Mario's coins: the first this stage pops from {coin.pos} with no ground under it (it falls)");
+                }
+                coins[next] = coin;
+                MarioNet.SendCoin(next, coin.pos, coin.velocity, coin.team);
+                next = (next + 1) % Capacity;
             }
-            coins[next] = coin;
-            MarioNet.SendCoin(next, coin.pos, coin.velocity, coin.team);
-            next = (next + 1) % Capacity;
+        }
+
+        const float RingSpread = 1.6f;
+
+        /// How many coins a kill drops, by the enemy's size (its hull) rather than its health: the
+        /// small ones drop one, a golem-sized one a ring of Coins.Large, a titan-sized one Coins.Huge, and
+        /// a boss Coins.Boss.
+        static int CoinCount(CharacterBody victim)
+        {
+            int count;
+            if (victim.isChampion) count = Plugin.CoinsBoss.Value;
+            else switch (victim.hullClassification)
+            {
+                case HullClassification.BeetleQueen: count = Plugin.CoinsHuge.Value; break;
+                case HullClassification.Golem: count = Plugin.CoinsLarge.Value; break;
+                default: count = 1; break;
+            }
+            return Mathf.Clamp(count, 1, 16);
         }
 
         /// Coins thrown from a flower ring or a dead flower enemy: popped from `pos` with a sim-unit

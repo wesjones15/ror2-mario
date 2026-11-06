@@ -117,7 +117,7 @@ namespace MarioTest
         internal static ConfigEntry<bool> ShineEnabled, ShineCameraOn;
         internal static ConfigEntry<float> ShineHeight, ShineTouchRadius, ShineSeconds;
         internal static ConfigEntry<float> CoinX, CoinY, CoinScale, LivesScale, ScreenSpeed, TooBadDrop;
-        internal static ConfigEntry<int> CoinGold;
+        internal static ConfigEntry<int> CoinGold, CoinsLarge, CoinsHuge, CoinsBoss;
         internal static ConfigEntry<float> CoinSeconds;
         internal static ConfigEntry<bool> CoinTeammates;
         internal static ConfigEntry<int> CarryTeammates;
@@ -307,6 +307,15 @@ namespace MarioTest
             CoinGold = Config.Bind("Coins", "Gold", 1,
                 new ConfigDescription("RoR2 gold each yellow coin Mario picks up is worth, on top of the " +
                     "health it heals. 0: none.", new AcceptableValueRange<int>(0, 1000)));
+            CoinsLarge = Config.Bind("Coins", "Large", 5,
+                new ConfigDescription("Coins a kill of a golem-sized enemy (hull Golem: a Stone Golem, a Bronzong, a Beetle Guard) " +
+                    "throws in a ring. Smaller enemies drop one.", new AcceptableValueRange<int>(1, 16)));
+            CoinsHuge = Config.Bind("Coins", "Huge", 8,
+                new ConfigDescription("Coins a kill of a titan-sized enemy (hull BeetleQueen: a Stone Titan, a Grovetender) throws in a ring.",
+                    new AcceptableValueRange<int>(1, 16)));
+            CoinsBoss = Config.Bind("Coins", "Boss", 10,
+                new ConfigDescription("Coins a champion (boss) kill throws in a ring; wins over its size.",
+                    new AcceptableValueRange<int>(1, 16)));
             CoinSeconds = Config.Bind("Coins", "Seconds", 30f,
                 new ConfigDescription("Seconds a yellow coin lies there before it is gone (it blinks over its last 3).",
                     new AcceptableValueRange<float>(4f, 600f)));

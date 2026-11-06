@@ -18,7 +18,7 @@ namespace MarioTest
     // the body moved by the sim instead of RoR2's character controller, and drawn and heard
     // as the disc's Mario. No R2API: content goes in through RoR2's own content-pack hook
     // (ror2-common's ContentProvider).
-    [BepInPlugin(Guid, "Mario", "0.5.6")]
+    [BepInPlugin(Guid, "Mario", "0.5.7")]
     // Use the pack's fixes first when installed; no pack APIs are required by this plugin.
     [BepInDependency("___riskofthunder.RoR2BepInExPack", BepInDependency.DependencyFlags.SoftDependency)]
     [BepInDependency("com.libpikmin.olimartest", BepInDependency.DependencyFlags.SoftDependency)]
@@ -738,7 +738,7 @@ namespace MarioTest
                         }
                         // Every skin's forearms and hands for the VR mod's controllers (ror2-common VrArmsBake).
                         string melee = MarioSkin.MeleeDir;
-                        VrArmsBake.Run(AssetsDir, "Mario", "0.5.6|" + melee, (buf, len) =>
+                        VrArmsBake.Run(AssetsDir, "Mario", "0.5.7|" + melee, (buf, len) =>
                             Native.sms_bake_vr_arms(NativeLib.CString(AssetsDir), string.IsNullOrEmpty(melee) ? null : NativeLib.CString(melee), buf, len));
                         if (!Array.Exists(MarioStatuePod.AssetFiles, file => !File.Exists(Path.Combine(AssetsDir, "portal", file))))
                         {

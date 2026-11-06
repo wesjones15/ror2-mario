@@ -305,8 +305,16 @@ namespace MarioTest
         public static void CoinCollected(CharacterBody body, Vector3 pos)
         {
             if (!body) return;
-            body.GetComponent<MarioDriver>()?.CoinCollected(pos);
-            body.GetComponent<MarioPuppet>()?.CoinCollected(pos);
+            var driver = body.GetComponent<MarioDriver>();
+            var puppet = body.GetComponent<MarioPuppet>();
+            driver?.CoinCollected(pos);
+            puppet?.CoinCollected(pos);
+            if (driver || puppet) return;
+            // Someone else's character (Coins.TeammatesCollect): every machine has the Sunshine files,
+            // so the pickup plays through this machine's own Mario, else any other player's.
+            var own = MarioDriver.Player;
+            if (own != null) own.CoinCollected(pos);
+            else MarioPuppet.PlayPickup(pos);
         }
 
         static void OnCoin(NetworkConnection unused, ByteReader r)

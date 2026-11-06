@@ -22,6 +22,8 @@ namespace MarioTest
         const int Prebuffer = FrameQueue.Prebuffer;
         // How far (sim units, about 1 cm) the shadow sim may drift before it is put back.
         const float Drift = 30f;
+        // Past this the shadow is somewhere else entirely (a stomp's bounce, a push): relocate it.
+        const float FarDrift = 400f;
 
         CharacterBody body;
         HealthComponent health;
@@ -44,8 +46,24 @@ namespace MarioTest
         static readonly Native.EventFn noEvent = (IntPtr user, ref Native.Event e) => { };
         static readonly unsafe Native.EnemiesFn noEnemies = (IntPtr user, ref Native.Vec3 pos, float radius, Native.Enemy* output, uint max) => 0u;
 
+        static readonly System.Collections.Generic.List<MarioPuppet> live = new System.Collections.Generic.List<MarioPuppet>();
+
+        /// A yellow coin was taken by a player who has no Mario of his own (Olimar, a Melee fighter):
+        /// Sunshine's pickup sound and sparks through the first other player's Mario this machine shows.
+        internal static bool PlayPickup(Vector3 position)
+        {
+            foreach (var p in live)
+                if (p && p.view != null && p.queue != null && !p.queue.Clone && p.Drawing)
+                {
+                    p.CoinCollected(position);
+                    return true;
+                }
+            return false;
+        }
+
         void Awake()
         {
+            live.Add(this);
             body = GetComponent<CharacterBody>();
             health = GetComponent<HealthComponent>();
             host = UnityHost.Table();
@@ -170,7 +188,10 @@ namespace MarioTest
             {
                 MarioPerformance.Corrected();
                 var at = frame.pos;
-                Native.sms_sim_teleport(sim, ref at);
+                // A small drift keeps his speed and state (a slide, dive or jump chain would
+                // die in a teleport, which stops him); only a big one is a relocation.
+                if (d.sqrMagnitude > FarDrift * FarDrift) Native.sms_sim_teleport(sim, ref at);
+                else Native.sms_sim_nudge(sim, ref at);
                 Native.sms_sim_state(sim, out state);
                 if (anchor) anchor.transform.position = UnityHost.ToUnity(state.pos);
                 smoother.Reset();
@@ -232,6 +253,7 @@ namespace MarioTest
 
         void OnDestroy()
         {
+            live.Remove(this);
             Teardown();
             if (body) MarioNet.Drop(body.netId.Value);
         }

@@ -44,6 +44,7 @@ namespace MarioTest
 
         public static ConfigEntry<float> GoopDamage, CritterDamage, ContactPeriod;
         public static ConfigEntry<bool> HurtEnemies;
+        public static ConfigEntry<float> SwirlRefraction;
 
         public static void Bind(ConfigFile config)
         {
@@ -54,6 +55,9 @@ namespace MarioTest
                 "Bowser Jr.'s damage times this, each time an enemy is found standing in harmful goop (scaled by kind).");
             ContactPeriod = config.Bind("BowserJr", "GoopContactSeconds", 0.5f,
                 "How often an enemy standing in goop is hurt by it.");
+            SwirlRefraction = config.Bind("BowserJr", "SwirlRefraction", 1f,
+                "How strongly Shadow Mario warps the scene behind him (RoR2's screen refraction over his body, " +
+                "the disc's scrolling warp as its map). 0: off (his baked swirl only).");
             CritterDamage = config.Bind("BowserJr", "CritterDamage", 1.5f,
                 "Bowser Jr.'s damage times this, for each hit by a Swoopin' Stu, a goop Piranha or a goop ball.");
         }

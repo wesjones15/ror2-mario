@@ -27,6 +27,10 @@ namespace MarioTest
         ModelView models;
         MarioWater water;
         MarioFx fx;
+        // Shadow Mario's screen warp (Bowser Jr.'s skin only), made at the first draw.
+        MarioShadowSwirl swirl;
+        bool swirlTried;
+        readonly string name;
         readonly bool hud;
         readonly ViewDraw[] firstDraw = new ViewDraw[1];
         readonly Func<ViewDraw, (Vector3, Quaternion)?> placement;
@@ -71,6 +75,7 @@ namespace MarioTest
         {
             this.view = view;
             this.hud = hud;
+            this.name = name;
             placement = d => (drawFeet, new Quaternion(d.rot_x, d.rot_y, d.rot_z, d.rot_w));
             if (!Plugin.DrawModel.Value) return;
             models = ModelView.Create(new SmsViewSource(view), name, null, skin);
@@ -192,6 +197,7 @@ namespace MarioTest
             Native.sms_view_set_paused(view, (byte)(PauseManager.isPaused ? 1 : 0));
             Native.sms_view_update(view, sim, ref frame);
             water?.Update(view, UnityHost.Scale);
+            swirl?.Update(view);
             if (hud) MarioHud.Update(view);
         }
 
@@ -216,6 +222,12 @@ namespace MarioTest
             using var timing = MarioPerformance.Measure(MarioPerformance.Part.Models);
             drawFeet = feet;
             models?.Update(UnityHost.Scale, placement, hide);
+            if (!swirlTried && models != null)
+            {
+                swirlTried = true;
+                swirl = MarioShadowSwirl.Create(view, name);
+            }
+            swirl?.Draw(placement, hide);
         }
 
         bool vrArms;
@@ -276,6 +288,7 @@ namespace MarioTest
         public void Hide()
         {
             models?.HideAll();
+            swirl?.Hide();
             water?.Hide();
             fx?.Hide();
         }
@@ -288,6 +301,7 @@ namespace MarioTest
             view = IntPtr.Zero;
             if (old != IntPtr.Zero) Native.sms_view_free(old);
             models?.Dispose(); models = null;
+            swirl?.Dispose(); swirl = null;
             water?.Dispose(); water = null;
             fx?.Dispose(); fx = null;
             if (hud && !MarioPresentation.Active) MarioHud.Reset();

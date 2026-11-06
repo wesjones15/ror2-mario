@@ -412,6 +412,10 @@ namespace MarioTest
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern int sms_view_prop_clip(IntPtr view, byte[] nameUtf8, out float frames);
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern void sms_view_prop_update(IntPtr view, short yaw, int clip, float frame, byte mirror);
         /// A prop's joint (model space, unturned; 16 floats, column-major) in `clip` at `frame`.
+        /// Shadow Mario's warp as a refraction map (RoR2 distortion normals) and its gain; returns
+        /// the swirl's frame + 1, or 0 when the view isn't drawing his skin.
+        [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern uint sms_view_shadow_refraction(IntPtr view, out ViewTexture info,
+            [Out] byte[] rgba, uint capacity, out float gain);
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern uint sms_view_prop_joint(IntPtr view, int clip, float frame, uint joint, [Out] float[] matrix);
 
         // ---- the goop world, its critters and Bowser Jr. (libsms-ffi goop.rs) ----

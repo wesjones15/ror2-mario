@@ -53,6 +53,13 @@ namespace MarioTest
             Rec?.Limits(limits);
         }
 
+        /// The stage's gravity as a multiple of the usual; recorded so every machine's copy of this Mario matches.
+        public static void Gravity(IntPtr sim, float scale)
+        {
+            Native.sms_sim_set_gravity_scale(sim, scale);
+            Rec?.Gravity(scale);
+        }
+
         public static void BoostJump(IntPtr sim, float factor)
         {
             Native.sms_sim_boost_jump(sim, factor);

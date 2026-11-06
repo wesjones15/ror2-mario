@@ -18,7 +18,7 @@ namespace MarioTest
         Teleport = 1, Tuning = 2, Refill = 3, AddWater = 4, Limits = 5, BoostJump = 6, Launch = 7,
         LaunchPad = 8, KnockDown = 9, SetAim = 10, Down = 11, Step = 12, ShineGet = 13, ShineEnd = 14,
         ForeignWet = 15, Ignite = 16, SelectNozzle = 17, Melee = 18, Soaked = 19, Carried = 20, WaterImpact = 21, FlightCamera = 22,
-        EquipNozzle = 23, SyncNozzle = 24,
+        EquipNozzle = 23, SyncNozzle = 24, Gravity = 25,
     }
 
     /// What replaying a frame does to a sim; MarioPuppet's implementation calls libsms.
@@ -36,6 +36,8 @@ namespace MarioTest
         void AddWater(float share);
         void Limits(in Native.Limits limits);
         void BoostJump(float factor);
+        /// The stage's gravity as a multiple of the usual (the moon is low): the sim's jumps and falls scale with it.
+        void Gravity(float scale);
         void Launch(Native.Vec3 vel);
         void LaunchPad(Native.Vec3 vel, float gravity);
         void KnockDown(Native.Vec3 from, byte kind);
@@ -69,7 +71,7 @@ namespace MarioTest
     internal static class FrameCodec
     {
         /// Bumped whenever the wire format changes; a batch with another number is ignored.
-        public const byte Protocol = 12;
+        public const byte Protocol = 13;
 
         static void Vec(ByteWriter w, Native.Vec3 v) { w.F32(v.x); w.F32(v.y); w.F32(v.z); }
         static Native.Vec3 Vec(ByteReader r) => new Native.Vec3(r.F32(), r.F32(), r.F32());
@@ -83,6 +85,7 @@ namespace MarioTest
         public static void WriteAddWater(ByteWriter w, float share) { w.U8((byte)Op.AddWater); w.F32(share); }
         public static void WriteLimits(ByteWriter w, in Native.Limits l) { w.U8((byte)Op.Limits); w.Struct(l); }
         public static void WriteBoostJump(ByteWriter w, float f) { w.U8((byte)Op.BoostJump); w.F32(f); }
+        public static void WriteGravity(ByteWriter w, float f) { w.U8((byte)Op.Gravity); w.F32(f); }
         public static void WriteLaunch(ByteWriter w, Native.Vec3 v) { w.U8((byte)Op.Launch); Vec(w, v); }
         public static void WriteLaunchPad(ByteWriter w, Native.Vec3 v, float g) { w.U8((byte)Op.LaunchPad); Vec(w, v); w.F32(g); }
         public static void WriteKnockDown(ByteWriter w, Native.Vec3 from, byte kind) { w.U8((byte)Op.KnockDown); Vec(w, from); w.U8(kind); }
@@ -123,6 +126,7 @@ namespace MarioTest
                     case Op.AddWater: sink.AddWater(r.F32()); break;
                     case Op.Limits: { var l = r.Struct<Native.Limits>(); if (!r.Failed) sink.Limits(l); break; }
                     case Op.BoostJump: sink.BoostJump(r.F32()); break;
+                    case Op.Gravity: sink.Gravity(r.F32()); break;
                     case Op.Launch: sink.Launch(Vec(r)); break;
                     case Op.LaunchPad: { var v = Vec(r); sink.LaunchPad(v, r.F32()); break; }
                     case Op.KnockDown: { var v = Vec(r); sink.KnockDown(v, r.U8()); break; }
@@ -230,7 +234,8 @@ namespace MarioTest
         readonly ByteWriter ops = new ByteWriter(128);
         readonly List<Frame> batch = new List<Frame>();
         uint seq;
-        bool haveLimits, haveAim, haveWet, lastWet;
+        bool haveLimits, haveAim, haveWet, lastWet, haveGravity;
+        float lastGravity;
         bool haveNozzle;
         byte lastNozzle;
         Native.Limits lastLimits;
@@ -245,7 +250,7 @@ namespace MarioTest
 
         /// Forget what the puppet has, so limits, aim, wet state and equipment are sent again (a
         /// periodic refresh covers a puppet that joined late).
-        public void Refresh() => haveLimits = haveAim = haveWet = haveNozzle = false;
+        public void Refresh() => haveLimits = haveAim = haveWet = haveNozzle = haveGravity = false;
 
         /// Equipment is state as well as a one-time selection. Repeat it on a
         /// refresh so a newly created puppet need not have seen the original equip.
@@ -265,6 +270,13 @@ namespace MarioTest
         public void FlightCamera(bool on, short yaw, float pitch) => FrameCodec.WriteFlightCamera(ops, on, yaw, pitch);
         public void AddWater(float share) => FrameCodec.WriteAddWater(ops, share);
         public void BoostJump(float f) => FrameCodec.WriteBoostJump(ops, f);
+        public void Gravity(float f)
+        {
+            if (haveGravity && f == lastGravity) return;
+            haveGravity = true;
+            lastGravity = f;
+            FrameCodec.WriteGravity(ops, f);
+        }
         public void Launch(Native.Vec3 v) => FrameCodec.WriteLaunch(ops, v);
         public void LaunchPad(Native.Vec3 v, float g) => FrameCodec.WriteLaunchPad(ops, v, g);
         public void KnockDown(Native.Vec3 from, byte kind) => FrameCodec.WriteKnockDown(ops, from, kind);

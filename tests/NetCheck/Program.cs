@@ -18,6 +18,7 @@ static class Program
         public void AddWater(float s) => calls.Add($"water {s}");
         public void Limits(in Native.Limits l) => calls.Add($"limits {l.air_extra},{l.wet_slide_seconds}");
         public void BoostJump(float f) => calls.Add($"boost {f}");
+        public void Gravity(float f) => calls.Add($"gravity {f}");
         public void Launch(Native.Vec3 v) => calls.Add($"launch {v.x},{v.y},{v.z}");
         public void LaunchPad(Native.Vec3 v, float g) => calls.Add($"pad {v.x},{v.y},{v.z},{g}");
         public void KnockDown(Native.Vec3 f, byte k) => calls.Add($"knock {f.x},{f.y},{f.z},{k}");

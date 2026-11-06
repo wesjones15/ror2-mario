@@ -62,6 +62,8 @@ namespace MarioTest
         readonly MarioPad pad = new MarioPad();
         readonly MarioFlames flames = new MarioFlames();
         readonly Unstuck unstuck = new Unstuck();
+        IntPtr gravitySim;
+        float lastStageGravity = 1f;
         // How far below him ground still means he is not over a void (a vertical stage's floor can
         // be hundreds of metres down).
         const float VoidReach = Unstuck.VoidReach;
@@ -395,6 +397,14 @@ namespace MarioTest
             {
                 shineEnd = false;
                 SimOps.ShineEnd(sim);
+            }
+            // The stage's gravity (the moon lowers it): Mario's own sim follows, like RoR2's motor does.
+            float stageGravity = Ror2Common.WorldGravity.Scale;
+            if (sim != gravitySim || stageGravity != lastStageGravity)
+            {
+                gravitySim = sim;
+                lastStageGravity = stageGravity;
+                SimOps.Gravity(sim, stageGravity);
             }
             MarioCombat.Begin(body, Items);
             Native.sms_sim_state(sim, out var before);

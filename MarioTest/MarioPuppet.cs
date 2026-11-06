@@ -326,6 +326,7 @@ namespace MarioTest
         public void AddWater(float share) => Native.sms_sim_add_water(sim, share);
         public void Limits(in Native.Limits limits) { var l = limits; Native.sms_sim_set_limits(sim, ref l); }
         public void BoostJump(float factor) => Native.sms_sim_boost_jump(sim, factor);
+        public void Gravity(float scale) => Native.sms_sim_set_gravity_scale(sim, scale);
         public void Launch(Native.Vec3 vel) => Native.sms_sim_launch(sim, ref vel);
         public void LaunchPad(Native.Vec3 vel, float gravity) => Native.sms_sim_launch_pad(sim, ref vel, gravity);
         public void KnockDown(Native.Vec3 from, byte kind) => Native.sms_sim_knock_down(sim, ref from, kind);

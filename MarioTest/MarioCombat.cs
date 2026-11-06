@@ -94,6 +94,25 @@ namespace MarioTest
             fallingSuper = st.pounding == 2;
         }
 
+        const float SpinCooldown = 0.75f;
+        static readonly Dictionary<HealthComponent, float> lastSpin = new Dictionary<HealthComponent, float>();
+
+        static bool SpinReady(HealthComponent victim)
+        {
+            float now = Time.time;
+            if (lastSpin.TryGetValue(victim, out var t) && now - t < SpinCooldown) return false;
+            if (lastSpin.Count > 64)
+            {
+                // Drop destroyed victims and stale entries (rare, tiny).
+                var stale = new List<HealthComponent>();
+                foreach (var kv in lastSpin)
+                    if (!kv.Key || now - kv.Value >= SpinCooldown) stale.Add(kv.Key);
+                foreach (var k in stale) lastSpin.Remove(k);
+            }
+            lastSpin[victim] = now;
+            return true;
+        }
+
         /// Ground pound damage times this for a fall of `drop` metres.
         static float PoundScale(float drop) =>
             1f + Mathf.Clamp(drop, 0f, 500f) * Mathf.Max(0f, Plugin.PoundPerMetre.Value);
@@ -112,6 +131,9 @@ namespace MarioTest
             float strength = it != null ? it.PoundStrength : 1f;
             foreach (var (victim, kind) in blows)
             {
+                // A Rocket spin lands at most once per victim per SpinCooldown, however Mario
+                // jostles inside a big body (one dictionary lookup, only on this rare blow).
+                if (kind == 5 && !SpinReady(victim)) continue;
                 // 0 stomp, 1 ground pound, 2 dive or slide, 3 the Turbo corkscrew dive.
                 float coefficient = kind == 0 ? Plugin.StompDamage.Value
                     : kind == 1 ? Plugin.PoundDamage.Value * PoundScale(poundTop - mario.y) * strength

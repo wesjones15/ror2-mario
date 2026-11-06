@@ -45,7 +45,7 @@ namespace MarioTest
         // where they hit (summed).
         static readonly Dictionary<HealthComponent, (int drops, float weight, Vector3 sum)> water =
             new Dictionary<HealthComponent, (int, float, Vector3)>();
-        static bool pounded, superPound;
+        static bool pounded, superPound, spinPound;
         static float fallFraction;
         static Vector3 poundAt;
         // The landing's drop (metres); where the pound's fall began (world Y), and whether it
@@ -84,6 +84,7 @@ namespace MarioTest
             blows.Clear();
             water.Clear();
             pounded = false;
+            spinPound = false;
             fallFraction = 0f;
         }
 
@@ -129,6 +130,9 @@ namespace MarioTest
             bool ignite = Plugin.SuperPoundIgnites.Value;
             // A pound without a charge (the utility skill's) does Items.WeakPound of it.
             float strength = it != null ? it.PoundStrength : 1f;
+            // A spinning pound (a stick circle during the fall): more damage and a wider landing.
+            float spinDamage = pounded && spinPound ? Mathf.Max(1f, Plugin.SpinPoundDamage.Value) : 1f;
+            float spinRadius = pounded && spinPound ? Mathf.Max(1f, Plugin.SpinPoundRadius.Value) : 1f;
             foreach (var (victim, kind) in blows)
             {
                 // A Rocket spin lands at most once per victim per SpinCooldown, however Mario
@@ -136,7 +140,7 @@ namespace MarioTest
                 if (kind == 5 && !SpinReady(victim)) continue;
                 // 0 stomp, 1 ground pound, 2 dive or slide, 3 the Turbo corkscrew dive.
                 float coefficient = kind == 0 ? Plugin.StompDamage.Value
-                    : kind == 1 ? Plugin.PoundDamage.Value * PoundScale(poundTop - mario.y) * strength
+                    : kind == 1 ? Plugin.PoundDamage.Value * PoundScale(poundTop - mario.y) * strength * spinDamage
                     : kind == 3 ? Plugin.CorkscrewDamage.Value
                     : kind == 4 ? Plugin.SuperCorkscrewDamage.Value
                     : kind == 5 ? Plugin.RocketSpinDamage.Value
@@ -154,8 +158,8 @@ namespace MarioTest
             {
                 // The landing's shock wave (Sunshine's mHipdropRadius reach), on every enemy
                 // around, the pounded one too.
-                float radius = Plugin.PoundRadius.Value * (superPound ? 1.5f : 1f);
-                float coefficient = Plugin.ShockDamage.Value * PoundScale(poundDrop) * strength;
+                float radius = Plugin.PoundRadius.Value * (superPound ? 1.5f : 1f) * spinRadius;
+                float coefficient = Plugin.ShockDamage.Value * PoundScale(poundDrop) * strength * spinDamage;
                 var type = superPound && ignite ? DamageType.IgniteOnHit : DamageType.Generic;
                 foreach (var victim in Near(poundAt, radius))
                 {
@@ -318,7 +322,8 @@ namespace MarioTest
                     break;
                 case Native.EventKind.GroundPound:
                     pounded = true;
-                    superPound = e.arg != 0;
+                    superPound = (e.arg & 1) != 0;
+                    spinPound = (e.arg & 2) != 0;
                     poundDrop = e.value * UnityHost.Scale;
                     poundAt = attacker ? attacker.footPosition : Vector3.zero;
                     break;

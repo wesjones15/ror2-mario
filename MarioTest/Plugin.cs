@@ -64,7 +64,7 @@ namespace MarioTest
         internal static ConfigEntry<float> StompJump;
         internal static ConfigEntry<float> ShortHop;
         internal static ConfigEntry<float> CorkscrewHold;
-        internal static ConfigEntry<float> PoundPerMetre;
+        internal static ConfigEntry<float> PoundPerMetre, SpinPoundDamage, SpinPoundRadius;
         internal static ConfigEntry<bool> SuperPoundIgnites;
         internal static ConfigEntry<bool> PoundFlames;
         internal static ConfigEntry<bool> Effects;
@@ -349,6 +349,10 @@ namespace MarioTest
                 "A ground pound's landing, on every enemy within PoundRadius.");
             PoundRadius = Config.Bind("Damage", "PoundRadius", 4f,
                 "Metres a ground pound's landing reaches (half again for a super pound). 0: none.");
+            SpinPoundDamage = Config.Bind("Damage", "SpinPoundDamage", 2f,
+                "A stick circle during a ground pound's fall spins it: its damage (the enemy pounded and the shock wave) is multiplied by this. 1: no bonus.");
+            SpinPoundRadius = Config.Bind("Damage", "SpinPoundRadius", 2.5f,
+                "A spinning ground pound's landing reaches this many times as far. 1: no change.");
             PoundPerMetre = Config.Bind("Damage", "PoundPerMetre", 0.1f,
                 "Ground pound damage (on the enemy pounded and the shock wave) grows by this " +
                 "share for each metre fallen: 0.1 makes a 10 m pound do double. 0: flat.");

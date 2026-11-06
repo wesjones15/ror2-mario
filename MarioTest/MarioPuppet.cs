@@ -222,17 +222,19 @@ namespace MarioTest
             if (sim == IntPtr.Zero || view == null) return;
             MarioMelee.ApplyPose(view, meleeMove, meleeFrame);
             view.Spectated = LocalUsers.IsSpectated(body);
+            if (!jrLooked)
+            {
+                jrLooked = true;
+                jr = GetComponent<KoopaJrBody>();
+            }
+            // Another player's Shadow Mario mid brush stroke: his upper body in its pose.
+            if (jr) jr.PoseBrush(sim);
             view.Update(sim, lagTicks);
             if (view.Models == null) return;
             var feet = anchor.transform.position;
             view.Effects(feet);
             view.Frozen = NativeBody.Of(body ? body.gameObject : null)?.Frozen == true;
             // Another player's Bowser Jr.: Shadow Mario's body hides while he is Bowser Jr. or under the goop.
-            if (!jrLooked)
-            {
-                jrLooked = true;
-                jr = GetComponent<KoopaJrBody>();
-            }
             if (jr && jr.HidesMario) view.Draw(feet, HideEverything);
             else view.Draw(feet);
             if (jr) jr.Draw(feet, sim);

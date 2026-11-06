@@ -31,9 +31,13 @@ namespace MarioTest
         const float DrawRange = 90f, TargetRange = 80f, LingerSeconds = 2f;
         // Chunk pictures: pixels a side, how often the nearby ones are redrawn to swim, and how
         // many uploads a frame.
-        const int ImageRes = 64, UploadsPerFrame = 4;
-        const float SwimEvery = 1f, SwimRange = 45f;
-        const float ChunkUnits = 512f, TexelUnits = 32f, Lift = 1.5f;
+        const int ImageRes = 64, UploadsPerFrame = 6;
+        const float SwimEvery = 0.15f, SwimRange = 30f;
+        const float ChunkUnits = 512f, TexelUnits = 32f;
+        // The surface sits this far (metres) over the stage's own ground under each corner, found
+        // by a ray from `ConformAbove` over the goop's painted height; ground more than
+        // `ConformBand` from that height is another floor and the painted height is kept.
+        const float Lift = 0.04f, ConformAbove = 1.5f, ConformBand = 1.5f;
 
         static readonly string[] StuClips = { "name_down", "name_hit", "name_jump_end", "name_jump_start", "name_land",
             "name_set", "name_wait", "name_walk" };
@@ -324,13 +328,15 @@ namespace MarioTest
             switch (e.kind)
             {
                 case Native.GoopEv.Hit:
-                    if (e.a == 0 && byId.TryGetValue(e.id, out var hc) && hc && hc.alive && jr)
+                    // a: bit 0 a Mario was hit; above it the hit's share in hundredths (0: all of it).
+                    if ((e.a & 1) == 0 && byId.TryGetValue(e.id, out var hc) && hc && hc.alive && jr)
                     {
+                        int share = e.a >> 8;
                         var di = new DamageInfo
                         {
                             attacker = jr.gameObject,
                             inflictor = jr.gameObject,
-                            damage = jr.damage * CritterDamage.Value,
+                            damage = jr.damage * CritterDamage.Value * (share > 0 ? share / 100f : 1f),
                             position = at,
                             procCoefficient = 0.5f,
                             crit = jr.RollCrit(),
@@ -488,16 +494,28 @@ namespace MarioTest
                 filterMode = FilterMode.Bilinear,
                 wrapMode = TextureWrapMode.Clamp,
             };
-            var mat = Shaders.SeeThrough("Bowser Jr. goop", tex, false, false);
-            if (!mat)
+            // The pollution layers are alpha-tested and lit on the disc (the chunk picture's alpha
+            // is the density eased round the kind's threshold): RoR2's lit standard shader with
+            // its cutout, a little gloss for the wet paint.
+            var shader = Shaders.HgStandard();
+            if (!shader)
             {
                 Destroy(tex);
                 failed = true;
-                Plugin.Log.LogWarning("Bowser Jr.'s goop isn't drawn: no see-through shader");
+                Plugin.Log.LogWarning("Bowser Jr.'s goop isn't drawn: no standard shader");
                 return null;
             }
-            // Under the critters and the bodies' own see-through bits.
-            mat.renderQueue = 2990;
+            var mat = new Material(shader) { name = "Bowser Jr. goop" };
+            mat.SetTexture("_MainTex", tex);
+            mat.SetColor("_Color", Color.white);
+            mat.SetFloat("_EnableCutout", 1f);
+            mat.EnableKeyword("CUTOUT");
+            if (mat.HasProperty("_Cutoff")) mat.SetFloat("_Cutoff", 0.5f);
+            mat.SetFloat("_Cull", 0f);
+            mat.SetFloat("_RampInfo", 1f);
+            mat.SetFloat("_SpecularStrength", 0.35f);
+            mat.SetFloat("_SpecularExponent", 18f);
+            mat.SetFloat("_Smoothness", 0.4f);
             var go = new GameObject($"goop chunk {key.Item1},{key.Item2}");
             go.transform.SetParent(root.transform, false);
             var mesh = new Mesh { name = go.name };
@@ -545,9 +563,15 @@ namespace MarioTest
                         sum += heights[t];
                         count++;
                     }
-                float y = count > 0 ? sum / count : 0f;
+                float y = (count > 0 ? sum / count : 0f) * UnityHost.Scale;
+                var at = new Vector3(x0 + cx * TexelUnits, 0f, z0 + cz * TexelUnits) * UnityHost.Scale;
+                // On the stage's own ground (a slope or bump between the sim's probes, and the
+                // same height on both sides of a chunk edge, so neighbours meet).
+                if (Physics.Raycast(new Vector3(at.x, y + ConformAbove, at.z), Vector3.down, out var hit,
+                        ConformAbove + ConformBand, LayerIndex.world.mask, QueryTriggerInteraction.Ignore))
+                    y = hit.point.y;
                 corner[k] = verts.Count;
-                verts.Add(new Vector3(x0 + cx * TexelUnits, y + Lift, z0 + cz * TexelUnits) * UnityHost.Scale);
+                verts.Add(new Vector3(at.x, y + Lift, at.z));
                 uvs.Add(new Vector2(cx / 16f, cz / 16f));
                 return corner[k];
             }
@@ -563,6 +587,7 @@ namespace MarioTest
             c.mesh.SetVertices(verts);
             c.mesh.SetUVs(0, uvs);
             c.mesh.SetTriangles(tris, 0);
+            c.mesh.RecalculateNormals();
             c.mesh.RecalculateBounds();
         }
 
@@ -576,8 +601,6 @@ namespace MarioTest
             for (int i = 0; i < n; i++)
             {
                 var c = critters[i];
-                // The goop ball has no model (its trail is the world's particles).
-                if (c.kind == 2) continue;
                 Smooth(ref c);
                 if ((UnityHost.ToUnity(c.pos) - eye).sqrMagnitude > DrawRange * DrawRange) continue;
                 if (!props.TryGetValue(c.id, out var prop))
@@ -602,6 +625,8 @@ namespace MarioTest
 
         Prop Make(byte kind)
         {
+            // A goop ball (2) is a TPakkunSeed shot straight: the seed's model (pakkun.cpp loads
+            // seed.bmd for both), as are Shadow Mario's brush blobs.
             byte look = kind == 0 ? Native.LookStu : kind == 1 ? Native.LookPiranha : Native.LookSeed;
             var view = Native.sms_view_new_look(NativeLib.CString(Plugin.AssetsDir), 0, look);
             if (view == IntPtr.Zero) return null;
@@ -610,7 +635,7 @@ namespace MarioTest
             for (int i = 0; i < names.Length; i++)
                 prop.clip[i] = Native.sms_view_prop_clip(view, NativeLib.CString(names[i]), out prop.frames[i]);
             prop.source = new MarioFlowers.PropSource(view);
-            prop.models = ModelView.Create(prop.source, kind == 0 ? "Swoopin' Stu" : kind == 1 ? "goop Piranha" : "Piranha seed");
+            prop.models = ModelView.Create(prop.source, kind == 0 ? "Swoopin' Stu" : kind == 1 ? "goop Piranha" : kind == 2 ? "goop ball" : "Piranha seed");
             if (prop.models == null) { Free(prop); return null; }
             if (kind == 0)
             {
@@ -650,8 +675,11 @@ namespace MarioTest
                 key = 1, model = 0, pos = new ViewVec3 { x = c.pos.x, y = c.pos.y, z = c.pos.z },
                 rot_x = rot.x, rot_y = rot.y, rot_z = rot.z, rot_w = rot.w, alpha = 1f,
             };
+            // ModelView places a draw at pos * scale, so a grown or shrunk critter is placed here
+            // (its own size only scales the model).
             float scale = UnityHost.Scale * Mathf.Max(0.05f, c.scale);
-            prop.models.Update(scale);
+            var at = UnityHost.ToUnity(c.pos);
+            prop.models.Update(scale, _ => (at, rot));
             if (prop.brainModels == null) return;
             if (Native.sms_view_prop_joint(prop.view, clip, frame, 2, joint) == 0) { prop.brainModels.HideAll(); return; }
             var m = new Matrix4x4();
@@ -665,7 +693,8 @@ namespace MarioTest
                 rot_x = brainRot.x, rot_y = brainRot.y, rot_z = brainRot.z, rot_w = brainRot.w, alpha = 1f,
             };
             Native.sms_view_prop_update(prop.brainView, yaw, -1, 0f, 1);
-            prop.brainModels.Update(scale);
+            var brainAt = at + offset * UnityHost.Scale;
+            prop.brainModels.Update(scale, _ => (brainAt, brainRot));
         }
     }
 }

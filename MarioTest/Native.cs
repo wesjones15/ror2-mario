@@ -486,7 +486,8 @@ namespace MarioTest
         public struct JrState
         {
             /// 0 Shadow Mario, 1 Bowser Jr.
-            public byte form, hidden, painting, jr_clip, paint_kind, pad0, pad1, pad2;
+            /// brush: 0 none, 1 the stroke, 2 the spray (sms_jr_brush_frame its pose).
+            public byte form, hidden, painting, jr_clip, paint_kind, brush, pad1, pad2;
             public uint water, sign_timer, shot_timer;
         }
 
@@ -522,6 +523,12 @@ namespace MarioTest
             [In] byte[] density, [In] byte[] kinds, [In] float[] heights);
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern void sms_goop_chunk_drop(IntPtr goop, int kx, int kz);
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern void sms_sim_set_koopajr(IntPtr sim, byte on, ulong id);
+        /// Where the player aims (sim units), for Shadow Mario's brush blobs; send before each step.
+        [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern void sms_jr_set_aim(IntPtr sim, byte on, ref Vec3 at);
+        /// The brush stroke's ma_draw frame this tick, or -1.
+        [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern float sms_jr_brush_frame(IntPtr sim);
+        /// Another player's Shadow Mario: his copy's upper body in the stroke's pose until its next step.
+        [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern void sms_sim_pose_brush(IntPtr sim, float frame);
         /// 0 change form, 1 hide in goop, 2 come out, 3 the sign, 4 goop ball, 5 Piranha seed, 6 sprayed, 7 next paint kind.
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern byte sms_jr_action(IntPtr sim, ref Host host, uint action);
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern void sms_jr_set_paint_kind(IntPtr sim, byte kind);

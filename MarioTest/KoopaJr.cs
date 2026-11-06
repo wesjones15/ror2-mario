@@ -16,10 +16,13 @@ namespace MarioTest
     // never catch him), the Shadow Mario skin (native skin 4: the kagemario body, its swirl and
     // the brush on his left hand) and, in his own form, Bowser Jr.'s model (look 9) posed by
     // sms_jr_state's clip. His buttons:
-    //  * RT held (Shadow Mario, on the ground): the magic brush paints goop at his feet;
-    //    RT tapped (Bowser Jr.): a goop ball;
+    //  * RT (Shadow Mario): a tap swings the magic brush and throws a blob of goop at the
+    //    crosshair (or the locked enemy); held, he brandishes it forward and sprays a stream of
+    //    goop there, and on the ground the brush still paints at his feet (koopajr.rs `Brush`,
+    //    host moves); RT tapped (Bowser Jr.): a goop ball;
     //  * RB tapped: change form; RB held 0.5 s: the next goop kind;
-    //  * D-pad up (keyboard 1): Bowser Jr.'s sign (Shadow Mario) or a Piranha seed (Bowser Jr.);
+    //  * D-pad up (keyboard 1): a Piranha seed (Bowser Jr.). Shadow Mario's sign (sms_jr_action 3)
+    //    is set aside for a later custom ability;
     //  * D-pad down (keyboard 2): sink into the goop under him, or come back out.
     // The goop world (KoopaJrGoop) steps the goop, the Stus and the Piranhas and deals their
     // damage. Multiplayer: his machine runs his sim and sends his form, hiding and clip
@@ -131,7 +134,7 @@ namespace MarioTest
                 Plugin.Log.LogInfo($"Bowser Jr. paints {(k < KindNames.Length ? KindNames[k] : "goop " + k)}");
             }
             bool jr = state.form == 1;
-            if (up) Act(ref host, jr ? 5u : 3u);
+            if (up && jr) Act(ref host, 5);
             if (down) Act(ref host, state.hidden != 0 ? 2u : 1u);
             if (shot && jr) Act(ref host, 4);
         }
@@ -157,31 +160,39 @@ namespace MarioTest
         void SendState()
         {
             bool changed = state.form != sent.form || state.hidden != sent.hidden || state.jr_clip != sent.jr_clip
-                || state.paint_kind != sent.paint_kind;
+                || state.paint_kind != sent.paint_kind || state.brush != sent.brush;
             if (!changed && Time.time - sentAt < StateKeepAlive) return;
             if (!body || body.netId.Value == 0) return;
             sent = state;
             sentAt = Time.time;
             var w = new ByteWriter(12);
-            w.U8(1);
+            w.U8(2);
             w.U32(body.netId.Value);
             w.U8(state.form);
             w.U8(state.hidden);
             w.U8(state.jr_clip);
             w.U8(state.paint_kind);
+            w.U8(state.brush);
             Mp.SendToServer(MarioNet.JrStateMsg, w.ToArray());
         }
 
         static KoopaJrBody Apply(ByteReader r)
         {
-            if (r.U8() != 1) return null;
+            byte version = r.U8();
+            if (version != 1 && version != 2) return null;
             var go = Mp.Find(r.U32());
             byte form = r.U8(), hidden = r.U8(), clip = r.U8(), kind = r.U8();
+            byte brush = version >= 2 ? r.U8() : (byte)0;
             if (r.Failed || !go) return null;
             var jr = go.GetComponent<KoopaJrBody>();
             // His own machine reads his sim.
             if (!jr || !jr.body || jr.body.hasEffectiveAuthority) return null;
-            jr.state = new Native.JrState { form = (byte)(form != 0 ? 1 : 0), hidden = (byte)(hidden != 0 ? 1 : 0), jr_clip = clip, paint_kind = kind };
+            brush = brush <= 2 ? brush : (byte)0;
+            if (brush != jr.state.brush) jr.brushSince = Time.time;
+            jr.state = new Native.JrState
+            {
+                form = (byte)(form != 0 ? 1 : 0), hidden = (byte)(hidden != 0 ? 1 : 0), jr_clip = clip, paint_kind = kind, brush = brush,
+            };
             jr.haveState = true;
             jr.stateAt = Time.time;
             return jr;
@@ -197,6 +208,29 @@ namespace MarioTest
         static void OnClient(NetworkConnection from, ByteReader r)
         {
             if (!NetworkServer.active) Apply(r);
+        }
+
+        // Another player's brush stroke, timed here from when it was heard of (koopajr.rs
+        // JrParams: the stroke runs ma_draw 28 to 72 at a frame a tick, the spray sways 40 to 52
+        // once a second).
+        float brushSince;
+        const float SwingFrom = 28f, SwingTo = 72f, SprayFrom = 40f, SprayTo = 52f;
+
+        /// On another player's machine, before his copy's view update: his upper body in the
+        /// brush stroke's pose while his machine says he is swinging or spraying.
+        public void PoseBrush(IntPtr puppetSim)
+        {
+            if (puppetSim == IntPtr.Zero || sim != IntPtr.Zero || !haveState || state.brush == 0) return;
+            if (Time.time - stateAt > StateStale) return;
+            float t = Time.time - brushSince;
+            float frame;
+            if (state.brush == 1) frame = Mathf.Min(SwingTo, SwingFrom + t * Native.sms_tick_hz());
+            else
+            {
+                float s = 0.5f - 0.5f * Mathf.Cos(t % 1f * 2f * Mathf.PI);
+                frame = SprayFrom + (SprayTo - SprayFrom) * s;
+            }
+            Native.sms_sim_pose_brush(puppetSim, frame);
         }
 
         /// Bowser Jr.'s own model at his feet, facing as the sim's body does: his own sim, or on

@@ -2,28 +2,33 @@ using System;
 using Ror2Common;
 using UnityEngine;
 using UnityEngine.AddressableAssets;
+using UnityEngine.Rendering;
 
 namespace MarioTest
 {
-    // Shadow Mario's screen warp (libsms-present shadow_skin.rs; TEMario::init, emario.cpp). The
-    // game draws him from a copy of the screen pushed about by H_kagemario_indwp4n through the
-    // texture matrix kagemario_scroll.btk scrolls, so he is a moving warp of whatever is behind
-    // him. RoR2 captures the scene for matDistortion, then blends the native blue bake over the
-    // warped scene. The body's tint draws in the transparent queue so the scene grab and depth
-    // texture are clear of the body. This uses body UVs for the disc's scrolling warp.
+    // Shadow Mario's swirl (libsms-present shadow_skin.rs; TEMario::init, emario.cpp). He is
+    // opaque: every kagemario material is blend mode 0 (no blending) with z write on, and its
+    // first TEV stage only uses the warped screen copy as the factor of lerp(REG0, REG1, screen),
+    // a navy (28,20,93) to pale blue (157,194,255) ramp; the second puts his features in REG2's
+    // navy through H_kagemario_main and adds the lit colour. So he is solid blue with a moving
+    // light-and-dark swirl over him, never the scene showing through. The native view bakes that
+    // onto his body (the disc's warp standing in for the screen copy) and the body draws opaque
+    // with it. This pass then draws the body again with RoR2's screen-refraction material
+    // (matDistortion, as the heat haze and FLUDD's water use it), its bump map the disc's warp
+    // re-scrolled each game frame (sms_view_shadow_refraction). It runs after the opaque body,
+    // so what it warps is mostly his own swirl: the shimmering layer on top of the blue.
     internal sealed class MarioShadowSwirl : IDisposable
     {
         const string DistortionKey = "RoR2/Base/Common/VFX/matDistortion.mat";
 
         ModelView models;
         Texture2D texture;
-        Material tint;
         uint bodyModel;
         byte[] pixels;
         uint version;
 
         /// Null unless `view` draws Shadow Mario's skin (or the refraction material won't load).
-        public static MarioShadowSwirl Create(IntPtr view, ModelView body, string name)
+        public static MarioShadowSwirl Create(IntPtr view, string name)
         {
             float strength = KoopaJrGoop.SwirlRefraction != null ? KoopaJrGoop.SwirlRefraction.Value : 1f;
             if (view == IntPtr.Zero || strength <= 0f || !Plugin.DrawModel.Value) return null;
@@ -35,10 +40,6 @@ namespace MarioTest
             var first = new ViewDraw[1];
             if (Native.sms_view_draws(view, first, 1) == 0) return null;
             uint bodyModel = first[0].model;
-            var baked = body.FirstBatchTexture(bodyModel);
-            if (!baked) return null;
-            var tint = Shaders.SeeThrough(name + " tint", baked, additive: false, vertexColor: false, opacity: 0.42f);
-            if (!tint) return null;
             // Vector data: no sRGB conversion. Kept readable for the per-frame upload.
             var tex = new Texture2D((int)info.width, (int)info.height, TextureFormat.RGBA32, false, true)
             {
@@ -59,24 +60,21 @@ namespace MarioTest
                 baseMagnitude * strength / Mathf.Max(0.01f, gain));
             if (!material)
             {
-                UnityEngine.Object.Destroy(tint);
                 UnityEngine.Object.Destroy(tex);
                 return null;
             }
-            // The shader depth-tests against the scene. Keep its named grab in the late queue,
-            // just ahead of the blue tint that samples the native animated texture.
-            tint.renderQueue = material.renderQueue;
-            material.renderQueue = tint.renderQueue - 1;
+            // Only where his body is in front (his own opaque body included): no warp through walls.
+            foreach (var property in new[] { "_ZTest", "_ZTestMode" })
+                if (material.HasProperty(property)) material.SetFloat(property, (float)CompareFunction.LessEqual);
             var models = ModelView.Create(new SmsViewSource(view), name + " swirl", null, material);
             UnityEngine.Object.Destroy(material);
             if (models == null)
             {
-                UnityEngine.Object.Destroy(tint);
                 UnityEngine.Object.Destroy(tex);
                 return null;
             }
-            Plugin.Log.LogInfo($"Shadow Mario's swirl: model {bodyModel}, scene refraction then translucent tint ({info.width}x{info.height})");
-            return new MarioShadowSwirl { models = models, texture = tex, tint = tint, bodyModel = bodyModel, pixels = px, version = version };
+            Plugin.Log.LogInfo($"Shadow Mario's swirl: model {bodyModel}, opaque body, refraction layer over it ({info.width}x{info.height})");
+            return new MarioShadowSwirl { models = models, texture = tex, bodyModel = bodyModel, pixels = px, version = version };
         }
 
         /// The warp at this game frame (after sms_view_update).
@@ -90,9 +88,7 @@ namespace MarioTest
             texture.Apply(false, false);
         }
 
-        // A separate tint for the body leaves the brush on its own authored material.
-        public Material BodyTint(ViewDraw draw) => draw.model == bodyModel ? tint : null;
-
+        /// Over the body only (the brush keeps its own look).
         public void Draw(Func<ViewDraw, (Vector3, Quaternion)?> placement, Func<ViewDraw, bool> hide) =>
             models?.Update(UnityHost.Scale, placement, draw => draw.model != bodyModel || hide?.Invoke(draw) == true);
 
@@ -104,8 +100,6 @@ namespace MarioTest
             models = null;
             if (texture) UnityEngine.Object.Destroy(texture);
             texture = null;
-            if (tint) UnityEngine.Object.Destroy(tint);
-            tint = null;
         }
     }
 }

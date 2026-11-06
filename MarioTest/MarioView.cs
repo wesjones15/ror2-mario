@@ -226,9 +226,9 @@ namespace MarioTest
             if (!swirlTried && models != null)
             {
                 swirlTried = true;
-                swirl = MarioShadowSwirl.Create(view, models, name);
-                if (swirl != null) models.SkinFor = swirl.BodyTint;
+                swirl = MarioShadowSwirl.Create(view, name);
             }
+            // His opaque body first, then the swirl's refraction layer over it.
             models?.Update(UnityHost.Scale, placement, hide);
             swirl?.Draw(placement, hide);
         }

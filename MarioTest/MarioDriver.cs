@@ -383,6 +383,7 @@ namespace MarioTest
                 crosshair = fitted.nozzle == 1;
             }
             Aim(false, locking, lockTarget, cycle, cycleDirection, crosshair);
+            if (jr) JrAim(lockTarget);
             if (secret && Local && MarioSkin.Current(body).EggLay)
                 SecretEggLay();
             Items.Begin(sim, sprinting, grounded);
@@ -810,6 +811,20 @@ namespace MarioTest
         // points at it, so the spray trigger sprays it; with none in reach it's the crosshair.
         // `ai` is an AI's Mario's target (his brain's lock): his gun's crosshair, aimed straight
         // from the nozzle, since an AI has no camera and its input bank's aim is its walk.
+        // Shadow Mario's brush blobs fly to what Aim's lock picked, an AI's target, or the
+        // crosshair (koopajr.rs `aim_at`), whatever the camera setting.
+        CharacterBody lastLocked;
+
+        void JrAim(CharacterBody ai)
+        {
+            Vector3? target = null;
+            var locked = ai ? ai : lastLocked;
+            if (locked) target = locked.corePosition;
+            else if (input && Local) target = CrosshairTarget(input.aimOrigin, input.aimDirection, out _, MinCrosshairHit);
+            var at = target.HasValue ? UnityHost.ToSim(target.Value) : default;
+            Native.sms_jr_set_aim(sim, (byte)(target.HasValue ? 1 : 0), ref at);
+        }
+
         void Aim(bool camera, bool lockHeld, CharacterBody ai, bool cycle, Vector2 direction, bool crosshair = false)
         {
             camera = ((camera && Plugin.CameraAim.Value) || crosshair) && input;
@@ -822,6 +837,7 @@ namespace MarioTest
             enemyLock.Range = Plugin.LockRange.Value;
             var locked = ai ? ai : enemyLock.Update(body, lockHeld && input, cycle, direction);
             lockShown = lockHeld && Local ? locked : null;
+            lastLocked = lockHeld ? locked : null;
             if (!camera && !lockHeld)
             {
                 SimOps.SetAim(sim, 0, 0, 0f);

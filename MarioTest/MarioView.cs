@@ -221,12 +221,13 @@ namespace MarioTest
         {
             using var timing = MarioPerformance.Measure(MarioPerformance.Part.Models);
             drawFeet = feet;
-            models?.Update(UnityHost.Scale, placement, hide);
             if (!swirlTried && models != null)
             {
                 swirlTried = true;
-                swirl = MarioShadowSwirl.Create(view, name);
+                swirl = MarioShadowSwirl.Create(view, models, name);
+                if (swirl != null) models.SkinFor = swirl.BodyTint;
             }
+            models?.Update(UnityHost.Scale, placement, hide);
             swirl?.Draw(placement, hide);
         }
 

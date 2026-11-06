@@ -310,6 +310,7 @@ namespace MarioTest
             CoinSeconds = Config.Bind("Coins", "Seconds", 30f,
                 new ConfigDescription("Seconds a yellow coin lies there before it is gone (it blinks over its last 3).",
                     new AcceptableValueRange<float>(4f, 600f)));
+            KoopaJrGoop.Bind(Config);
             FlowerChance = Config.Bind("Flowers", "ChancePerRoll", 120,
                 new ConfigDescription("Per thousand: the chance each stage roll puts Sunshine flowers out (a ring of flowers " +
                     "you spray open for coins, a lone flower, a ring of hopping flower enemies or a flower tower). " +
@@ -616,6 +617,7 @@ namespace MarioTest
             gameObject.AddComponent<MarioScreenFx>();
             gameObject.AddComponent<MarioShine>();
             gameObject.AddComponent<MarioFlowers>();
+            gameObject.AddComponent<KoopaJrGoop>();
             gameObject.AddComponent<MarioCarry>();
             MarioCarry.Register();
             gameObject.AddComponent<MarioLunarCoin>();
@@ -628,6 +630,14 @@ namespace MarioTest
             {
                 [SkillSlot.Primary] = new[] { PadButton.RT },
                 [SkillSlot.Secondary] = new[] { PadButton.RT },
+                [SkillSlot.Utility] = new[] { PadButton.LT },
+                [SkillSlot.Special] = new[] { PadButton.B },
+            });
+            PauseControls.Register(KoopaJrBody.BodyName, KoopaJrBody.Sheet);
+            GlyphOverride.Set(KoopaJrBody.BodyName, null, new Dictionary<SkillSlot, PadButton[]>
+            {
+                [SkillSlot.Primary] = new[] { PadButton.RT },
+                [SkillSlot.Secondary] = new[] { PadButton.RB },
                 [SkillSlot.Utility] = new[] { PadButton.LT },
                 [SkillSlot.Special] = new[] { PadButton.B },
             });
@@ -855,6 +865,7 @@ namespace MarioTest
             pack.survivorDefs.Add(new[] { survivor });
             pack.entityStateTypes.Add(new[] { typeof(MarioMain) });
             Log.LogInfo("Mario registered");
+            KoopaJrBody.Register(pack, commando, commandoDisplay);
         }
 
         /// Metres per Sunshine unit, from Look.Height or Commando's collision capsule.
@@ -887,6 +898,7 @@ namespace MarioTest
                 "< ! > Collect the coins enemies drop to heal.");
             MarioSkills.Tokens(lang);
             MarioSkin.Tokens(lang);
+            KoopaJrBody.Tokens(lang);
             lang.SetStringByToken("MARIOTEST_BODY_OUTRO", "..and so he left, still wet.");
             lang.SetStringByToken("MARIOTEST_BODY_FAIL", "..and so he vanished, mid-triple-jump.");
         }

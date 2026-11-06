@@ -39,6 +39,8 @@ namespace MarioTest
         bool driving;
         bool drawn;
         Native.Host host;
+        // Bowser Jr.'s survivor drives this sim too (KoopaJr.cs): his buttons in place of FLUDD's.
+        KoopaJrBody jr;
         // Body origin minus feet: the sim tracks Mario's feet.
         Vector3 feetToOrigin;
         // The body drawn smoothly between sim steps, and how far behind the sim that is
@@ -209,6 +211,7 @@ namespace MarioTest
             smoother = new StepSmoother(transform);
             host = UnityHost.Table();
             native = GetComponent<NativeBody>();
+            jr = GetComponent<KoopaJrBody>();
             Items = new MarioItems(body);
             spawn.Remember(transform);
             all.Add(this);
@@ -325,13 +328,17 @@ namespace MarioTest
                 hold == NativeBody.Hold.None);
 
             Tune();
-            if (Local && MarioRadial.TakeTap()) TapFludd();
-            if (Local && pad.TakeTriggerTap()) TapMelee();
-            if (Local && MarioRadial.TakeChoice(out var chosen))
-                chosen.Apply?.Invoke(this);
-            if (pad.TakeRefill() && Plugin.DpadRefill.Value)
-                SimOps.Refill(sim);
-            bool secret = pad.TakeUp();
+            if (jr) jr.Buttons(ref host, pad, Local);
+            else
+            {
+                if (Local && MarioRadial.TakeTap()) TapFludd();
+                if (Local && pad.TakeTriggerTap()) TapMelee();
+                if (Local && MarioRadial.TakeChoice(out var chosen))
+                    chosen.Apply?.Invoke(this);
+                if (pad.TakeRefill() && Plugin.DpadRefill.Value)
+                    SimOps.Refill(sim);
+            }
+            bool secret = !jr && pad.TakeUp();
             var step = pad.Take(move, hold == NativeBody.Hold.All, Local && MarioRadial.Open);
             // Facing from Mario toward the camera: the reverse of where the player aims. In VR the
             // camera is the headset and the aim is the hand's pointer (MarioVr): the stick's
@@ -398,6 +405,7 @@ namespace MarioTest
             if (Local) MarioMelee.Step(body, AimDirection, grounded);
             MarioCombat.End();
             Native.sms_sim_state(sim, out var st);
+            if (jr) jr.AfterStep();
             winDemo = st.win_demo;
             Items.End(sim, st);
             string status = NativeLib.Utf8(Native.sms_sim_status_name(sim));
@@ -624,7 +632,12 @@ namespace MarioTest
                 && !localUser.isUIFocused)
             {
                 var view = View;
-                MarioRadial.Update(pad.MenuHeld, pad.MenuDirection, !pad.MenuFromGamepad,
+                if (jr)
+                {
+                    jr.ReadMenu(pad.MenuHeld);
+                    MarioRadial.Cancel();
+                }
+                else MarioRadial.Update(pad.MenuHeld, pad.MenuDirection, !pad.MenuFromGamepad,
                     view != null ? view.Handle : IntPtr.Zero);
             }
             else MarioRadial.Cancel();
@@ -690,6 +703,8 @@ namespace MarioTest
                 : $"FLUDD nozzle: {choice}");
         }
 
+        static bool HideEverything(ViewDraw _) => true;
+
         // Mario's models at the body's (smoothed) feet, facing as the sim says.
         void LateUpdate()
         {
@@ -735,7 +750,9 @@ namespace MarioTest
             if (Local) MarioVr.FollowHead(body, view, feet, simStatus, grounded, height);
             view.SetVrArms(inside);
             if (inside) MarioVr.DrawArms(view, feet);
+            else if (jr && jr.HidesMario) view.Draw(feet, HideEverything);
             else view.Draw(feet);
+            if (jr) jr.Draw(feet);
             ShowMario(true);
             if (ItemDisplayRig.Enabled && !itemDisplaysTried)
             {
@@ -1119,6 +1136,7 @@ namespace MarioTest
             tuning = default;
             Tune();
             MarioSkin.ApplySim(sim, MarioSkin.Selected(body));
+            if (jr) jr.Attach(sim);
             // Probe what RoR2's own bodies collide with, not just the world layer.
             WorldProbe.UseBodyCollision(motor, gameObject);
             Plugin.Log.LogInfo($"Mario's sim started at {body.footPosition}");

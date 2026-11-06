@@ -681,7 +681,7 @@ namespace MarioTest
         }
 
         // One native prop view, one host-placed instance (the Shine's way).
-        sealed class PropSource : IViewSource
+        internal sealed class PropSource : IViewSource
         {
             readonly SmsViewSource native;
             public ViewDraw draw;

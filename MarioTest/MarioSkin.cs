@@ -35,6 +35,8 @@ namespace MarioTest
         public Func<bool> StrictVoice = () => false;
         /// The hidden dpad-up move (Yoshi's Egg Lay, borrowed from the Melee plugin).
         public bool EggLay;
+        /// Another survivor's body (Bowser Jr.'s Shadow Mario), not one of Mario's skins.
+        public bool OwnSurvivor;
 
         public SkinDef Def;
         public UnlockableDef Unlock;
@@ -50,7 +52,8 @@ namespace MarioTest
     // complete; Piantissimo's from the Sunshine disc the plugin already extracts.
     internal static class MarioSkin
     {
-        public const uint Mario = 0, Luigi = 1, Piantissimo = 2, Yoshi = 3;
+        /// Shadow is Bowser Jr.'s survivor (KoopaJrBody), never in Mario's loadout.
+        public const uint Mario = 0, Luigi = 1, Piantissimo = 2, Yoshi = 3, Shadow = 4;
         public const uint LuigiCoins = 2401;
         public const uint PiantissimoStage = 4;
         /// Luigi's voice is Mario's pitched up 14% with the line's length kept (the Melee trick).
@@ -96,6 +99,14 @@ namespace MarioTest
                 UnlockHint = "Defeat Mithrix as Mario.", UnlockedText = "Yoshi unlocked.",
                 VoicePitch = 1f,
                 // His own wait/walk/run clips and mid-air flutter (Sim option), Mario's jumps.
+            },
+            new SkinSpec
+            {
+                // Bowser Jr.'s survivor draws it (the kagemario body, its swirl, the brush); it is
+                // his own body's, so it is always there and never offered to Mario.
+                Id = Shadow, Name = "KoopaJrSkinShadow", Token = "KOOPAJRTEST_SKIN_DEFAULT",
+                Text = "Shadow Mario", Title = "Bowser Jr.", Quip = "Shadow Mario... On Vacation!",
+                Registered = true, OwnSurvivor = true,
             },
         };
 
@@ -150,7 +161,7 @@ namespace MarioTest
         }
 
         /// Whether this skin can be offered right now.
-        static bool Offered(SkinSpec spec) => spec.Id != Mario && (!spec.NeedsMelee || ready);
+        static bool Offered(SkinSpec spec) => spec.Id != Mario && !spec.OwnSurvivor && (!spec.NeedsMelee || ready);
 
         /// The native skin id for a loadout skin index (Mario for anything unregistered).
         static uint FromIndex(uint index) => index < loadout.Count ? loadout[(int)index].Id : Mario;
@@ -158,6 +169,7 @@ namespace MarioTest
         /// The skin the body's loadout selected (a native skin id; Mario when none).
         public static uint Selected(CharacterBody body)
         {
+            if (KoopaJrBody.Is(body)) return Shadow;
             if (loadout.Count < 2 || !body) return Mario;
             // During pod creation the body's SkinDef may not have applied yet. The owning
             // master's per-body loadout already contains the selected skin, including remotely.
@@ -233,7 +245,7 @@ namespace MarioTest
             defs.Add(mario.Def);
             foreach (var spec in Specs)
             {
-                if (spec.Id == Mario) continue;
+                if (spec.Id == Mario || spec.OwnSurvivor) continue;
                 spec.Registered = Offered(spec);
                 if (!spec.Registered) continue;
                 spec.Def = Def(spec.Name, spec.Token, model, character, null);
@@ -253,7 +265,7 @@ namespace MarioTest
             controller.skins = defs.ToArray();
             foreach (var spec in Specs)
             {
-                if (spec.Id == Mario || !spec.Registered) continue;
+                if (spec.Id == Mario || spec.OwnSurvivor || !spec.Registered) continue;
                 var s = spec;
                 // The portrait: Mario's framing and pose (the same sim state), the skin's icon.
                 Portrait.Request(body, () => MarioDisplay.Get(s.Id), tex =>
@@ -262,6 +274,15 @@ namespace MarioTest
                     s.Def.icon = Sprite(tex);
                 }, framing: PortraitFraming.ThreeQuarter, assetsDir: () => Plugin.AssetsDir, cacheKey: s.Name);
             }
+        }
+
+        /// One skin for another survivor's body on this plugin (Bowser Jr.'s), replacing Commando's.
+        public static void OneSkin(GameObject body, string name, string token, Color color)
+        {
+            var model = body.GetComponent<ModelLocator>().modelTransform;
+            var controller = model.GetComponent<ModelSkinController>();
+            if (!controller) controller = model.gameObject.AddComponent<ModelSkinController>();
+            controller.skins = new[] { Def(name, token, model, model.GetComponent<CharacterModel>(), Icon(color)) };
         }
 
         /// Luigi keeps his released 2401-held-coins key. Piantissimo uses stage four's

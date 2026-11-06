@@ -411,6 +411,89 @@ namespace MarioTest
         /// look: 0 Mario, 1 Shadow Mario's colours (unused by the host now), 2 the yellow coin, 3 the Shine.
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern int sms_view_prop_clip(IntPtr view, byte[] nameUtf8, out float frames);
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern void sms_view_prop_update(IntPtr view, short yaw, int clip, float frame, byte mirror);
+        /// A prop's joint (model space, unturned; 16 floats, column-major) in `clip` at `frame`.
+        [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern uint sms_view_prop_joint(IntPtr view, int clip, float frame, uint joint, [Out] float[] matrix);
+
+        // ---- the goop world, its critters and Bowser Jr. (libsms-ffi goop.rs) ----
+        // Looks for sms_view_new_look: 9 Bowser Jr., 10 Swoopin' Stu, 11 its brain (on joint 2),
+        // 12 goop Piranha, 13 its seed, 14 Bowser Jr.'s sign.
+        public const byte LookKoopaJr = 9, LookStu = 10, LookStuBrain = 11, LookPiranha = 12, LookSeed = 13, LookSign = 14;
+        /// SmsGoopEvent.kind (goop.rs `ev`).
+        public static class GoopEv
+        {
+            public const uint Painted = 1, Erased = 2, Ambient = 3, Spawned = 10, Hit = 11, Died = 12, Burst = 13,
+                Shot = 14, Splat = 15, Sound = 16, Effect = 17, JrForm = 20, JrHidden = 21, JrAppeared = 22,
+                JrDrenched = 23, JrSign = 24;
+        }
+
+        [StructLayout(LayoutKind.Sequential)]
+        public struct GoopEvent
+        {
+            public uint kind;
+            public int a;
+            public ulong id, from;
+            public Vec3 pos;
+            public float value;
+            public IntPtr name;
+        }
+
+        [StructLayout(LayoutKind.Sequential)]
+        public struct GoopTarget
+        {
+            public ulong id;
+            public Vec3 pos;
+            public float radius, height;
+            /// 1 for a Mario (the critters go for him only up close). Seven bytes of padding follow, as in Rust.
+            public byte mario, pad0, pad1, pad2, pad3, pad4, pad5, pad6;
+        }
+
+        [StructLayout(LayoutKind.Sequential)]
+        public struct Critter
+        {
+            public ulong id;
+            public Vec3 pos;
+            public float yaw, scale, squash, lean;
+            public uint clip_time;
+            /// 0 Stu, 1 Piranha, 2 goop shot, 3 seed.
+            public byte kind, clip, state, pad;
+            public short tint_r, tint_g, tint_b, tint_a;
+        }
+
+        [StructLayout(LayoutKind.Sequential)]
+        public struct JrState
+        {
+            /// 0 Shadow Mario, 1 Bowser Jr.
+            public byte form, hidden, painting, jr_clip, paint_kind, pad0, pad1, pad2;
+            public uint water, sign_timer, shot_timer;
+        }
+
+        [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern IntPtr sms_goop_new();
+        [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern void sms_goop_free(IntPtr goop);
+        [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern void sms_sim_set_goop(IntPtr sim, IntPtr goop);
+        [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern void sms_goop_setup(IntPtr goop, byte[] assetsDirUtf8);
+        /// Empties the goop and the critters, keeping what sms_goop_setup read (a new stage).
+        [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern void sms_goop_clear(IntPtr goop);
+        [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern void sms_goop_tune(IntPtr goop, uint lifetime, uint fade, uint maxTexels, uint maxChunks);
+        [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern void sms_goop_critter_tune(IntPtr goop, uint maxStus, uint maxPiranhas,
+            uint spawnInterval, float marioRange, float burstWater, byte goopKind);
+        [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern uint sms_goop_clean(IntPtr goop, ref Vec3 pos, float radius);
+        [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern int sms_goop_kind_at(IntPtr goop, ref Vec3 pos);
+        [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern uint sms_goop_step(IntPtr goop, ref Host host, ref Vec3 owner,
+            [In] GoopTarget[] targets, uint count, [In] Vec3[] players, uint nplayers, float dt);
+        [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern uint sms_goop_contacts(IntPtr goop, [In] GoopTarget[] enemies, uint count,
+            uint period, [Out] ulong[] ids, [Out] byte[] kinds, uint max);
+        [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern uint sms_goop_critters(IntPtr goop, [Out] Critter[] output, uint max);
+        [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern uint sms_goop_events(IntPtr goop, [Out] GoopEvent[] output, uint max);
+        [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern uint sms_goop_chunk_list(IntPtr goop, [Out] int[] keys, [Out] uint[] versions, uint max);
+        /// Chunk (kx, kz)'s 256 texels: densities, kinds, heights (sim units).
+        [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern byte sms_goop_chunk(IntPtr goop, int kx, int kz,
+            [Out] byte[] density, [Out] byte[] kinds, [Out] float[] heights);
+        [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern byte sms_goop_chunk_image_at(IntPtr goop, int kx, int kz, uint res, float time, [Out] byte[] rgba);
+        [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern void sms_sim_set_koopajr(IntPtr sim, byte on, ulong id);
+        /// 0 change form, 1 hide in goop, 2 come out, 3 the sign, 4 goop ball, 5 Piranha seed, 6 sprayed, 7 next paint kind.
+        [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern byte sms_jr_action(IntPtr sim, ref Host host, uint action);
+        [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern void sms_jr_set_paint_kind(IntPtr sim, byte kind);
+        [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern byte sms_jr_state(IntPtr sim, out JrState state);
 
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern void sms_view_effect(IntPtr view, byte[] nameUtf8, ref Vec3 pos, float scale);
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern void sms_view_water_hit(IntPtr view, ref Vec3 pos);
@@ -594,6 +677,8 @@ namespace MarioTest
                 ("ScreenFx", NativeLib.Size<ScreenFx>()), ("ScreenSprite", NativeLib.Size<ScreenSprite>()),
                 ("ShineFrame", NativeLib.Size<ShineFrame>()), ("ShineInfo", NativeLib.Size<ShineInfo>()),
                 ("CameraShot", NativeLib.Size<CameraShot>()),
+                ("GoopEvent", NativeLib.Size<GoopEvent>()), ("GoopTarget", NativeLib.Size<GoopTarget>()),
+                ("Critter", NativeLib.Size<Critter>()), ("JrState", NativeLib.Size<JrState>()),
             });
             if (diff != null)
             {

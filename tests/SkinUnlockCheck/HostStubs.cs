@@ -56,12 +56,13 @@ namespace Ror2Common
         }
     }
     public enum PortraitFraming { ThreeQuarter }
-    public static class Portrait { public static void Request(UnityEngine.GameObject b,Func<object> f,Action<UnityEngine.Texture2D> a,PortraitFraming framing) {} }
+    public static class Portrait { public static void Request(UnityEngine.GameObject b,Func<object> f,Action<UnityEngine.Texture2D> a,PortraitFraming framing,Func<string> assetsDir=null,string cacheKey=null) {} }
     // MarioSkin's Melee folder and Luigi extraction (SharedFiles, Experimental, NativeLib), stubbed.
     public class CommonLogger { public void LogWarning(string s) {} }
     public static class CommonLog { public static CommonLogger Log; }
-    public static class SharedFiles { public const string Melee = "melee"; public static string Assets(string g) => g; public static string FindDisc(string id, int rev) => null; public static IDisposable Lock(string g) => null; public static string MissingDisc(string g) => g; }
+    public static class SharedFiles { public const string Melee = "melee"; public static string Assets(string g) => g; public static string FindDisc(string id, int rev) => null; public static IDisposable Lock(string g) => null; public static string MissingDisc(string g) => g; public static bool Current(string g, string set, int v) => true; public static void MarkCurrent(string g, string set, int v) { } }
     public static class Experimental { public static bool Enabled; public static bool Allows(bool e) => !e || Enabled; }
+    public static class NativeLib { public static byte[] CString(string s) => null; }
 }
 namespace BepInEx { public static class Paths { public static string ConfigPath = ""; } }
 namespace MarioTest
@@ -69,7 +70,8 @@ namespace MarioTest
     public static class MarioNet { public static int MithrixMessages; public static void SendMithrixDefeated(string runId) => MithrixMessages++; }
     public class ConfigValue<T> { public T Value; }
     public class Logger { public void LogInfo(string s) {} public void LogWarning(string s) {} }
-    public static class Plugin { public static ConfigValue<float> LuigiJumpHeight = new ConfigValue<float>(); public static ConfigValue<bool> PiantissimoGameVoice = new ConfigValue<bool>(); public static Logger Log = new Logger(); }
+    public static class Plugin { public static string AssetsDir = ""; public static ConfigValue<float> LuigiJumpHeight = new ConfigValue<float>(); public static ConfigValue<bool> PiantissimoGameVoice = new ConfigValue<bool>(); public static Logger Log = new Logger(); }
     public static class MarioDisplay { public static object Get(uint id) => null; }
+    public static class KoopaJrBody { public static bool Is(RoR2.CharacterBody b) => false; }
     public static class Native { public static uint sms_view_load_skin(IntPtr v,uint s,byte[] d) => 1; public static void sms_view_skin(IntPtr v,uint s) {} public static void sms_view_set_voice_pitch(IntPtr v,float p) {} public static void sms_view_voice_set(IntPtr v,uint s) {} public static void sms_sim_set_yoshi_skin(IntPtr s,byte on) {} public static byte sms_luigi_melee_complete(byte[] d) => 0; public static byte sms_luigi_melee_extract(byte[] a,byte[] b,byte[] m,uint n) => 0; }
 }

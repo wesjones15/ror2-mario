@@ -143,6 +143,7 @@ namespace MarioTest
                 new ConfigDescription("How much FLUDD's wet patches darken terrain, fading as they dry. 0 hides the marks; wet-slide eligibility is unchanged.",
                     new AcceptableValueRange<float>(0f, 0.35f)));
             CommonLog.Log = Logger;
+            Experimental.ShareWithLobby();
             MarioShipParts.Bind();
             string here = Path.GetDirectoryName(Info.Location);
             RunAudio.Initialize(() =>
@@ -641,9 +642,16 @@ namespace MarioTest
 
         // Match Olimar's first-run flow: register content now, extract on a worker, and let
         // sims/views wait for the complete cache. Never read files while they are being written.
+        /// Version of `sms_extract`'s output (SharedFiles extracted.txt, set "main"): bump it when the extractor
+        /// writes an existing file differently, so installed caches are extracted again.
+        const int MainExtractorVersion = 1;
+
         static void PrepareAssets()
         {
             assetsReady = Native.sms_assets_complete(NativeLib.CString(AssetsDir)) != 0;
+            // Complete but written by an older extractor: extract again when the disc is there; without it, keep
+            // using the files that are there.
+            bool stale = assetsReady && !SharedFiles.Current(SharedFiles.Sunshine, "main", MainExtractorVersion);
             string stings = Path.Combine(AssetsDir, "ror2_audio");
             // The disc's wipe pictures are an optional piece: a folder without them works, and gets
             // them whenever the disc is found.
@@ -665,14 +673,29 @@ namespace MarioTest
                 || !File.Exists(Path.Combine(stings, "stings.version"))
                 || File.ReadAllText(Path.Combine(stings, "stings.version")).Trim() != "2";
             bool needPortalCache = Native.sms_entrance_cache_complete(NativeLib.CString(AssetsDir)) == 0;
-            if (assetsReady && !needStings && !needExtras && !needPortalCache)
+            if (assetsReady && !stale && !needStings && !needExtras && !needPortalCache)
                 return;
             string disc = null;
-            if (!assetsReady || needExtras)
+            if (!assetsReady || stale || needExtras)
             {
                 var found = new byte[32768];
                 if (Native.sms_find_disc(NativeLib.CString(SharedFiles.SearchList()), found, (uint)found.Length) != 0)
                     disc = Utf8(found);
+            }
+            if (stale)
+            {
+                if (string.IsNullOrEmpty(disc) || !File.Exists(disc))
+                {
+                    Log.LogWarning("Sunshine assets were extracted by an older version of the mod; using them as they are. " +
+                                   SharedFiles.MissingDisc("Super Mario Sunshine"));
+                    stale = false;
+                    if (!needStings && !needExtras && !needPortalCache) return;
+                }
+                else
+                {
+                    Log.LogInfo("Sunshine assets were extracted by an older version of the mod; extracting them again.");
+                    assetsReady = false; // nothing reads them while they're rewritten
+                }
             }
             if (assetsReady && !needStings && !needPortalCache && (string.IsNullOrEmpty(disc) || !File.Exists(disc)))
             {
@@ -699,6 +722,7 @@ namespace MarioTest
                     {
                         byte ok = Native.sms_extract(NativeLib.CString(disc), NativeLib.CString(AssetsDir), msg, (uint)msg.Length);
                         assetsReady = ok != 0 && Native.sms_assets_complete(NativeLib.CString(AssetsDir)) != 0;
+                        if (assetsReady) SharedFiles.MarkCurrent(SharedFiles.Sunshine, "main", MainExtractorVersion);
                         if (assetsReady) Log.LogInfo($"Extracted: {Utf8(msg)}");
                         else Log.LogError($"Extraction failed: {Utf8(msg)}. Check the disc in wesleyasaurus-SharedFiles/put_games_here and restart to retry.");
                     }

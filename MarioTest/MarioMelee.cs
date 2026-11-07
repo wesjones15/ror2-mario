@@ -84,7 +84,12 @@ namespace MarioTest
                 }
                 MeleeNative.Load(dll);
                 string cache = SharedFiles.Assets(SharedFiles.Melee);
-                if (!File.Exists(System.IO.Path.Combine(cache, "PlMr.dat")))
+                bool have = File.Exists(System.IO.Path.Combine(cache, "PlMr.dat"));
+                // Written by an older extractor and a disc is there: extract again before loading (once a session).
+                bool stale = have && !extractTried
+                    && !SharedFiles.Current(SharedFiles.Melee, MeleeNative.ExtractSet(MeleeNative.FighterMario), MeleeNative.ExtractorVersion)
+                    && SharedFiles.FindDisc("GALE01", 2) != null;
+                if (!have || stale)
                 {
                     // Not latched: extract Mario's Melee files (this plugin asks for them, so it extracts them) on a
                     // worker, and look again shortly.
@@ -147,7 +152,9 @@ namespace MarioTest
                 {
                     using (SharedFiles.Lock(SharedFiles.Melee))
                     {
-                        if (MeleeNative.ssbm_assets_complete(NativeLib.CString(cache), MeleeNative.FighterMario) == 1) return;
+                        string set = MeleeNative.ExtractSet(MeleeNative.FighterMario);
+                        if (MeleeNative.ssbm_assets_complete(NativeLib.CString(cache), MeleeNative.FighterMario) == 1
+                            && SharedFiles.Current(SharedFiles.Melee, set, MeleeNative.ExtractorVersion)) return;
                         string disc = SharedFiles.FindDisc("GALE01", 2);
                         if (disc == null)
                         {
@@ -156,7 +163,10 @@ namespace MarioTest
                             return;
                         }
                         if (MeleeNative.ssbm_extract(NativeLib.CString(disc), NativeLib.CString(cache), MeleeNative.FighterMario) == 1)
+                        {
+                            SharedFiles.MarkCurrent(SharedFiles.Melee, set, MeleeNative.ExtractorVersion);
                             Plugin.Log.LogInfo($"Melee Mario: his Melee files extracted from {disc} into {cache}");
+                        }
                         else Plugin.Log.LogWarning("Melee Mario: extraction failed: " + MeleeNative.Error);
                     }
                 }

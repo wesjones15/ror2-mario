@@ -129,30 +129,41 @@ namespace MarioTest
         /// SharedFiles' Melee folder, where Luigi's mesh lives whichever plugin extracted it. If his files
         /// aren't there yet and a Melee disc is in put_games_here, extracts them now (a few seconds, once), so he
         /// is offered without the Melee plugin. Call after sms.dll loads and before the skins are registered.
+        /// Version of `sms_luigi_melee_extract`'s output (SharedFiles extracted.txt, set "luigi"): bump it when the
+        /// extractor writes an existing file differently.
+        const int LuigiExtractorVersion = 1;
+
+        static bool LuigiComplete() => Native.sms_luigi_melee_complete(NativeLib.CString(meleeDir)) != 0;
+
         public static void Discover()
         {
             meleeDir = SharedFiles.Assets(SharedFiles.Melee);
-            ready = Native.sms_luigi_melee_complete(NativeLib.CString(meleeDir)) != 0;
-            if (ready || !Experimental.Allows(Specs[Luigi].Experimental)) return;
+            ready = LuigiComplete();
+            if (!Experimental.Allows(Specs[Luigi].Experimental)) return;
+            if (ready && SharedFiles.Current(SharedFiles.Melee, "luigi", LuigiExtractorVersion)) return;
             try
             {
                 using (SharedFiles.Lock(SharedFiles.Melee))
                 {
                     // The Melee or Olimar plugin may have just extracted them.
-                    ready = Native.sms_luigi_melee_complete(NativeLib.CString(meleeDir)) != 0;
-                    if (ready) return;
+                    ready = LuigiComplete();
+                    if (ready && SharedFiles.Current(SharedFiles.Melee, "luigi", LuigiExtractorVersion)) return;
                     string disc = SharedFiles.FindDisc("GALE01", 2);
                     if (disc == null)
                     {
-                        Plugin.Log.LogInfo("Luigi skin: no Melee disc found, so he is not offered. " +
-                                           SharedFiles.MissingDisc("Super Smash Bros. Melee (USA, revision 1.02)"));
+                        // Files from an older extractor are still used as they are.
+                        if (!ready)
+                            Plugin.Log.LogInfo("Luigi skin: no Melee disc found, so he is not offered. " +
+                                               SharedFiles.MissingDisc("Super Smash Bros. Melee (USA, revision 1.02)"));
                         return;
                     }
-                    Plugin.Log.LogInfo($"Luigi skin: extracting his Melee files from {disc} into {meleeDir}...");
+                    Plugin.Log.LogInfo(ready ? $"Luigi skin: his Melee files are from an older version of the mod; extracting them again from {disc}..."
+                                             : $"Luigi skin: extracting his Melee files from {disc} into {meleeDir}...");
                     var msg = new byte[1024];
                     if (Native.sms_luigi_melee_extract(NativeLib.CString(disc), NativeLib.CString(meleeDir), msg, (uint)msg.Length) == 0)
                         Plugin.Log.LogWarning("Luigi skin: " + System.Text.Encoding.UTF8.GetString(msg).Split('\0')[0]);
-                    ready = Native.sms_luigi_melee_complete(NativeLib.CString(meleeDir)) != 0;
+                    ready = LuigiComplete();
+                    if (ready) SharedFiles.MarkCurrent(SharedFiles.Melee, "luigi", LuigiExtractorVersion);
                 }
             }
             catch (Exception e) { Plugin.Log.LogWarning("Luigi skin: " + e.Message); }

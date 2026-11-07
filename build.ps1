@@ -1,6 +1,6 @@
 # Builds libsms's DLL and the MarioTest plugin, and stages both under the workspace's
-# target/BepInEx/plugins/MarioTest/ folder (beside the game copy's ..\..) along with a pointer to
-# libsms's extracted assets. Copy that folder into the game yourself.
+# target/BepInEx/plugins/wesleyasaurus-Mario/ folder (beside the game copy's ..\..), the same folder name
+# r2modman gives the Thunderstore package. Copy that folder into the game yourself.
 #
 #   powershell -ExecutionPolicy Bypass -File build.ps1 [-RoR2Dir <game to compile against>]
 #       [-InstallDir <folder to stage under; default ..\target, never the game>] [-NoInstall]
@@ -45,7 +45,10 @@ Copy-Item (Join-Path $LibSms "target\release\sms.dll") $dist -Force
 Write-Host "built $dist"
 
 if (-not $NoInstall) {
-    $plugins = Join-Path $InstallDir "BepInEx\plugins\MarioTest"
+    # The folder r2modman names the Thunderstore package; the old staged name is removed so the plugin isn't loaded twice.
+    $plugins = Join-Path $InstallDir "BepInEx\plugins\wesleyasaurus-Mario"
+    $legacy = Join-Path $InstallDir "BepInEx\plugins\MarioTest"
+    if (Test-Path $legacy) { Remove-Item $legacy -Recurse -Force; Write-Host "removed the old staged folder $legacy" }
     New-Item -ItemType Directory -Force $plugins | Out-Null
     # Older builds staged path pointers here; they are no longer read.
     foreach ($old in @("melee_assets_dir.txt", "assets_dir.txt")) { Remove-Item (Join-Path $plugins $old) -ErrorAction SilentlyContinue }

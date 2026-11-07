@@ -529,3 +529,11 @@ the log confirms the material loaded with `FLUDD's water refracts`.
 ## Arrival music
 
 Mario plays approximately five opening beats (2.5 seconds) of Delfino Plaza once a run, as he leaves the pod on the first stage; later stages and respawns stay quiet. When he dies, Sunshine's game over song plays (about 8 seconds); falling off the map plays the miss jingle ("Too Bad!", about 4.5 seconds) before he is put back. A lunar coin picked up plays the blue coin jingle (`SpawnMusic.Cues`). SpawnMusic.Enabled, SpawnMusic.DeathSting, SpawnMusic.Volume and SpawnMusic.DeathVolume (1.15, extra gain for the death sting) control them; master and music volume also apply. The build synthesizes spawn.wav, death.wav (the miss jingle), gameover.wav and bluecoin.wav from your extracted disc audio into the ignored dist folder. Rebuild after extracting assets if a clip is missing. No music data is committed.
+
+## License and credits
+
+Original contributions by **wesleyasaurus** are dedicated to the public domain under
+[CC0 1.0 Universal](LICENSE), to the extent wesleyasaurus owns the relevant rights.
+Attribution for those contributions is appreciated but not required. Third-party software
+and original game content retain their respective rights and terms.
+See [CREDITS.md](CREDITS.md) and [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).

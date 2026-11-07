@@ -610,7 +610,11 @@ namespace MarioTest
             base.OnEnter();
             GetComponent<MarioStatuePod>()?.BeginDescent();
         }
+#if PUBLICIZED_GAME_LIBS
+        public override void TransitionIntoNextState() => outer.SetNextState(new MarioPodLanded());
+#else
         protected override void TransitionIntoNextState() => outer.SetNextState(new MarioPodLanded());
+#endif
     }
 
     public sealed class MarioPodLanded : SurvivorPodBaseState

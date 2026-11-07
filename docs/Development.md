@@ -31,13 +31,15 @@ workspace/
 
 `libssbm` is a source dependency of the native presentation build even when the optional Melee gameplay integration is not being used. Extracted game assets are not needed to build the plugin.
 
+Set `$referenceDirectory` to the directory containing the RoR2 and BepInEx assemblies you intend to compile against. Pass it explicitly with `-RoR2Dir`; there is no machine-specific default. Staging is resolved relative to the source checkout as workspace `target/`, independently of the reference directory.
+
 From `ror2-mario/`:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File build.ps1 -RoR2Dir "C:\path\to\Risk of Rain 2" -NoInstall
+powershell -ExecutionPolicy Bypass -File build.ps1 -RoR2Dir $referenceDirectory -NoInstall
 ```
 
-This builds `sms.dll` and `MarioTest.dll` into `dist/MarioTest/`. Without `-NoInstall`, the script also stages the plugin and SharedFiles beneath a workspace `target/BepInEx/plugins/` directory; `-InstallDir` selects the staging root. Copy staged files into the intended game/mod-manager profile yourself. The default compile path is the workspace's `2026 Mod Stuff/RiskOfRain2_DLC4` copy.
+This builds `sms.dll` and `MarioTest.dll` into `dist/MarioTest/`. Without `-NoInstall`, the script also stages the plugin and SharedFiles beneath a workspace `target/BepInEx/plugins/` directory; `-InstallDir` can select a subdirectory within workspace `target/`. Copy staged files into the intended game/mod-manager profile yourself.
 
 ## Validation and limitations
 

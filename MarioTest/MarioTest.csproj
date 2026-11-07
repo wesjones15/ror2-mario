@@ -6,10 +6,8 @@
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <AssemblyName>MarioTest</AssemblyName>
     <RootNamespace>MarioTest</RootNamespace>
-    <!-- The game install to compile against and deploy into. Its own DLLs are the reference
+    <!-- The caller-selected directory containing compilation references. Its own DLLs are the reference
          assemblies, so the plugin always matches that build (RoR2 DLC4 (2026)). -->
-    <RoR2Dir Condition="'$(RoR2Dir)' == ''">$(MSBuildThisFileDirectory)..\..\2026 Mod Stuff\RiskOfRain2_DLC4</RoR2Dir>
-    <Managed>$(RoR2Dir)\Risk of Rain 2_Data\Managed</Managed>
     <CopyLocalLockFileAssemblies>false</CopyLocalLockFileAssemblies>
     <GenerateDependencyFile>false</GenerateDependencyFile>
     <!-- ror2-common's IL hooks (ItemHooks, MinionHit): needs the MonoMod references below. -->
@@ -59,4 +57,5 @@
     <Reference Include="com.unity.multiplayer-hlapi.Runtime"><HintPath>$(Managed)\com.unity.multiplayer-hlapi.Runtime.dll</HintPath></Reference>
   </ItemGroup>
 
+  <Import Project="$(MSBuildThisFileDirectory)../../ror2-common/build/RoR2References.targets" />
 </Project>

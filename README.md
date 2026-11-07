@@ -1,534 +1,160 @@
-> modern/1.5.0 branch: targets RiskOfRain2_DLC4 (Unity 2021.3.45f2). Build/API validation only; in-game validation is pending. Legacy instructions below describe the previous release.
+# Mario in Risk of Rain 2
 
-# ror2-mario
+Play **Super Mario Sunshine's Mario, with FLUDD**, as a Risk of Rain 2 survivor. Chain jumps, wall kicks, dives and wet slides; fight with water, stomps and ground pounds; and use Hover, Rocket and Turbo to cross RoR2's stages.
 
-Mario now reacts to RoR2 fire hits even without the normal burning buff, including
-stronger/percentage burns and fire elite trails. Each reaction plays one disc
-fire voice, alternating Fire 02 then Fire 01. The disc's burn hop launches him
-with `mFireDownForce` (50), keeps `ma_firejmp` through the fall and two 40% rebounds,
-then recovers with `ma_fjpend`. It never enters a panic run. A five-second escape
-grace prevents chained reactions without preventing RoR2 fire damage. The fire-damage particle (emitter 6,
-`ms_firedmg_a`) now follows Mario; Sunshine binds this flare to his position,
-not his head. Its flare and smoke fade out within about a third of a second after
-recovery. A separate head-flame effect has not been identified or added.
+This repository is the **C# RoR2 plugin**. Mario's movement and FLUDD run in [libsms](https://github.com/wesjones15/libsms), a game-independent Rust reimplementation using [doldecomp/sms](https://github.com/doldecomp/sms) as a behavioral reference. RoR2 supplies the stages, enemies, health, inventory and progression. The plugin connects the two and adapts Mario's moves for RoR2 combat and items.
 
-Stage water and actual FLUDD droplets touching Mario's body end the fire reaction.
-His own spray and another Mario's spray both count. Wetness uses Sunshine's
-120-tick runoff timer (one second), beginning on pool exit or body contact with spray.
-`checkWet` emits the disc's `WetWaterEmit.prm` water droplets every eight ticks at
-his feet, with 30% of his velocity. These use model-water type 1 (`WTP01_Wide`),
-not a JPA substitute. Applying the timer and extinguishing to FLUDD body hits is
-the host adaptation; the decomp starts runoff on leaving stage water. Wetness
-blocks ignition and quenching keeps the five-second escape grace. Runoff cannot
-re-wet its emitter. RoR2 fire damage still applies normally.
+Models, animations, textures, effects and sounds are extracted locally from **your own Sunshine disc image**. Game assets are not included in the repository or release packages.
 
-FLUDD deals 5x damage to burning enemies, fire elites, wisps and Magma Worms
-(`Damage.FireWaterMultiplier`). The bonus applies once on the server to water
-from any nozzle. `Fludd.ExtinguishFireTrails` makes actual droplet sweeps put out
-individual trail sections, removing their damage and segment visuals for their
-remaining lifetime without joining dry sections across the gap. New sections
-laid later can still burn. Network protocol is now 6; install matching builds
-on all peers. Pair the updated `sms.dll` with `MarioTest.dll`.
+The `modern/1.5.0` branch targets the project's **RoR2 DLC4 build, Unity 2021.3 and BepInEx 5**. For packaged downloads and installation instructions, start with [ror2-characters](https://github.com/wesjones15/ror2-characters). The `legacy/1.2.4.4` branch is frozen.
 
-Tap RB to swap between Spray and the selected alternate; hold RB for 0.5 s to choose
-No FLUDD, Hover, Rocket or Turbo from a wheel anchored to the Air Pump cooldown picture. The
-chosen alternate is overlaid on that picture, or left as-is for No FLUDD. Nozzle choices are
-recorded in the multiplayer frame. With No FLUDD, tapping RB or RT plays one of Melee Mario's
-contextual A attacks (jab, tilts, smashes, dash and aerials) on the Sunshine body, using the
-Melee plugin's `ssbm.dll` and the `PlMr.dat` it extracts into its own cache on first run, with
-Melee Mario's voice and swing sounds. Nothing Melee-related is installed into `MarioTest`. The
-owner records the clip/frame in
-the frame stream so other players' puppets show the same attack; damage goes through
-`MarioCombat`'s client→server hit message. Without `PlMr.dat` (or `ssbm.dll`) the empty FLUDD
-button does nothing; Sunshine's B dive, FLUDD and every other control are unchanged. See
-`docs/radial-menu.md` for the controls and the Melee A details.
+## Playing Mario
 
-`tests/FireCheck` patches the installed game's actual DamageTrail IL headlessly
-and checks that the extinguish branch skips overlap/damage while retaining the
-next-segment update. `tests/PortraitCheck` covers the native fire flare and water
-contact query. These are build/boundary checks; not yet played in RoR2.
+Mario uses Sunshine-style movement rather than RoR2's normal character controller. His main resources are **water, airtime and movement**, with RoR2 skill slots supporting item interactions.
 
-`Look.HeatHaze` (default true) draws Sunshine's scrolling distant heat shimmer
-for Mario, Luigi, Il Piantissimo and Yoshi. Set it to false to disable immediately. It
-uses the disc's ShimmerLow model/BTK/indirect map and the existing refraction
-backend, separately from FLUDD's `Look.WaterRefraction`. Nearby scene geometry
-and the HUD stay clear. See `libsms/docs/heat-haze.md` for source evidence and
-the headless proof. The updated plugin requires native ABI 34.
+- **Movement:** normal/double/triple jumps, spin jumps, backflips, wall kicks, ledge hanging, dives and belly slides. Jump scale and movement are adapted for RoR2 terrain.
+- **FLUDD:** Spray fights at range; Hover extends airtime; Rocket gains height; Turbo gives speed and a corkscrew attack. Water damages enemies, has a bonus against fire-related targets, and can deflect enemy projectiles and extinguish fire trails.
+- **Close combat:** stomps, dives and ground pounds deal RoR2 damage. A longer pound ignites, a stick circle during its fall makes it spin, and Turbo's corkscrew can build into a stronger flaming attack.
+- **Recovery:** kills drop healing coins. Mario can refill FLUDD in stage water, through healing-related item effects, with D-pad down, and at the start of each stage. Fall and stuck recovery support the custom controller.
+- **Sunshine presentation:** the life sun, tank and coin counters, character sounds, movement effects, statue-pod entrance and teleporter Shine sequence accompany the moves. RoR2 keeps its soundtrack, with short Sunshine arrival and loss cues.
 
-Sunshine presentation now belongs to the local Mario player's run, so death,
-spectator mode and Remote Operation drone control keep the coin counters,
-life meter/layout, cached Mario tank gauge, haze and visible teleporter Shine.
-Spectator/drone health follows the camera target (an empty meter without a body); money belongs to the local
-user's controlled master (the original master while none is controlled),
-never a spectated teammate. The last Mario tank gauge is a retained visual.
-World coin visuals were already independent of the live Mario body. Shine
-pickup and stage-exit gameplay still require the existing living Mario path.
-Run end, disconnect or a new local network user releases the retained HUD;
-the corpse's model/audio handles are still freed normally.
+This is an adaptation rather than a complete Sunshine port. Water is an offensive weapon, item scaling changes several move limits, and deep-water swimming is not implemented.
 
-Validation: headless source render, Rust asset/ABI checks,
-`tests/PresentationCheck` lifecycle checks, native `PortraitCheck`, and a
-plugin build. RoR2 GPU appearance and drone/spectator playtesting remain pending.
+## Controls
 
-Mario's first-stage pod shows the Sunshine Pianta statue and animated M portal.
-Interact/X opens the Delfino Plaza still, plays the arrival sting and original
-portal-exit sound, then runs the approved 0.8-second particle reveal, wahoo,
-normal-rate spin with a gentle 0.8-second descent, and ordinary jump landing.
-The portal reveals the Plaza over 0.8 seconds using Sunshine's `05_gate01.brk`
-material transition, holds it for two seconds after control returns, then fades
-to swirling colors at the source gate's closing rate (about 1.7 seconds). Player
-control still returns at the original 1.75-second handoff. The first asset preparation rebuilds its v5
-animation cache; the old snap-transition cache is not reused.
-Luigi uses green cap particles and his
-existing pitched voice. The full cap-in-hand Sunshine sequence remains in the
-Rust viewer and original native playback API, but the game uses the short profile.
-Luigi is Mario's alt-skin and is unlocked by holding 2401 coins at one time.
-Il Piantissimo is the second alt-skin, unlocked by beating the stage 4 teleporter
-event as Mario; his model comes from the Sunshine disc the plugin already extracts
-(`mamma4.szs`, `npc/monteman/`), and it shares Mario's skeleton, so Mario's own pose
-drives it, as the game does for him. He has Mario's voice and jump, no secret move.
-Yoshi is the third alt-skin, unlocked by defeating Mithrix's final form as Mario
-(no escape or final hit required; dead Mario teammates also qualify). He is
-Sunshine's `yoshi.szs` model on his own 38-joint rig: his wait, walk and
-run clips play on the ground, Mario's jumps and moves retarget onto him in the air,
-and a fresh A press while airborne starts his flutter (`TYoshi::thinkHoldOut`,
-`MSD_SE_YV_FUNBARI`) once per airtime. FLUDD stays on his back; a front Spray leaves
-his mouth while FLUDD rests, the water is drawn in his juice colour, and the pack's
-belt is widened for his hips. All three get the same lobby, entrance, portrait and
-pause-sheet treatment as Mario. Skins are table rows (`MarioSkin.Specs` here, `Skin` in
-libsms-present; `libsms/docs/skins.md`), so adding another is a row and not a code path.
+Gamepad buttons are **by physical position**, using Xbox-style names and Sunshine's layout, independently of your RoR2 skill bindings. The pause menu also has a controls page.
 
-Portal animation is rendered once on the asset worker at 512 square and cached as
-256-square raw RGBA with antialiased edge coverage. The M is mirrored through its
-texture matrix; source textures are untouched. The statue/gate geometry uploads once; hidden arrival Mario
-stops being processed after handoff. Idle and spent portal frames stop sampling/uploading
-outside the player's camera frustum and resume at the current frame when visible, without
-replaying missed frames. Exit/control processing always runs, even offscreen. A slope-safe
-cut holds only the rider's pose until handoff; afterward the portal clock advances so the
-Plaza image closes back to colors. These changes are boundary/build checked, not yet played.
-Stock pod graphics are suppressed except the
-original descent fire: its mesh particles are 3.5x wider and 1.75x taller, with the emitter 900 cm
-above the pedestal base and local simulation so existing particles follow the
-statue. Its original material and emission rate remain.
-The statue descends vertically above that same landing point: the C# adapter keeps
-the stock animation's height and timing, fixes X/Z to the unanimated landing
-reference, and keeps the statue upright. The fire's long axis is aligned with world
-vertical; its 6 m offset and existing width/height scales remain unchanged. This
-path/alignment change is build checked and still needs an in-game check.
-Stock collision is removed after exit. Vanilla falling/crashing sound events remain.
-The camera faces the M and the statue retains its own pedestal collision. The
-normal pod remains available if optional disc assets or rendering cannot load.
-The revised profile is viewer/build/boundary checked; RoR2 playtesting is pending.
-The entrance preloads Luigi's mesh and refreshes the seated rider's selection from
-the master's loadout before activation, so late passenger/skin initialization does
-not leave Mario in Luigi's portal sequence. Green particles and voice pitch follow.
-Luigi's entrance is now confirmed by the user's playtest. The fire starts from
-`MarioPodDescent.OnEnter`, even when native preparation and state entry run in
-either order; it resolves the exact emitter on the spawned clone and logs
-`Statue descent fire started`. After landing, the statue, portal camera, pedestal
-collider and exit point use a fixed world anchor instead of the animated stock
-pod bone. The exit-position fix still needs an in-game check.
-The user's playtests confirmed the fire starts, but both -950 cm and zero offset
-left it too low. +600 cm was also still low; the new +900 cm offset, halved vertical scale and local simulation still need an in-game
-check. The viewer's approximate pivot is not height proof.
+| Gamepad | Action |
+| --- | --- |
+| Left stick | Walk/run; circle the stick for spin inputs. |
+| A | Jump and wall kick. |
+| B | Dive, punch and carrying actions as the current state permits. Dive onto wet ground to wet-slide. |
+| Right trigger (RT) | Spray water / use the equipped nozzle. Analog pressure controls the Spray. |
+| Left trigger (LT) | Ground pound in the air; crouch on the ground; aim FLUDD at the crosshair. |
+| Hold left bumper (LB) | Lock onto an enemy and aim FLUDD at it while moving or airborne. |
+| Tap right bumper (RB) | Swap between Spray and the selected alternate nozzle. While locked, cycle targets instead. |
+| Hold RB for 0.5 seconds | Open the alternate wheel; use the right stick to choose Hover, Rocket, Turbo or No FLUDD. |
+| D-pad down | Refill the tank when `Fludd.DpadRefill` is enabled. |
+| X / Y | RoR2 interact / equipment. |
+| RoR2 sprint | Activate sprint-dependent items; sprint adds no speed of its own. |
 
-Mario's four approved skill portraits now render in Unity on first run after disc
-extraction, using the existing native models, moving effects and gameplay slide tuning.
-FLUDD uses blue, the three front-facing nozzles form an orange triangle (the wider
-Hover is enlarged), Ground Pound uses medium purple, and Wet Slide uses green.
-The generated 256x256 BMPs persist under the resolved
-`assets/skill-icons/approved-v3/` directory and load on later starts. Delete a card to
-regenerate it. No preview PNGs or extracted artwork ship with the plugin.
+Keyboard and mouse use your **RoR2 bindings**:
 
-Native scene/ABI checks: `dotnet run --project tests/PortraitCheck -c Release --
-../libsms/target/release/sms.dll ../libsms/assets`. The checks cover spraying water,
-the nozzle-only triangle and Hover size, airborne pound flames, and a moving slide's
-refraction ribbons. Unity capture appearance still needs manual in-game review.
+| RoR2 binding | Mario action |
+| --- | --- |
+| Movement / Jump | Move / jump. |
+| Primary | Spray / use the nozzle. Tap for a light splash; hold for full spray. |
+| Secondary | Dive / B action. |
+| Utility | L action, including a ground pound on a fresh airborne press; hold for lock-on. |
+| Special | Tap to swap Spray/alternate; hold for the nozzle wheel and choose with the mouse. While locked, tap to cycle targets. |
+| Sprint | Sprint / full spray. |
+| Interact / Equipment | Normal RoR2 actions. |
 
-Portraits use the viewer's fixed centimetre scale, independently of the gameplay
-survivor height. The camera follows the rendered feet during fast falls. Portrait
-water uses the native 0.35 tint on the flat blue background; gameplay keeps its own
-configured water opacity. Effect meshes belong to the portrait root and deactivate
-before destruction, so another plugin cannot capture Mario's spray. Cache revision v3
-regenerates existing cards automatically. These fixes are build/boundary-checked;
-the corrected Unity captures still require manual in-game review.
+**Aiming and pressure.** Spray follows the crosshair by default; lock-on takes priority while held. LB chooses a visible enemy near the camera's aim and retains it until released. With LB held, RB cycles toward the right-stick direction. A light trigger burst wets the ground ahead for a slide; a held full Spray fades after roughly five seconds until released or pressed deeper.
 
-Risk of Rain 2 host for [libsms](../libsms): Super Mario Sunshine's Mario movement in RoR2.
-Targets the 2023 build (1.2.4.4, Unity 2019.4.37, BepInEx 5). It compiles against the copy in
-`../Risk Of Rain 2 2023` and installs into the Steam install at
-`D:\SteamLibrary\steamapps\common\Risk of Rain 2`. Shared host code lives in
-[`../ror2-common`](../ror2-common), which is compiled in.
+**Nozzle wheel.** Up selects Hover, right Rocket, left Turbo and down No FLUDD. A full stick tilt or far mouse movement chooses and closes it; releasing the button cancels. With No FLUDD, tapping RT or RB can perform contextual Melee Mario attacks when the optional Melee plugin and its extracted Mario files are available. The rest of Mario's movement remains usable without them. See [nozzle and attack details](docs/radial-menu.md).
 
-## MarioTest (first test character)
+## Combat and RoR2 items
 
-A survivor called **Mario**: Commando's body and HUD, moved by libsms instead of RoR2's
-character controller, and drawn and heard as the disc's Mario.
+Native attacks become RoR2 damage from Mario's body, so damage stats, crits, kill credit and applicable item effects use RoR2's systems. Rapid water hits have a per-target proc limiter; their visible hit rate does not give every droplet a separate item proc.
 
-How it works:
-- `sms.dll` is `libsms/crates/libsms-ffi`, the sim behind a C ABI.
-- `MarioDriver` runs it on the client that owns the body. Each `FixedUpdate` it turns off the
-  KinematicCharacterMotor, steps the sim, and puts the body at Mario's feet. RoR2's own
-  network transform shows that to everyone else.
-- `UnityHost` answers the sim's ground, roof and wall probes with raycasts against RoR2's world
-  layer. Mario is as tall as Commando (his collision capsule; `Look.Height` overrides), which
-  sets the metres per Sunshine unit, and so his speed, jumps and FLUDD's reach.
-- `MarioCombat` answers the sim's enemy queries with the hurt boxes of characters on other
-  teams. Mario stomps them (bouncing higher on each stomp in a row, as in Sunshine), ground
-  pounds them (a shock wave on landing too), dives into them, and is kept out of them; FLUDD's
-  drops hit them. Each hit lands as RoR2 damage from Mario's body (ror2-common's `NativeHit`),
-  so his damage stat, crits and on-hit items apply. Water damage is this plugin's, not
-  Sunshine's.
-- Wet-slide side waves use the disc's broad crossed water ribbon and indirect wave maps,
-  with a faint pale-water tint under them (`Look.SlideWaveTint`) so they show even where refraction doesn't,
-  through FLUDD water's existing RoR2 refraction material (`Look.WaterRefraction`).
-  Their scale follows Sunshine's looping emitter curve; droplets and spray remain separate.
-  Wave normals and coverage are uploaded separately, with compensated strength so RoR2's
-  distortion shader retains the subtle crests. The log reports pixels passing its cutoff.
-- Enemies Mario kills drop a yellow coin from the Sunshine ISO, including item-proc kills.
-  Touching one restores one life-meter segment (one eighth of full health-meter capacity),
-  through RoR2 healing, with Sunshine's pickup chime and sparkles. Coins fall onto terrain,
-  spin, and expire after 60 seconds. Friendly kills and other survivors' kills do not drop them.
-- **Several Marios.** Any Mario takes any Mario's coin: a client's own machine tells the server when its Mario
-  touches one (the server's copy of that body can lag), as well as the server's own check. A belly slide glides
-  over another Mario's wet spots as over his own (every machine's sims ask each other, `sms_sim_wet_at`). A
-  Backup Magazine's charge arrives filled, including on a body that spawns holding one.
-- **Replay backlog.** Another player's Mario is played back one recorded step per update, hurrying when behind. A
-  backlog is replayed down to the prebuffer, spread over updates by a 6 ms budget (at least four steps), and in
-  full beyond 90 steps (about 1.8 s), so a slow machine never falls seconds behind. (0.3.0 capped it at four steps,
-  which a machine under about 13 updates a second could never drain.)
-- Movement speed items scale how far Mario gets each step (`Sim.SpeedFromItems`).
-- `MarioItems` hooks RoR2's items to Mario's moves; [ITEMS.md](ITEMS.md) goes through them
-  all. His moves sit in RoR2's skill slots so items keep their charges: FLUDD is the primary,
-  extra mid-air FLUDD uses the secondary (Backup Magazine), full-strength ground pounds the
-  utility (Hardlight) and wet belly slides the special (Lysate Cell extends their duration).
-  Wet slides require wet ground and have no charge or cooldown. The rules for these moves
-  (one free FLUDD use per jump, duration-limited wet slides, Hopoo Feather's chain jumps, the Spray's
-  rate and limit) are libsms's `Limits`, all off unless a host sets them, so libsms's Mario
-  stays Sunshine's.
-- ror2-common's `NativeBody` does what RoR2's motor would for the items: jump pads, knockback
-  and Milky Chrysalis throw Mario, stuns and roots hold him, RoR2's sprint button sprints.
-  Jump pads preserve RoR2's complete ballistic trajectory and gravity until collision,
-  bypassing Sunshine's air braking and speed caps so elevated targets remain reachable. A move
-  breaks the flight once it has got going (about a tenth of a second): a dive, a ground pound, the
-  Rocket or Hover, the Turbo held, a spin jump or a mid-air jump. Normal air control and gravity
-  come back, and the pad's sideways speed carries on beside the move, bleeding off over a couple
-  of seconds (`pad_carry` in libsms).
-- `MarioMain` replaces Commando's main state, so RoR2's own movement, jumping and skills stay
-  off.
-- `MarioView` loads libsms's view (`sms_view_*`) the first time the player's Mario starts.
-  - It has the body, hands, cap, FLUDD and nozzle, posed from the sim each frame and skinned
-    in Rust.
-  - Each material's TEV is baked into one texture, which ror2-common's `ModelView` draws with
-    RoR2's own shader and lighting. Commando's model is hidden meanwhile.
-  - The game's sounds (voice, footsteps, FLUDD) play on our own audio output, since RoR2's
-    audio is Wwise, at RoR2's master × SFX volume. A short Delfino Plaza sting plays when Mario emerges on the run's first stage; RoR2 keeps its soundtrack.
-  - A Mario no player controls (Goobo Jr.'s clone) gets a view of his own, silent and drawn in
-    RoR2's own gummy clone material (`matGummyClone`, a DLC1 addressable; `Look.GummyClones`).
-  - Its AI master only walks him (common `SurvivorAi.Drivers`: stand and face the enemy within
-    spray range, else run at it, else follow the leader). `MarioBrain` presses his buttons: in
-    range it locks on (the left bumper's job for a player, so FLUDD aims at the enemy) and holds
-    R, a full press: the Spray is his gun, and it refills the tank when it runs low; close up it
-    jumps and ground pounds; further off it sprints, hops, and dives at middling range.
-- When Mario dies he falls down for good as in Sunshine (the "die" clip and his "down" voices)
-  and Sunshine's game over song plays (falling off the map plays the miss jingle, the "Too Bad!" one,
-  before he is put back on the surface). RoR2 removes a dead body a second
-  after it comes to rest, so `MarioCorpse` plays the fall out (`Look.DeathFall`,
-  `Look.DeathFallSeconds`, `SpawnMusic.DeathSting`).
-- No R2API: the survivor is registered through RoR2's content-pack hook.
+| Skill slot | Move/resource | Important item interaction |
+| --- | --- | --- |
+| Primary | FLUDD | Attack speed increases Spray rate. |
+| Secondary | Air Pump: extra mid-air nozzle uses | Backup Magazine adds air uses. |
+| Utility | Full-strength Ground Pound stock | Hardlight Afterburner adds charges; an empty-stock pound has reduced damage. |
+| Special | Wet Slide | Lysate Cell extends glide duration; wet slides have no charge or cooldown. |
 
-Controls, on a gamepad, by button position (Sunshine's layout, whatever your RoR2 binds):
+Cooldown reduction also improves moves that would otherwise gain little from it, extending hover/spray/glide and improving Rocket/Turbo performance. Hopoo Feathers supply extra chain jumps; Bandolier replenishes resources; Brainstalks removes resource limits while active. Healing, regeneration and lifesteal can refill water, with separate scaling and a lifesteal cap.
 
-| Pad              | Sunshine | Does                                            |
-|------------------|----------|-------------------------------------------------|
-| left stick       | stick    | walk, run                                       |
-| A                | A        | jumps, wall kicks                               |
-| B                | B        | dive, punch                                     |
-| right trigger    | R analog | spray while moving, up to full pressure         |
-| left trigger     | L        | ground pound (in the air), crouch; aims FLUDD at the crosshair |
-| left bumper      |          | hold to lock onto an enemy and aim FLUDD at it, grounded or airborne |
-| right bumper     | X        | switch nozzle: Spray, Hover, Rocket, Turbo; with LB held, next target |
-| D-pad down       |          | fill FLUDD's tank (`Fludd.DpadRefill`)          |
-| X, Y             |          | RoR2's interact and equipment, as ever          |
-| RoR2's sprint    |          | sprint, for sprint items (no speed of its own)  |
+A wet slide requires wet terrain or shallow stage water. By default, it keeps gliding while wet and for **two seconds after the last wet contact**; cooldown reduction and Lysate Cell extend that time. Dry ground starts a normal belly slide.
 
-On keyboard and mouse your RoR2 binds stand in: jump (A), primary (spray), sprint (full
-spray), secondary (B), utility (L), special (switch nozzle).
+Mario starts at **160 health, gaining 48 per level**. Coins from his kills heal through RoR2's health system. His fall-damage rules allow substantial drops, with extra protection for dives and ground pounds. These values and damage/resource rules are configurable in [`MarioTest/Plugin.cs`](MarioTest/Plugin.cs).
 
-The spray trigger works as in Sunshine (`Fludd.SprayBursts`): each press is a burst. A light
-press drops a short splash just ahead, which a belly slide then glides over; a full press
-sprays at full reach for about 5 s and then fades until you let go or press deeper. The
-trigger's travel is curved so the light zone is easier to hold (`Controls.TriggerCurve`). On
-keyboard a tap of the primary is a light press and holding it sprays at full
-(`Controls.LightTapSeconds`).
+For detailed item behavior, see [ITEMS.md](ITEMS.md) and the [item ruleset](docs/mario_ror2_item_ruleset.md). Those documents contain historical notes; current configuration defaults and implementation take precedence. The [native behavior spec](https://github.com/wesjones15/libsms/blob/modern/1.5.0/docs/behavior-spec.md) records Sunshine mechanics, tuning and unresolved fidelity questions.
 
-The Spray goes where the crosshair points while RT is down (`Controls.AimAtCrosshair`, on), as every RoR2
-survivor's gun does: Mario runs where you steer and the nozzle follows the camera even at full pressure.
-Only the Spray; Hover, Rocket and Turbo are unchanged. A lock-on (LB) still aims at its
-target, and turning the setting off gives Sunshine's: the way Mario faces.
+## Skins and optional content
 
-With `Hud.SunshineLayout` (on) the HUD is arranged like Sunshine's while you play Mario, without hiding
-anything RoR2 needs: the life meter (the Shine Sprite sun) is in the top right, RoR2's health bar is gone and
-its numbers (n/m) use RoR2's damage font at half their former size beneath the doubled life meter.
-Difficulty, timer and stage sit below health. FLUDD's tank hugs the bottom-right corner with a small
-margin, RoR2's cooldowns move to the bottom middle, and items remain at top middle.
-RoR2's gold and lunar coin counters stay in the top left, with Sunshine's
-coin counters on them. The moves are measured on the screen and put back when Mario isn't your body
-(`MarioHudLayout`); the log says what was measured. Off: RoR2's places, the meter over the health bar's left end.
+| Character | Unlock and requirements |
+| --- | --- |
+| Mario | Default. Uses Sunshine assets. |
+| Luigi | Hold **2,401 coins at once** as Mario. Also needs a Melee USA 1.02 disc for his model; the Mario plugin extracts it without requiring the Melee plugin. Higher jumps and a pitched voice distinguish him. |
+| Il Piantissimo | Complete the **stage 4 teleporter event as Mario**, while alive. Uses the Sunshine disc. |
+| Yoshi | Defeat **Mithrix's final form** while playing Mario; no final hit or escape completion is required. Uses the Sunshine disc, with flutter and juice-colored spray. |
 
-The HUD's skill icons show the pad buttons Mario actually uses (ror2-common `GlyphOverride`): RT for FLUDD
-and the Air Pump, LT for the Ground Pound, B for the Wet Slide. On keyboard they are RoR2's binds, as
-before. The skills' names and descriptions on the character select screen give the same buttons.
+Unlocks persist in the player's profile. A skin requiring additional assets must have those assets available before it can be offered.
 
-Holding LB locks onto an enemy (`Controls.LockOn`), as Olimar's RT does: the one nearest where the
-camera points, within `Controls.LockRange` (60 m) and in line of sight, kept until you let go, on the ground or in the
-air. FLUDD's head swivels and tilts to it, its water goes at it whichever way Mario faces or runs,
-and R sprays it; a standing Mario turns to face it. Pressing RB with LB held steps to the next
-target toward where the right stick points (right, with it centred), and doesn't switch nozzles.
-With no enemy in reach it points where the camera looks (what's under the crosshair). Mario
-doesn't crouch for LB, and R's full press (which plants and crouches him) is held back while it's
-held, so the spray is on the move. L (LT) stays Sunshine's: it crouches, ground pounds in the air,
-and while held points FLUDD where the camera looks (`Controls.CameraAim`), with the lock taking
-over if LB is held too. On a keyboard there's no spare key, so the utility key is both L and the
-lock (a fresh press in the air pounds; it doesn't crouch while locked) and the special key cycles.
+Optional integrations include contextual Melee Mario attacks, carrying teammates and Pikmin pellets, and participation in Olimar's Ship Repair mode when the relevant companion content is installed. Bowser Jr./Shadow Mario is a separate **unfinished survivor**, hidden by default behind the shared `ShowUnfinished` setting in `BepInEx/config/Ror2Common.Experimental.cfg`.
 
-### First run
+**VR integration** provides a first-person head view, pointer-aimed FLUDD, controller arms, a nozzle wheel selected by pointing and a wrist HUD when a compatible VR mod is active. Its controls mirror the flat layout: right trigger sprays, left trigger is L, left grip locks and right grip swaps/opens the wheel; A jumps and B dives. Left-handed mode mirrors the layout. This integration still needs headset playtesting; Luigi/Yoshi use fallback hands, and full-screen effects remain desktop-only.
 
-Mario uses the same first-run extraction flow as Olimar. Set `Paths.Disc` in
-`BepInEx/config/com.libsms.mariotest.cfg` to your own Sunshine ISO/GCM/CISO (any region),
-or put the image beside the plugin or beside the assets folder. `SMS_DISC` also works.
-RVZ/WIA/WBFS must be converted to ISO first. The plugin extracts models, animation, tuning,
-sounds, HUD and particle effects on a background thread, and repairs incomplete old caches.
-The worker also generates the arrival/death jingles in `AssetsDir/ror2_audio/`; no game
-assets or generated music need to ship with the plugin.
-A complete cache is reused on later launches without the disc.
+## First run and configuration
 
-`Paths.AssetsDir` overrides `assets_dir.txt` next to the plugin, then `SMS_ASSETS`, then
-`assets/` next to the plugin. Empty pointer files are ignored. Mario remains registered while
-extraction runs; his sim, views and coins wait for the complete cache. If extraction fails or
-no disc is available, he keeps Commando as a stand-in; the log explains what to fix before
-restarting. If selected before extraction finishes, select another survivor and Mario again
-to refresh the lobby display.
+Install the character package and **wesleyasaurus-SharedFiles** with the release's required BepInEx dependencies. Then:
 
-### Build and install
+1. Put your Sunshine **ISO, GCM or CISO** in `BepInEx/plugins/wesleyasaurus-SharedFiles/put_games_here/`. Any filename works; one level of subfolders is supported. Convert RVZ/WIA/WBFS to a supported image first.
+2. Launch RoR2. The plugin extracts models, tuning, animation, audio, effects and HUD data on a background worker into `wesleyasaurus-SharedFiles/assets/sunshine/`.
+3. Let extraction finish before playing. If the lobby display has not refreshed, select another survivor and then Mario again.
 
-Needs the Rust toolchain and the .NET SDK. Extracted game assets are optional at build
-time; the plugin can build its cache from your own disc on first run.
+A complete cache is reused on later launches. Keep the disc available when updating if an extraction refresh is needed. Optional Melee content needs a **USA revision 1.02** Melee disc in the same folder. No disc images or extracted caches should be included when sharing the mod.
 
-```
-powershell -ExecutionPolicy Bypass -File build.ps1
+Current builds find the shared folder automatically. Older instructions using `Paths.Disc`, `Paths.AssetsDir`, `SMS_DISC` or `assets_dir.txt` do not describe this plugin's current setup. See the [SharedFiles guide](https://github.com/wesjones15/ror2-common/blob/modern/1.5.0/SHARED-FILES.md).
+
+Mario's configuration is `BepInEx/config/com.libsms.mariotest.cfg`. The main groups cover movement (`Sim`), water/nozzles (`Fludd`), aim and input (`Controls`), health/damage/items (`Body`, `Damage`, `Items`, `FallDamage`, `Knockdown`), presentation (`Look`, `Hud`, `Sound`, `SpawnMusic`) and optional `VR` behavior.
+
+If Mario appears as Commando or assets fail to prepare, inspect `BepInEx/LogOutput.log` for the missing disc/cache or native-library error. Use matching plugin/native DLLs from the same build.
+
+## How the repositories connect
+
+| Repository | Role |
+| --- | --- |
+| **ror2-mario** (this repository) | Register the survivor and skins, read controls, query Unity terrain/enemies, translate combat and items, and coordinate HUD, presentation and networking. The plugin DLL retains its historical name, `MarioTest.dll`. |
+| [libsms](https://github.com/wesjones15/libsms) | Sunshine behavior, FLUDD simulation, extraction, animation, presentation and audio; exposes the `sms.dll` C API. |
+| [ror2-common](https://github.com/wesjones15/ror2-common) | Shared C# movement/combat/item bridges, rendering, UI, input, networking, audio and local file handling. Compiled into this plugin. |
+| [libcommon](https://github.com/wesjones15/libcommon) / [libssbm](https://github.com/wesjones15/libssbm) | Shared Rust primitives and Melee asset support used by the native build. Full contextual Melee attacks also use the [Melee plugin](https://github.com/wesjones15/ror2-samus) at runtime. |
+| [ror2-characters](https://github.com/wesjones15/ror2-characters) | Package assembly and releases for Mario, Olimar and the Melee fighters. |
+
+`MarioDriver` steps the native simulation and places the RoR2 body at Mario's feet; `MarioMain` replaces vanilla movement/skill execution. `UnityHost` answers collision queries and `MarioCombat` connects native hits to RoR2 hurtboxes. The native library produces the posed models and effects that the host draws in Unity. Original-game behavior is reimplemented from decompilation research, rather than shipping the original game's executable.
+
+## Building from source
+
+Use Windows, PowerShell 5.1, a current Rust toolchain supporting edition 2024, and a .NET SDK. The plugin targets `netstandard2.1`; the headless C# checks target .NET 6. You also need local RoR2 DLC4 and BepInEx assemblies to compile against.
+
+Keep these repositories as siblings, preserving their names:
+
+```text
+workspace/
+  ror2-mario/       modern/1.5.0
+  ror2-common/      modern/1.5.0
+  libsms/           modern/1.5.0
+  libcommon/        modern/1.5.0
+  libssbm/          main
 ```
 
-The script builds `sms.dll` and `MarioTest.dll`, then copies them, plus an `assets_dir.txt`
-pointing at `libsms/assets`, into `<game>/BepInEx/plugins/MarioTest/`. It compiles against the
-game's own DLLs, so no NuGet game libraries are involved. The pointer can name a folder that
-does not exist yet; first run creates it. The install copies only these three files, and stings
-load from the cache. Use `-RoR2Dir` for another install and `-NoInstall` to only build into
-`dist/`. For Melee Mario's A attacks, the Melee plugin's `ssbm.dll` must be new enough to export
-`ssbm_mario_pose_*`; the Melee plugin extracts `PlMr.dat` into its cache on first run
-(`Paths.MeleeAssets`/`$SSBM_ASSETS` override). Nothing Melee-related is copied into `MarioTest`.
+`libssbm` is a source dependency of the native presentation build even when the optional Melee gameplay integration is not being used. Extracted game assets are not needed to build the plugin.
 
-The log, `BepInEx/LogOutput.log`, should show `libsms ABI 34`, `Mario is 1.xx m tall`, then
-`Mario registered`.
-In a run it should show `Mario's sim started`, `Mario's view: 12 models, 26 textures; sound
-...`, and one line per status change (turn that off with `Debug.LogStatus`).
+From `ror2-mario/`:
 
-Config is in `BepInEx/config/com.libsms.mariotest.cfg`: `Look.DrawModel`, `Look.Height`,
-`Look.Effects`, `Look.PoundFlames`, `Look.DeathFall`, `Look.GummyClones`, `Sound.Enabled`, `Sound.Volume`,
-`Sim.*` (jump height, buffer and chain grace, speed items, solid enemies, stomp bounce, pound
-jump, timed stomp jump, shortest hop), `Fludd.*` (nozzle cycling, spray reach, spray bursts,
-rocket height, unlimited water, D-pad refill), `Controls.*` (camera aim, trigger curve,
-keyboard light tap), `Hud.*`
-(Sunshine's water tank gauge: on or off, where, how big), `Damage.*` (stomp, ground pound and its shock wave, damage
-per metre a pound falls, super pounds igniting, dive, water per drop), `Items.*` (see
-ITEMS.md: the skills' charges and recharges, cooldown stretches, water from healing, the
-water's proc limit, Shuriken and Wax Quail), `Sim.ExternalForces`, `Sim.CrowdControl` and
-`Paths.AssetsDir`.
-
-FLUDD's tank empties as in Sunshine and fills back up while you hold spray standing in water
-(anything RoR2 builds as water: Unity's Water layer, or colliders, materials or footstep
-surfaces named for water; the log says what each stage has, and when Mario steps in and out),
-with D-pad down, and on each new stage, since Mario starts every stage afresh. The gauge is
-Sunshine's own, drawn from the disc (re-extract older assets for its `game_6/` folder).
-
-Mario automatically unsticks after staying within about 13 cm (at his default height) for
-three seconds while fallen, sliding on his belly, or trying to fall. Recovery checks for
-supported ground with room for his standing body above and around the obstruction, then
-tries his last verified safe ground if necessary. If nothing is clear, it retries after
-another three seconds. Standing still, hovering, hanging from a ledge, death, pod occupancy,
-and crowd control do not count toward the timer. External teleports clear the timer and
-remembered ground. Recovery preserves health, items, nozzle and tank; the log reports
-`Mario unstuck after 3 seconds`.
-
-The detector/search is ror2-common's `Unstuck` (Mario supplies which of his statuses count as
-fallen, `MarioUnstuck.Fallen`, and the ground probe). Its regression check runs without the game
-(`dotnet run --project ../ror2-common/tests/UnstuckCheck/UnstuckCheck.csproj -c Release`); the
-status check is here:
-
-```
-dotnet run --project tests/UnstuckCheck/UnstuckCheck.csproj -c Release
+```powershell
+powershell -ExecutionPolicy Bypass -File build.ps1 -RoR2Dir "C:\path\to\Risk of Rain 2" -NoInstall
 ```
 
-In-game verification (Unity collision queries require the game): trap Mario under the opened
-pod door and in terrain, and confirm recovery after three seconds; confirm a free fall or
-moving slide continues normally, an idle/hovering/hanging Mario stays put, and entering a
-pod, a teleport or death clears a partly elapsed timer. Check that the destination has solid
-ground and headroom and that FLUDD's nozzle and remaining water survive recovery.
+This builds `sms.dll` and `MarioTest.dll` into `dist/MarioTest/`. Without `-NoInstall`, the script also stages the plugin and SharedFiles beneath a workspace `target/BepInEx/plugins/` directory; `-InstallDir` selects the staging root. Copy staged files into the intended game/mod-manager profile yourself. The default compile path is the workspace's `2026 Mod Stuff/RiskOfRain2_DLC4` copy.
 
-### Fall damage
+## Validation and limitations
 
-Mario takes fall damage only beyond 40 body heights; a full default rocket reaches about
-34.7 heights, so returning to its launch floor is safe. Ground pounds are always safe.
-A dive landing fully protects drops through 80 heights and halves damage beyond that.
-Normal damage grows by 1.25% maximum health per extra height, capped at 90% before dive
-reduction. Water, Yoshi and slow landings also protect him. RoR2 handles fall immunity items,
-armor and Frailty/Eclipse modifiers. Tune these rules with `FallDamage.*`.
+Headless checks cover selected movement, damage, networking and presentation boundaries. Examples, from this repository:
 
-Headless checks: `dotnet run --project tests/FallDamageCheck -c Release` and libsms's
-`cargo test -p libsms --test scenarios fall_impact`. In game, verify a full rocket return,
-an extreme normal fall, a dive from the same height, and a ground pound; repeat with
-H3AD-5T v2 and Frailty/Eclipse when relevant. Multiplayer remains untested.
+```powershell
+dotnet run --project tests/FallDamageCheck -c Release
+dotnet run --project tests/UnstuckCheck -c Release
+```
 
-### VR
+Run native checks from `libsms/` with `cargo test --release`. Disc-dependent checks need the local asset cache; see the native behavior spec for coverage. Tests and builds do not establish in-game appearance, balance or headset behavior.
 
-With Blowntobytes' VR mod in a headset (built on `feature/vr`, the `[VR]` config section),
-Mario is played in first person from his head. The view is turned only by you: the head follows
-Mario's height (low in a wet slide, `VR.HeadFollow`), never his spins or the corkscrew. The Shine
-and statue-pod cameras don't take the headset. Your own Mario isn't drawn for you, but his water,
-effects and sounds still are, and other players see all of him. His forearms and gloves are cut
-from his model by libsms (`sms_view_set_vr_arms`, ABI 45) and drawn on the controllers; tune them
-with `VR.ArmPitch`, `VR.ArmRoll` and `VR.ArmForward`.
+Recent fire effects, heat haze, nozzle UI, statue/portal changes, Bowser Jr. and VR include work documented as awaiting in-game review. Treat multiplayer as requiring further co-op verification: the owning player runs Mario's simulation, other peers replay recorded inputs, and gameplay outcomes are routed through the server. Peers need matching builds, compatible unfinished-content settings and their own local assets. Use offline play or private friends-only co-op.
 
-The dominant hand's pointer is the crosshair (a ring where it lands). FLUDD sprays there and the
-lock-on picks and cycles about it. The head steers the sim's camera heading and the corkscrew's
-flight. The layout (`VR.Controls`) is right-handed, and the VR mod's left-handed mode mirrors it:
-
-- Right trigger sprays at its pressure.
-- Left trigger is L.
-- Left grip holds the lock-on.
-- Right grip taps the nozzle swap, or holds it to open the wheel (it cycles the target while
-  locked).
-- A jumps and B dives.
-- Off-hand X interacts and Y uses equipment; the left stick click sprints, the right stick click pings.
-
-RoR2 reads this layout, not the VR mod's own buttons (ror2-common's `VrBank`), so the VR mod's A
-(interact) and B (jump) no longer fire beside his moves. The pause sheet shows the VR layout in a
-headset; the flat sheet is unchanged.
-
-The HUD is on a panel over the off-hand's wrist (`VR.WristHud`); point at the nozzle wheel's
-segments to pick one. The heat haze is off in a headset (`VR.HeatHaze`). `VR.FlipCamera` (off by
-default) turns the view over with him through a somersault or backflip, for that frame's render
-only, with his arms and the wrist panel turned too. `VR.ThirdPerson` (off by default) puts the view
-behind and above him instead (`VR.ThirdPersonBack`, `VR.ThirdPersonUp`), behind as you turn, with
-all of him and the VR mod's hands drawn; FLUDD still sprays where you point.
-
-Not done: Luigi and Yoshi skins have no cut arms and keep the VR mod's hands. Full-screen
-fades (Too Bad, Game Over, the Shine letters) still go only to the desktop window. The carry
-escape is still on RoR2's jump, which is B in the VR mod. Nothing here has been played in a
-headset yet.
-
-### Not there yet
-
-- Multiplayer is implemented but has never been run in a two-player game: other players see
-  Mario through a shadow sim that replays his inputs (`MarioPuppet`), and a client Mario's hits,
-  falls and coin pickups go through the server. Every player needs the same plugin build and their
-  own extracted `assets/`. See [../ror2-common/MULTIPLAYER.md](../ror2-common/MULTIPLAYER.md) for how it
-  works and the test plan.
-- Yoshi.
-- The skill icons are Commando's.
-
-Offline / friends-only co-op only.
-
-FLUDD's water impacts leave terrain wet patches, slightly darkening the ground
-(`Look.GroundWetness`, 0.12 by default) before fading as they dry. A light RT burst wets
-six circles in a trail from Mario's feet forward in his aim, as a short splash does in Sunshine. Wet-slide eligibility
-uses these same surface footprints, rather than a nearby droplet's distance.
-Shallow water (anything RoR2 builds as water, see `Water in this stage`) also counts as
-wet ground (`Sim.ShallowWetSlide`). A belly slide must reach wet ground to begin gliding;
-dry ground stays a normal slide. There are no wet-slide charges or recharge. Every wet
-slide has the `Items.WetSlideSeconds` duration cap (1.5 s by default), including in water.
-Cooldown reduction and Lysate Cell extend that cap; a new slide on wet ground can start
-immediately. Old `WetSlideCharges`, `WetSlideAnywhere`, `WetSlideOnWater`, and
-`WetSlideRecharge` config entries are ignored.
-The wet slide's spray is `Look.SlideSprayScale` (1.4) times Sunshine's size. The extra
-stand-in splashes remain off (`Look.SlideSplashes`).
-
-When Mario falls off the map, Sunshine's "TOO BAD!" letters (coloured, dropping in and bouncing) play as the screen opens from
-black (he is untouchable for those seconds); when he dies with none left, its GAME OVER screen (black with the letters cut out of it, the scene
-showing through, and a red box coming in behind it at the end) plays with the song (`Hud.ScreenEffects`). With an extra life
-(Dio's Best Friend, a Pluripotent Larva) a death is a miss instead: the miss jingle and TOO BAD, with Sunshine's "MARIO x N" lives
-banner (`Hud.LivesScale`) sliding in and counting down as RoR2 uses the life. A fall off the map starts TOO BAD (and its jingle) as soon as he is `Hud.TooBadDrop` (20 m) below where he last stood with no ground under him for a long way, and he is put back later, when the stage's kill zone or 150 m takes him. A real game over plays TOO BAD's letters under the wipe as the game does. Both are drawn smoothly between the game's 30 frames a second, at `Hud.ScreenSpeed` (1.25) times its pace. A fall off the map shows the banner too if he has
-extra lives, and never otherwise. They come from the disc's HUD and wipe pictures; a folder extracted
-before the wipe pictures existed gets them when the disc is found (`Paths.Disc`).
-
-Sunshine's coin counters (`Hud.CoinCounters`) replace RoR2's gold and lunar coin counters: the yellow coin shows
-RoR2's gold and the blue coin the lunar coins (once there is one), drawn from the disc's coin icon and digit
-pictures and green paint backplates like the game's HUD (more digits than its three: up to seven). Each sits where the counter it replaces
-was, or where `Hud.CoinX`/`CoinY` say, `Hud.CoinScale` big. Each yellow coin Mario picks up (the ones his kills
-drop) is also worth `Coins.Gold` (1) RoR2 gold. The 3D lunar coins in the world are unchanged.
-
-A Shine Sprite is the teleporter's trigger (`Shine.*`, `MarioShine`). When a teleporter has charged (its boss dead) a
-Shine from the disc rises above its middle, `Shine.Height` (1.6 m) up, humming (`MSD_SE_SHINE_EXIST`, from where it hangs, until it is taken), for the player who is Mario and nobody
-else (a local change like the coin counters: other players and non-Mario players see no difference). Touching
-it, by walking or jumping into it (no button; `Shine.TouchRadius`), is Sunshine's Shine Get: Mario lands
-(`MARIO_STATUS_WIN_DEMO`, libsms `shine.rs`) and holds it over his head, the camera flies the disc's own
-`camera_demo_shine_get_*` path, the Shine plays `shine_demo_shine_get` and glows, the Shine Get fanfare
-(`MSD_BGM_GET_SHINE`) plays, and "SHINE!" flies in (`Hud.ScreenEffects`). `Shine.Seconds` (6.3) from the pose
-the stage ends, for everyone: the teleporter is finished as if Mario had interacted with it, so the stage is
-the one the run was going to. Two exceptions, both the teleporter's own rules: a Lunar Seer's choice made
-before the boss fight is kept (the exit controller already has its destination), and on the last stage before
-the moon, where the Celestial Portal stands beside the teleporter, the Shine takes the moon, not the loop.
-The other portals are never taken. A client's Mario asks the server to finish the teleporter
-(`MarioNet.ShineMsg`); the other players' puppets show him in the pose. The Shine and the camera path are extra
-files fetched from the disc with the wipe pictures (`Paths.Disc`). A lunar coin plays Sunshine's actual blue-coin
-pickup sound (`MSD_SE_SY_BLUE_COIN_GET`; `SpawnMusic.Cues` controls playback).
-
-Sunshine's life meter (`Hud.LifeMeter`) shows Mario's health in place of RoR2's health bar: the
-Shine Sprite sun from the disc, a hub and rays in a ring of eight, lit in whole rays by his health as
-a share of his full health and shield (RoR2's own values are untouched), the shield's rays after them
-in the cyan of Sunshine's air meter. The hub dims to grey under half, as in the game. RoR2's bars
-hide, with smaller damage-font numbers below the sun (`Hud.HideHealthBar`); the meter sits at top right
-with `Hud.SunshineLayout`, or where `Hud.LifeX`/`LifeY` say, `Hud.LifeScale` big.
-
-While locked on (`Controls.LockOn`), the same sun, alone and with its empty top filled to ten rays,
-turns on the enemy (`Look.LockMarker`): ror2-common's `LockMarker` puts it where Olimar's cursor
-goes (on the line from Mario's chest to the middle of the enemy's hurt boxes, `margin` in front of
-the first it enters) and it faces Mario. Its rays are the enemy's health (`Look.LockMarkerHealth`),
-`LockMarkerSize` metres wide, `LockMarkerSpin` degrees a second.
-
-A powerful hit knocks Mario over (`Knockdown.*`): one that takes a quarter of his max health and
-shield (`Threshold`), apart from falls and damage over time, plays Sunshine's short fall away
-from the attacker (`damageExec`, libsms's `sms_sim_knock_down`) with his big hurt voice, but
-costs the sim's health nothing; RoR2 keeps his health. He isn't stunned: once the slide has nearly
-stopped, A, the stick, B, L or R gets him up at once (`GetUpEarly`). A dive isn't knocked out of,
-as in the game; a ground pound is, as in the game (`InterruptsPound` off keeps it going). A second
-knock-down can't land for a second. Hits are the server's, so a client playing Mario (untested)
-gets none.
-
-Mario's movement effects come from the disc's particle files: starting/skidding/landing dust,
-wall-slide and wall-kick dust, bump stars, the ground-pound smear and landing burst,
-spin-jump swirls, belly-slide smoke/spray and enemy-stomp bursts.
-`Look.Effects` controls these independently of `Look.PoundFlames`, which controls the super
-pound's flames and fiery landing. Both default to on and work with sound disabled.
-Smoke stays where it was emitted when Mario jumps, and particle motion blends between
-updates for smooth drawing at the display's frame rate.
-Both normal and super ground-pound landing effects stay at the impact point when Mario
-bounces back up. The falling super pound's flames remain attached to Mario.
-Every smoke or dust cloud (run-start dust, landings, belly-slide smoke, wall slide and wall
-kick, and normal and super pound smoke) retains its birth height while spreading and
-fading, so its own upward velocity cannot lift it, in a rebound or otherwise. They all follow
-`Look.SmokeSpeed`.
-`Look.SmokeSpeed` defaults to 2 (twice the original smoke/dust playback speed); set it to 1
-for the disc's timing. This changes smoke only, including its motion and lifetime.
-
-FLUDD's water uses RoR2's refraction material with a faint blue tint. `Look.WaterOpacity`
-defaults to 0.12 before the shared glass tint multiplier of 0.25 (effective peak drop
-opacity 0.03, reduced further by its mask and lifetime fade). Splashes use the same shared
-multiplier. Juice keeps its nearly opaque tint. `Look.WaterRefraction` controls distortion;
-the log confirms the material loaded with `FLUDD's water refracts`.
-
-## Arrival music
-
-Mario plays approximately five opening beats (2.5 seconds) of Delfino Plaza once a run, as he leaves the pod on the first stage; later stages and respawns stay quiet. When he dies, Sunshine's game over song plays (about 8 seconds); falling off the map plays the miss jingle ("Too Bad!", about 4.5 seconds) before he is put back. A lunar coin picked up plays the blue coin jingle (`SpawnMusic.Cues`). SpawnMusic.Enabled, SpawnMusic.DeathSting, SpawnMusic.Volume and SpawnMusic.DeathVolume (1.15, extra gain for the death sting) control them; master and music volume also apply. The build synthesizes spawn.wav, death.wav (the miss jingle), gameover.wav and bluecoin.wav from your extracted disc audio into the ignored dist folder. Rebuild after extracting assets if a clip is missing. No music data is committed.
+Further reading: [native behavior spec](https://github.com/wesjones15/libsms/blob/modern/1.5.0/docs/behavior-spec.md), [nozzle/attack details](docs/radial-menu.md), and [shared multiplayer architecture](https://github.com/wesjones15/ror2-common/blob/modern/1.5.0/MULTIPLAYER.md). Historical documents may retain old setup or version notes.
 
 ## License and credits
 

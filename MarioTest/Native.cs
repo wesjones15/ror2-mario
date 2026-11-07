@@ -12,7 +12,7 @@ namespace MarioTest
     internal static class Native
     {
         public const string Dll = "sms";
-        public const uint AbiVersion = 48;
+        public const uint AbiVersion = 49;
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern IntPtr sms_heat_new(byte[] dir);
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern void sms_heat_free(IntPtr heat);
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern byte sms_heat_texture(IntPtr heat, out ViewTexture texture, [Out] byte[] rgba, uint capacity);
@@ -357,6 +357,8 @@ namespace MarioTest
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern uint sms_abi_version();
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern uint sms_tick_hz();
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern byte sms_assets_complete(byte[] dirUtf8);
+        [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern byte sms_luigi_melee_complete(byte[] meleeDirUtf8);
+        [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern byte sms_luigi_melee_extract(byte[] discUtf8, byte[] meleeDirUtf8, byte[] msgUtf8, uint msgLen);
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern byte sms_find_disc(byte[] dirsUtf8, byte[] pathUtf8, uint pathLen);
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern byte sms_extract(byte[] discUtf8, byte[] outDirUtf8, byte[] msgUtf8, uint msgLen);
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern byte sms_extract_extras(byte[] discUtf8, byte[] outDirUtf8, byte[] msgUtf8, uint msgLen);

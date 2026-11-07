@@ -73,29 +73,26 @@ namespace MarioTest
             tried = true;
             try
             {
-                string here = System.IO.Path.GetDirectoryName(typeof(MarioMelee).Assembly.Location);
-                string cache = FindCache(here);
-                if (cache == null)
+                // ssbm.dll belongs to the Melee plugin, not this one: load it from wherever that plugin is installed.
+                string dll = MeleePluginDll();
+                if (dll == null)
                 {
-                    // Not latched: the Melee plugin may still be extracting from the disc.
-                    tried = false;
-                    retryAt = Time.realtimeSinceStartup + RetrySeconds;
-                    if (!loggedMissing)
-                    {
-                        loggedMissing = true;
-                        Plugin.Log.LogInfo("Melee Mario A attacks are waiting for the Melee plugin's cache (PlMr.dat); "
-                            + "install the Melee plugin and set its Paths.Disc, or set Paths.MeleeAssets");
-                    }
-                    return;
-                }
-                // ssbm.dll belongs to the Melee plugin, not this one: load it from there.
-                string dll = here == null ? null : System.IO.Path.GetFullPath(System.IO.Path.Combine(here, "..", "Melee", "ssbm.dll"));
-                if (string.IsNullOrEmpty(dll) || !File.Exists(dll))
-                {
-                    Plugin.Log.LogInfo("Melee Mario: the Melee plugin's ssbm.dll is missing; the empty FLUDD button stays empty");
+                    // BepInEx may not have loaded the Melee plugin yet at this plugin's Awake: look again a few times.
+                    if (++dllLooks < 3) { tried = false; retryAt = Time.realtimeSinceStartup + RetrySeconds; return; }
+                    Plugin.Log.LogInfo("Melee Mario: the Melee mod isn't installed; the empty FLUDD button stays empty");
                     return;
                 }
                 MeleeNative.Load(dll);
+                string cache = SharedFiles.Assets(SharedFiles.Melee);
+                if (!File.Exists(System.IO.Path.Combine(cache, "PlMr.dat")))
+                {
+                    // Not latched: extract Mario's Melee files (this plugin asks for them, so it extracts them) on a
+                    // worker, and look again shortly.
+                    tried = false;
+                    retryAt = Time.realtimeSinceStartup + RetrySeconds;
+                    StartExtract(cache);
+                    return;
+                }
                 string bmd = System.IO.Path.Combine(Plugin.AssetsDir, "bmd", "ma_mdl1.bmd");
                 if (!File.Exists(bmd))
                 {
@@ -135,44 +132,48 @@ namespace MarioTest
             }
         }
 
-        static bool loggedMissing;
+        static volatile bool extracting, extractTried;
+        static int dllLooks;
 
-        /// The Melee cache holding PlMr.dat. Nothing is staged beside this plugin for it: an
-        /// explicit Paths.MeleeAssets / $SSBM_ASSETS wins, then whatever folder the installed
-        /// Melee plugin uses (its config, its assets_dir.txt, or its own assets/ folder).
-        static string FindCache(string here)
+        /// Mario's Melee files (PlMr.dat and the rest of his set) into SharedFiles' Melee folder, once, from a
+        /// Melee disc in put_games_here, through the Melee plugin's ssbm.dll.
+        static void StartExtract(string cache)
         {
-            bool Has(string dir) => !string.IsNullOrEmpty(dir) && File.Exists(System.IO.Path.Combine(dir, "PlMr.dat"));
-            if (Has(MarioSkin.MeleeDir)) return MarioSkin.MeleeDir;
-            string env = Environment.GetEnvironmentVariable("SSBM_ASSETS");
-            if (Has(env)) return env.Trim();
-            string loaded = MeleePluginAssets();
-            if (Has(loaded)) return loaded;
-            if (string.IsNullOrEmpty(here)) return null;
-            string melee = System.IO.Path.GetFullPath(System.IO.Path.Combine(here, "..", "Melee"));
-            string pointer = System.IO.Path.Combine(melee, "assets_dir.txt");
-            if (File.Exists(pointer))
+            if (extracting || extractTried) return;
+            extracting = extractTried = true;
+            new System.Threading.Thread(() =>
             {
-                string target = File.ReadAllText(pointer).Trim();
-                if (Has(target)) return target;
-            }
-            string own = System.IO.Path.Combine(melee, "assets");
-            if (Has(own)) return own;
-            string shared = GameCubeLibrary.AssetsFor(Plugin.LibraryRoot, GameCubeLibrary.Melee);
-            return Has(shared) ? shared : null;
+                try
+                {
+                    using (SharedFiles.Lock(SharedFiles.Melee))
+                    {
+                        if (MeleeNative.ssbm_assets_complete(NativeLib.CString(cache), MeleeNative.FighterMario) == 1) return;
+                        string disc = SharedFiles.FindDisc("GALE01", 2);
+                        if (disc == null)
+                        {
+                            Plugin.Log.LogInfo("Melee Mario A attacks: no Melee disc found. " +
+                                               SharedFiles.MissingDisc("Super Smash Bros. Melee (USA, revision 1.02)"));
+                            return;
+                        }
+                        if (MeleeNative.ssbm_extract(NativeLib.CString(disc), NativeLib.CString(cache), MeleeNative.FighterMario) == 1)
+                            Plugin.Log.LogInfo($"Melee Mario: his Melee files extracted from {disc} into {cache}");
+                        else Plugin.Log.LogWarning("Melee Mario: extraction failed: " + MeleeNative.Error);
+                    }
+                }
+                catch (Exception e) { Plugin.Log.LogWarning("Melee Mario: extraction failed: " + e.Message); }
+                finally { extracting = false; }
+            }) { IsBackground = true, Name = "Melee Mario extract" }.Start();
         }
 
-        /// The running Melee plugin's resolved cache folder (its Plugin.AssetsDir), read by
-        /// reflection so this plugin never compiles against it. Null when it is not loaded.
-        static string MeleePluginAssets()
+        /// The installed Melee plugin's ssbm.dll (beside its own DLL, whatever its folder is named), or null.
+        static string MeleePluginDll()
         {
             try
             {
-                if (!BepInEx.Bootstrap.Chainloader.PluginInfos.TryGetValue("com.libssbm.melee", out var info)
-                    || info.Instance == null) return null;
-                var field = info.Instance.GetType().GetField("AssetsDir",
-                    System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic);
-                return field?.GetValue(null) as string;
+                if (!BepInEx.Bootstrap.Chainloader.PluginInfos.TryGetValue("com.libssbm.melee", out var info)) return null;
+                string dir = System.IO.Path.GetDirectoryName(info.Location);
+                string dll = dir == null ? null : System.IO.Path.Combine(dir, "ssbm.dll");
+                return dll != null && File.Exists(dll) ? dll : null;
             }
             catch { return null; }
         }

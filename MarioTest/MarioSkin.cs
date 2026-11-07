@@ -37,6 +37,8 @@ namespace MarioTest
         public bool EggLay;
         /// Another survivor's body (Bowser Jr.'s Shadow Mario), not one of Mario's skins.
         public bool OwnSurvivor;
+        /// Unfinished: not offered unless `Experimental.Enabled`. Delete it when the skin is done.
+        public bool Experimental;
 
         public SkinDef Def;
         public UnlockableDef Unlock;
@@ -106,7 +108,7 @@ namespace MarioTest
                 // his own body's, so it is always there and never offered to Mario.
                 Id = Shadow, Name = "KoopaJrSkinShadow", Token = "KOOPAJRTEST_SKIN_DEFAULT",
                 Text = "Shadow Mario", Title = "Bowser Jr.", Quip = "Shadow Mario... On Vacation!",
-                Registered = true, OwnSurvivor = true,
+                Registered = true, OwnSurvivor = true, Experimental = true,
             },
         };
 
@@ -124,44 +126,41 @@ namespace MarioTest
         /// The rendered Luigi portrait, for the pause sheet's face.
         public static Texture2D LuigiPortrait => Specs[Luigi].Portrait;
 
-        /// Resolves the Melee cache (the folder the Melee plugin extracted) and reports whether
-        /// Luigi's files are there.
-        public static void Discover(string configured, string here)
+        /// SharedFiles' Melee folder, where Luigi's mesh lives whichever plugin extracted it. If his files
+        /// aren't there yet and a Melee disc is in put_games_here, extracts them now (a few seconds, once), so he
+        /// is offered without the Melee plugin. Call after sms.dll loads and before the skins are registered.
+        public static void Discover()
         {
-            meleeDir = Resolve(configured, here);
-            ready = meleeDir != null
-                && File.Exists(Path.Combine(meleeDir, "PlLgNr.dat"))
-                && File.Exists(Path.Combine(meleeDir, "PlCo.dat"));
-        }
-
-        static string Resolve(string configured, string here)
-        {
-            if (!string.IsNullOrWhiteSpace(configured)) return configured.Trim();
-            string env = Environment.GetEnvironmentVariable("SSBM_ASSETS");
-            if (!string.IsNullOrWhiteSpace(env)) return env.Trim();
-            // The Melee plugin's own cache, beside its plugin folder (BepInEx/plugins/Melee/assets).
-            // It holds Luigi's mesh for the alt-skin and Mario's files for the A attacks.
-            bool HasCache(string p) =>
-                File.Exists(Path.Combine(p, "PlLgNr.dat")) || File.Exists(Path.Combine(p, "PlMr.dat"));
-            foreach (var rel in new[] { "../Melee/assets", "assets", "Melee/assets" })
+            meleeDir = SharedFiles.Assets(SharedFiles.Melee);
+            ready = Native.sms_luigi_melee_complete(NativeLib.CString(meleeDir)) != 0;
+            if (ready || !Experimental.Allows(Specs[Luigi].Experimental)) return;
+            try
             {
-                var p = Path.GetFullPath(Path.Combine(here, rel));
-                if (HasCache(p)) return p;
+                using (SharedFiles.Lock(SharedFiles.Melee))
+                {
+                    // The Melee or Olimar plugin may have just extracted them.
+                    ready = Native.sms_luigi_melee_complete(NativeLib.CString(meleeDir)) != 0;
+                    if (ready) return;
+                    string disc = SharedFiles.FindDisc("GALE01", 2);
+                    if (disc == null)
+                    {
+                        Plugin.Log.LogInfo("Luigi skin: no Melee disc found, so he is not offered. " +
+                                           SharedFiles.MissingDisc("Super Smash Bros. Melee (USA, revision 1.02)"));
+                        return;
+                    }
+                    Plugin.Log.LogInfo($"Luigi skin: extracting his Melee files from {disc} into {meleeDir}...");
+                    var msg = new byte[1024];
+                    if (Native.sms_luigi_melee_extract(NativeLib.CString(disc), NativeLib.CString(meleeDir), msg, (uint)msg.Length) == 0)
+                        Plugin.Log.LogWarning("Luigi skin: " + System.Text.Encoding.UTF8.GetString(msg).Split('\0')[0]);
+                    ready = Native.sms_luigi_melee_complete(NativeLib.CString(meleeDir)) != 0;
+                }
             }
-            // The Melee plugin's pointer file, wherever its cache actually lives.
-            var pointer = Path.GetFullPath(Path.Combine(here, "../Melee/assets_dir.txt"));
-            if (File.Exists(pointer))
-            {
-                var target = File.ReadAllText(pointer).Trim();
-                if (!string.IsNullOrWhiteSpace(target) && HasCache(target)) return target;
-            }
-            // The Melee plugin's cache in the shared GameCube library.
-            var shared = GameCubeLibrary.AssetsFor(Plugin.LibraryRoot, GameCubeLibrary.Melee);
-            return shared != null && HasCache(shared) ? shared : null;
+            catch (Exception e) { Plugin.Log.LogWarning("Luigi skin: " + e.Message); }
         }
 
         /// Whether this skin can be offered right now.
-        static bool Offered(SkinSpec spec) => spec.Id != Mario && !spec.OwnSurvivor && (!spec.NeedsMelee || ready);
+        static bool Offered(SkinSpec spec) => spec.Id != Mario && !spec.OwnSurvivor && Experimental.Allows(spec.Experimental)
+            && (!spec.NeedsMelee || ready);
 
         /// The native skin id for a loadout skin index (Mario for anything unregistered).
         static uint FromIndex(uint index) => index < loadout.Count ? loadout[(int)index].Id : Mario;

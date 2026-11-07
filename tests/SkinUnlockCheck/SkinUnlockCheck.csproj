@@ -3,6 +3,5 @@
   <ItemGroup>
     <Compile Include="../../MarioTest/MarioSkin.cs" Link="MarioSkin.cs" />
     <Compile Include="../../../ror2-common/src/SkinUnlocks.cs" Link="SkinUnlocks.cs" />
-    <Compile Include="../../../ror2-common/src/GameCubeLibrary.cs" Link="GameCubeLibrary.cs" />
   </ItemGroup>
 </Project>

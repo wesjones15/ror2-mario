@@ -40,18 +40,17 @@ Get-ChildItem $dist -File -ErrorAction SilentlyContinue | Remove-Item -Force
 # A clean build needs no extracted Nintendo files.
 Copy-Item (Join-Path $PSScriptRoot "MarioTest\bin\Release\netstandard2.1\MarioTest.dll") $dist -Force
 Copy-Item (Join-Path $LibSms "target\release\sms.dll") $dist -Force
-$assets = [System.IO.Path]::GetFullPath((Join-Path $LibSms "assets"))
-[System.IO.File]::WriteAllText((Join-Path $dist "assets_dir.txt"), $assets)
-# The Melee Mario A attacks find PlMr.dat through the installed Melee plugin (its cache, which
-# it extracts Mario into on first run), so nothing Melee-related is staged here.
-Write-Host "built $dist (assets: $assets)"
+# Discs and extracted files live in the wesleyasaurus-SharedFiles package beside the plugins (ror2-common
+# SharedFiles); nothing path-related is staged here. The Melee A attacks load the Melee plugin's own ssbm.dll.
+Write-Host "built $dist"
 
 if (-not $NoInstall) {
     $plugins = Join-Path $InstallDir "BepInEx\plugins\MarioTest"
     New-Item -ItemType Directory -Force $plugins | Out-Null
-    # An older build staged a separate Melee cache pointer here; it is no longer read.
-    Remove-Item (Join-Path $plugins "melee_assets_dir.txt") -ErrorAction SilentlyContinue
-    $files = @("sms.dll","MarioTest.dll","assets_dir.txt")
+    # Older builds staged path pointers here; they are no longer read.
+    foreach ($old in @("melee_assets_dir.txt", "assets_dir.txt")) { Remove-Item (Join-Path $plugins $old) -ErrorAction SilentlyContinue }
+    $files = @("sms.dll","MarioTest.dll")
     Copy-Item ($files | ForEach-Object { Join-Path $dist $_ }) $plugins -Force
+    & (Join-Path $PSScriptRoot '../ror2-common/sharedfiles/Stage.ps1') -PluginsDir (Split-Path $plugins)
     Write-Host "installed into $plugins"
 }

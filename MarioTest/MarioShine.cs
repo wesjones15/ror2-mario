@@ -120,7 +120,7 @@ namespace MarioTest
                     if (view != IntPtr.Zero) Native.sms_view_free(view);
                     view = IntPtr.Zero;
                     failed = true;
-                    Plugin.Log.LogInfo("The Shine Sprite isn't in the assets folder (set Paths.Disc to your Sunshine disc " +
+                    Plugin.Log.LogInfo("The Shine Sprite isn't in the assets folder (put your Sunshine disc in wesleyasaurus-SharedFiles/put_games_here " +
                         "image and restart: its files are fetched with the wipe pictures); a charged teleporter works as usual.");
                     return false;
                 }

@@ -30,8 +30,6 @@ namespace MarioTest
 
         internal static ManualLogSource Log;
         internal static string AssetsDir;
-        /// The shared GameCube library (GameCubeLibrary), or null.
-        internal static string LibraryRoot;
         static volatile bool assetsBusy, assetsReady;
         bool musicInitialized;
         static bool nativeLoaded;
@@ -153,23 +151,6 @@ namespace MarioTest
                 MarioView.Reset();
             });
 
-            var assets = Config.Bind("Paths", "AssetsDir", "",
-                "libsms's assets/ folder (extracted from your own Super Mario Sunshine disc). " +
-                "Empty: read assets_dir.txt next to the plugin, then $SMS_ASSETS, then assets/ next to the plugin.");
-            var disc = Config.Bind("Paths", "Disc", "",
-                "Your Super Mario Sunshine (GameCube) disc image (.iso/.gcm/.ciso), used once to " +
-                "build AssetsDir if missing or incomplete. Empty: check $SMS_DISC, the plugin folder " +
-                "and next to AssetsDir and in the GameCube library. Any region is supported; convert RVZ/WIA/WBFS to ISO first.");
-            var library = Config.Bind("Paths", "Library", "",
-                "A folder shared by the Olimar, Mario and Melee plugins: your disc images (any names, in it or its isos/ folder) " +
-                "and assets/Olimar, assets/Mario, assets/Melee for what they extract. Empty: gamecube_library.txt in this plugin's " +
-                "folder or the plugins folder, then $GAMECUBE_LIBRARY. An AssetsDir set above, assets_dir.txt, $SMS_ASSETS " +
-                "or an assets/ folder already beside the plugin still wins; the library's cache is used for a fresh install.");
-            LibraryRoot = GameCubeLibrary.Root(library.Value, here);
-            var meleeAssets = Config.Bind("Paths", "MeleeAssets", "",
-                "The Melee plugin's extracted cache: Luigi's HSD mesh for the alt-skin, and " +
-                "Mario's A attacks on the empty FLUDD button (needs PlMr.dat). Empty: $SSBM_ASSETS, " +
-                "then Melee/assets, assets, or libssbm/assets next to the plugin.");
             Height = Config.Bind("Look", "Height", 0f,
                 "Mario's height in metres; everything he does scales with it (his speed, jumps " +
                 "and FLUDD's reach). 0: as tall as Commando.");
@@ -604,9 +585,7 @@ namespace MarioTest
                 "The Piantissimo alt-skin swaps Mario's five jump voices for Piantissimo's own. " +
                 "The game gives him no other voice at all, so by default every other line stays Mario's; " +
                 "turn this on for the game's exact behaviour (his jump voice and silence otherwise).");
-            AssetsDir = GameCubeLibrary.ResolveAssets(assets.Value, here, "SMS_ASSETS", LibraryRoot, GameCubeLibrary.Mario, out string assetsFrom);
-            MarioSkin.Discover(meleeAssets.Value, here);
-            MarioMelee.Probe();
+            AssetsDir = SharedFiles.Assets(SharedFiles.Sunshine);
 
             if (!Native.Load(Path.Combine(here, "sms.dll"), out string error))
             {
@@ -614,9 +593,11 @@ namespace MarioTest
                 return;
             }
             nativeLoaded = true;
-            Log.LogInfo($"libsms ABI {Native.sms_abi_version()}, assets {AssetsDir} ({assetsFrom})" +
-                        (LibraryRoot != null ? $", GameCube library {LibraryRoot}" : ""));
-            PrepareAssets(disc.Value, here);
+            Log.LogInfo($"libsms ABI {Native.sms_abi_version()}, assets {AssetsDir}");
+            // Luigi's Melee files, from a Melee disc, before the skins are registered (so he is offered this launch).
+            MarioSkin.Discover();
+            MarioMelee.Probe();
+            PrepareAssets();
             gameObject.AddComponent<MarioPresentation>();
             MarioHeatHaze.Initialize();
             MarioFire.Initialize();
@@ -646,8 +627,8 @@ namespace MarioTest
                 [SkillSlot.Utility] = new[] { PadButton.LT },
                 [SkillSlot.Special] = new[] { PadButton.B },
             });
-            PauseControls.Register(KoopaJrBody.BodyName, KoopaJrBody.Sheet);
-            GlyphOverride.Set(KoopaJrBody.BodyName, null, new Dictionary<SkillSlot, PadButton[]>
+            if (KoopaJrEnabled) PauseControls.Register(KoopaJrBody.BodyName, KoopaJrBody.Sheet);
+            if (KoopaJrEnabled) GlyphOverride.Set(KoopaJrBody.BodyName, null, new Dictionary<SkillSlot, PadButton[]>
             {
                 [SkillSlot.Primary] = new[] { PadButton.RT },
                 [SkillSlot.Secondary] = new[] { PadButton.RB },
@@ -660,7 +641,7 @@ namespace MarioTest
 
         // Match Olimar's first-run flow: register content now, extract on a worker, and let
         // sims/views wait for the complete cache. Never read files while they are being written.
-        static void PrepareAssets(string configuredDisc, string here)
+        static void PrepareAssets()
         {
             assetsReady = Native.sms_assets_complete(NativeLib.CString(AssetsDir)) != 0;
             string stings = Path.Combine(AssetsDir, "ror2_audio");
@@ -686,26 +667,24 @@ namespace MarioTest
             bool needPortalCache = Native.sms_entrance_cache_complete(NativeLib.CString(AssetsDir)) == 0;
             if (assetsReady && !needStings && !needExtras && !needPortalCache)
                 return;
-            string disc = configuredDisc?.Trim();
-            if ((!assetsReady || needExtras) && string.IsNullOrEmpty(disc))
+            string disc = null;
+            if (!assetsReady || needExtras)
             {
-                string parent = Path.GetDirectoryName(Path.GetFullPath(AssetsDir)) ?? here;
                 var found = new byte[32768];
-                if (Native.sms_find_disc(NativeLib.CString(GameCubeLibrary.SearchList(LibraryRoot, here, parent)), found, (uint)found.Length) != 0)
+                if (Native.sms_find_disc(NativeLib.CString(SharedFiles.SearchList()), found, (uint)found.Length) != 0)
                     disc = Utf8(found);
             }
             if (assetsReady && !needStings && !needPortalCache && (string.IsNullOrEmpty(disc) || !File.Exists(disc)))
             {
                 // Only the optional pictures are missing, and there is no disc to take them from.
                 Log.LogInfo("Sunshine's wipe pictures (the GAME OVER screen), Shine Sprite and Shine Get camera aren't " +
-                            "all in the assets folder (including the statue portal); set Paths.Disc to your Sunshine disc image to fetch them.");
+                            "all in the assets folder (including the statue portal). " + SharedFiles.MissingDisc("Super Mario Sunshine"));
                 return;
             }
             if (!assetsReady && (string.IsNullOrEmpty(disc) || !File.Exists(disc)))
             {
                 Log.LogError($"No complete Sunshine assets at '{AssetsDir}' and no disc image to build them from. " +
-                             $"Set Paths.Disc in BepInEx/config/{Guid}.cfg to your own Sunshine ISO/GCM/CISO " +
-                             "and restart. Mario uses Commando until his disc assets are ready.");
+                             SharedFiles.MissingDisc("Super Mario Sunshine") + " Mario uses Commando until his disc assets are ready.");
                 return;
             }
             assetsBusy = true;
@@ -721,7 +700,7 @@ namespace MarioTest
                         byte ok = Native.sms_extract(NativeLib.CString(disc), NativeLib.CString(AssetsDir), msg, (uint)msg.Length);
                         assetsReady = ok != 0 && Native.sms_assets_complete(NativeLib.CString(AssetsDir)) != 0;
                         if (assetsReady) Log.LogInfo($"Extracted: {Utf8(msg)}");
-                        else Log.LogError($"Extraction failed: {Utf8(msg)}. Set Paths.Disc and restart to retry.");
+                        else Log.LogError($"Extraction failed: {Utf8(msg)}. Check the disc in wesleyasaurus-SharedFiles/put_games_here and restart to retry.");
                     }
                     // Device-free rendering from the same disc banks. Failure only silences the
                     // stings; Mario's sim and normal sounds can still use the complete extraction.
@@ -878,8 +857,11 @@ namespace MarioTest
             pack.survivorDefs.Add(new[] { survivor });
             pack.entityStateTypes.Add(new[] { typeof(MarioMain) });
             Log.LogInfo("Mario registered");
-            KoopaJrBody.Register(pack, commando, commandoDisplay);
+            if (KoopaJrEnabled) KoopaJrBody.Register(pack, commando, commandoDisplay);
         }
+
+        /// Bowser Jr. (Shadow Mario) is unfinished: in the game only with Experimental.Enabled.
+        internal static bool KoopaJrEnabled => Experimental.Allows(MarioSkin.Specs[MarioSkin.Shadow].Experimental);
 
         /// Metres per Sunshine unit, from Look.Height or Commando's collision capsule.
         static void SetScale(GameObject commando)
@@ -911,7 +893,7 @@ namespace MarioTest
                 "< ! > Collect the coins enemies drop to heal.");
             MarioSkills.Tokens(lang);
             MarioSkin.Tokens(lang);
-            KoopaJrBody.Tokens(lang);
+            if (KoopaJrEnabled) KoopaJrBody.Tokens(lang);
             lang.SetStringByToken("MARIOTEST_BODY_OUTRO", "..and so he left, still wet.");
             lang.SetStringByToken("MARIOTEST_BODY_FAIL", "..and so he vanished, mid-triple-jump.");
         }

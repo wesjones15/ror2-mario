@@ -606,7 +606,7 @@ namespace MarioTest
             {
                 failed = true;
                 Plugin.Log.LogInfo("The Sunshine flower models aren't in the assets folder (they are fetched from the " +
-                    "stage archives on the first run after an update: set Paths.Disc to your Sunshine disc image " +
+                    "stage archives on the first run after an update: put your Sunshine disc in wesleyasaurus-SharedFiles/put_games_here " +
                     "and restart); no flowers this run.");
                 return null;
             }

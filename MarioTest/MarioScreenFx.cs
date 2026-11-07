@@ -97,7 +97,7 @@ namespace MarioTest
             if (Native.sms_view_screenfx_start(view, (byte)kind) == 0)
             {
                 Plugin.Log.LogInfo($"{kind} screen: its pictures aren't in the assets folder " +
-                    "(the disc's wipe pictures are fetched when your disc is found; set Paths.Disc)");
+                    "(the disc's wipe pictures are fetched when your disc is found; put your disc in wesleyasaurus-SharedFiles/put_games_here)");
                 return;
             }
             clock = 0f;

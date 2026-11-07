@@ -101,7 +101,7 @@ namespace MarioTest
             {
                 warnedAssets = true;
                 Plugin.Log.LogWarning("Another player is Mario, but this machine has no Sunshine assets yet " +
-                    "(set Paths.Disc to your own disc): they will look like Commando.");
+                    "(put your own Sunshine disc in wesleyasaurus-SharedFiles/put_games_here): they will look like Commando.");
             }
             if (!Wanted)
             {

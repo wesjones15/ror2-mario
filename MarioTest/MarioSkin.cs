@@ -275,7 +275,7 @@ namespace MarioTest
             controller.skins = defs.ToArray();
             foreach (var spec in Specs)
             {
-                if (spec.Id == Mario || spec.OwnSurvivor || !spec.Registered) continue;
+                if (spec.OwnSurvivor || !spec.Registered && spec.Id != Mario) continue;
                 var s = spec;
                 // The portrait: Mario's framing and pose (the same sim state), the skin's icon.
                 Portrait.Request(body, () => MarioDisplay.Get(s.Id), tex =>

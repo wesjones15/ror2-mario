@@ -1217,6 +1217,7 @@ namespace MarioTest
                 slide_fx_scale = Mathf.Max(0.1f, Plugin.SlideSprayScale.Value),
                 knockdown_cancel = (byte)(Plugin.KnockdownGetUpEarly.Value ? 1 : 0),
                 corkscrew_hold_degrees = Plugin.CorkscrewHold.Value,
+                spin_pound_jump = Mathf.Max(1f, Plugin.SpinPoundJump.Value),
             };
             if (t.Equals(tuning)) return;
             tuning = t;

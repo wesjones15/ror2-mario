@@ -58,7 +58,7 @@ namespace MarioTest
         internal static ConfigEntry<float> SprayReach;
         internal static ConfigEntry<float> StompBounce;
         internal static ConfigEntry<float> RocketHeight;
-        internal static ConfigEntry<float> PoundJump;
+        internal static ConfigEntry<float> PoundJump, SpinPoundJump;
         internal static ConfigEntry<float> StompJump;
         internal static ConfigEntry<float> ShortHop;
         internal static ConfigEntry<float> CorkscrewHold;
@@ -192,6 +192,9 @@ namespace MarioTest
             RocketHeight = Config.Bind("Fludd", "RocketHeight", 2f,
                 "The Rocket nozzle launches Mario about this many times as high as in Sunshine " +
                 "(1: about 17 Marios).");
+            SpinPoundJump = Config.Bind("Sim", "SpinPoundJump", 2.5f,
+                "A on the landing of a spinning ground pound (a stick circle during the fall) leaps this " +
+                "many times as high as a plain pound's jump. 1: the same.");
             CorkscrewHold = Config.Bind("Sim", "CorkscrewHold", 60f,
                 new ConfigDescription(
                     "A Turbo corkscrew, once a stick circle has started it, only asks the stick to keep " +

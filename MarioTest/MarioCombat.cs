@@ -172,6 +172,9 @@ namespace MarioTest
                     if (NetworkServer.active) Blast(poundAt, radius);
                     else outBlasts.Add((poundAt, radius));
                 }
+                // A spinning pound's landing sweeps the pound's fire out to the blast's radius (on
+                // this machine; the other players see the burst only).
+                if (spinPound && Plugin.PoundFlames.Value) MarioFireRing.Spawn(poundAt, radius);
             }
             // H3AD-5T v2 on a full-strength pound.
             if (pounded) it?.Stomp(poundAt, poundDrop);

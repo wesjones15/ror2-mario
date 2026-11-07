@@ -12,7 +12,7 @@ namespace MarioTest
     internal static class Native
     {
         public const string Dll = "sms";
-        public const uint AbiVersion = 49;
+        public const uint AbiVersion = 50;
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern IntPtr sms_heat_new(byte[] dir);
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern void sms_heat_free(IntPtr heat);
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern byte sms_heat_texture(IntPtr heat, out ViewTexture texture, [Out] byte[] rgba, uint capacity);
@@ -196,6 +196,8 @@ namespace MarioTest
             /// Degrees the stick must keep sweeping about its circle to hold the corkscrew dive
             /// once it has started (60: a sixth of a turn per grace, which a slow circle meets).
             public float corkscrew_hold_degrees;
+            /// A on a spinning ground pound's landing leaps this many times as high as pound_jump.
+            public float spin_pound_jump;
         }
 
         /// The host's own limits on FLUDD and the slide (libsms::Limits); zeroes are the game's.

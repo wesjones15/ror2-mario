@@ -26,9 +26,20 @@ namespace UnityEngine
         public static Vector3 operator /(Vector3 a, float b) => a * (1f / b);
         public static Vector3 ProjectOnPlane(Vector3 a, Vector3 b) => a;
     }
+    public class Transform : Object { }
+    public enum PrimitiveType { Cylinder }
+    public struct Color { public static Color yellow => default; }
     public struct Quaternion { public float x, y, z, w; public static Quaternion Euler(float x, float y, float z) => default; }
-    public static class Random { public static Vector3 insideUnitSphere => default; }
-    public static class Mathf { public static float Max(float a, float b) => Math.Max(a, b); }
+    public static class Random { public static Vector3 insideUnitSphere => default; public static float value => 0.5f; }
+    public static class Mathf
+    {
+        public const float PI = (float)Math.PI;
+        public static float Max(float a, float b) => Math.Max(a, b);
+        public static float Cos(float a) => (float)Math.Cos(a);
+        public static float Sin(float a) => (float)Math.Sin(a);
+        public static int Clamp(int v, int lo, int hi) => Math.Min(Math.Max(v, lo), hi);
+        public static float Clamp(float v, float lo, float hi) => Math.Min(Math.Max(v, lo), hi);
+    }
     public static class Time { public static float fixedDeltaTime = 1f / 60f; public static float time; }
     public enum QueryTriggerInteraction { Ignore }
     public struct RaycastHit { public Vector3 point, normal; }
@@ -68,6 +79,7 @@ namespace RoR2
         public IEnumerator<CharacterBody> GetEnumerator() { foreach (var body in bodies) { visits++; yield return body; } }
         System.Collections.IEnumerator System.Collections.IEnumerable.GetEnumerator() => GetEnumerator();
     }
+    public enum HullClassification { Human, Golem, BeetleQueen }
     public class NetId { public uint Value; }
     public class TeamComponent : Object { public TeamIndex teamIndex; }
     public class CharacterBody : Object
@@ -79,6 +91,8 @@ namespace RoR2
         public CharacterMaster master;
         public Vector3 corePosition, footPosition;
         public bool hasEffectiveAuthority;
+        public bool isChampion, isPlayerControlled;
+        public HullClassification hullClassification;
         public NetId netId = new NetId { Value = 1 };
         internal MarioTest.MarioDriver mario;
         public T GetComponent<T>() where T : class { lookups++; return mario as T; }
@@ -109,6 +123,17 @@ namespace Ror2Common
     public struct ViewBatch { }
     public struct ViewTexture { }
     public static class NativeLib { public static byte[] CString(string s) => Array.Empty<byte>(); }
+    // MarioCoins draws generic coins through the shared PrimitiveShapes when no native model is available; the check
+    // runs the coin logic only, so the drawing API is a no-op here (the real class needs Unity's renderer).
+    public sealed class PrimitiveShapes : IDisposable
+    {
+        public PrimitiveShapes(string name, UnityEngine.Transform parent = null) { }
+        public void Begin() { }
+        public void Show(UnityEngine.PrimitiveType type, UnityEngine.Vector3 at, UnityEngine.Vector3 size, UnityEngine.Quaternion rotation, UnityEngine.Color color) { }
+        public void End() { }
+        public void Hide() { }
+        public void Dispose() { }
+    }
     public class ModelView : IDisposable
     {
         public static ModelView Create(IViewSource s, string name) => new ModelView();
@@ -136,6 +161,11 @@ namespace MarioTest
         public static Logger Log = new Logger();
         public static Setting<int> CoinGold = new Setting<int>(3);
         public static Setting<float> CoinSeconds = new Setting<float>(30f);
+        // The settings' shipped defaults: golem-sized 5, titan-sized 8, boss 10; teammates collect.
+        public static Setting<int> CoinsLarge = new Setting<int>(5);
+        public static Setting<int> CoinsHuge = new Setting<int>(8);
+        public static Setting<int> CoinsBoss = new Setting<int>(10);
+        public static Setting<bool> CoinTeammates = new Setting<bool>(true);
     }
     internal static class Native
     {

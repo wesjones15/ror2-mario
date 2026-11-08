@@ -4,7 +4,7 @@ using Ror2Common;
 
 namespace MarioTest
 {
-    // The libsms C ABI (libsms/crates/libsms-ffi, SMS_ABI_VERSION 54). Layouts mirror the
+    // The libsms C ABI (libsms/crates/libsms-ffi, SMS_ABI_VERSION 55). Layouts mirror the
     // #[repr(C)] structs there field for field; Load checks them with sms_struct_sizes. Sim
     // units: about 1 cm, Y up, a facing angle a (i16, 0x10000 per turn) points along
     // (sin a, 0, cos a). The view's structs are ror2-common's (ViewModelInfo...), which
@@ -12,7 +12,7 @@ namespace MarioTest
     internal static class Native
     {
         public const string Dll = "sms";
-        public const uint AbiVersion = 54;
+        public const uint AbiVersion = 55;
         [StructLayout(LayoutKind.Sequential)]
         public struct WaterSegment { public Vec3 head, tail; public float radius; public uint flags; }
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern uint sms_sim_water_segments(IntPtr sim,float lag,[Out] WaterSegment[] output,uint capacity);
@@ -176,6 +176,8 @@ namespace MarioTest
             /// Stand-in pose cues: 1 dive, 2 belly slide, 4 ground pound (or its get-up), 8 spin
             /// (a spin jump or a spinning pound).
             public byte pose;
+            /// Side/triple jump pitch in signed angle units (65536 per turn).
+            public short flip_pitch;
         }
 
         [StructLayout(LayoutKind.Sequential)]

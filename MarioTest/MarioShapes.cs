@@ -18,11 +18,15 @@ namespace MarioTest
         {
             Native.sms_sim_state(sim, out state);
             shapes.Begin();
-            Pose(feet, facing, MarioSkin.StandInColor(skin), UnityHost.MarioHeight * UnityHost.Scale);
+            float height = UnityHost.MarioHeight * UnityHost.Scale;
+            var bodyRotation = facing * Quaternion.AngleAxis(state.flip_pitch * (180f / 32768f), Vector3.right);
+            Pose(feet, bodyRotation, MarioSkin.StandInColor(skin), height);
             if(state.has_fludd!=0){
                 bool flat=(state.pose&(PoseDive|PoseSlide))!=0;
-                var pack=flat ? feet+Vector3.up*.65f+facing*Vector3.forward*.4f : feet+Vector3.up*.85f-facing*Vector3.forward*.35f;
-                shapes.Show(PrimitiveType.Cylinder,pack,new Vector3(.35f,.4f,.35f),flat?facing*Quaternion.Euler(90,0,0):facing,Color.yellow);
+                var pack = flat ? feet + Vector3.up * .65f + facing * Vector3.forward * .4f
+                    : feet + Vector3.up * (height * .5f) + bodyRotation * new Vector3(0f, .85f - height * .5f, -.35f);
+                shapes.Show(PrimitiveType.Cylinder, pack, new Vector3(.35f, .4f, .35f),
+                    flat ? facing * Quaternion.Euler(90f, 0f, 0f) : bodyRotation, Color.yellow);
                 for(uint nozzle=0;nozzle<(state.nozzle==5?2u:1u);nozzle++)if(Native.sms_sim_emitter(sim,nozzle,out var origin,out var aim)!=0){
                     var at=UnityHost.ToUnity(origin);var dir=new Vector3(aim.x,aim.y,aim.z);
                     shapes.Segment(at,at-dir*.18f,.07f,Color.blue);}

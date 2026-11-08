@@ -743,11 +743,12 @@ namespace MarioTest
                 cloneView = MarioView.Clone();
             }
             var view = View;
-            if (view == null)
+            if (view == null || view.Models == null)
             {
                 DrawPrimitive();
                 return;
             }
+            primitive?.Hide();
             if (Local) MarioMelee.Draw(view);
             else view.SetPose(null, 0);
             view.Update(sim, lagTicks);

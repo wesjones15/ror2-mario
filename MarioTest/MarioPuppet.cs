@@ -149,8 +149,6 @@ namespace MarioTest
             {
                 view?.Dispose();
                 view = null;
-                failed = true;
-                return false;
             }
             var feet = UnityHost.ToSim(body.footPosition);
             sim = Native.sms_sim_new(NativeLib.CString(OptionalAssets.SimulationPath(Plugin.AssetsDir, Plugin.AssetsReady)), ref feet,

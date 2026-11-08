@@ -9,11 +9,11 @@ namespace MarioTest
         readonly PrimitiveShapes shapes = new PrimitiveShapes("Mario built-in shapes");
         readonly Native.WaterParticle[] water = new Native.WaterParticle[512];
         Native.State state;
-        public void Draw(IntPtr sim, Vector3 feet, Quaternion facing)
+        public void Draw(IntPtr sim, Vector3 feet, Quaternion facing, uint skin)
         {
             Native.sms_sim_state(sim, out state);
             shapes.Begin();
-            shapes.Body(feet, facing, Color.red, UnityHost.MarioHeight * UnityHost.Scale);
+            shapes.Body(feet, facing, MarioSkin.StandInColor(skin), UnityHost.MarioHeight * UnityHost.Scale);
             int count = (int)Math.Min((uint)water.Length, Native.sms_sim_water_particles(sim, water, (uint)water.Length));
             for (int i = 0; i < count; i++)
             {

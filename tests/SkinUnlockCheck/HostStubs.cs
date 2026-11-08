@@ -7,7 +7,7 @@ namespace UnityEngine
     public class ScriptableObject : Object { public static T CreateInstance<T>() where T : new() => new T(); }
     public class GameObject : Object { public object Component; public T GetComponent<T>() where T : new() => Component is T value ? value : new T(); public T AddComponent<T>() where T : new() => new T(); }
     public class Transform : Object { public GameObject gameObject = new GameObject(); public T GetComponent<T>() where T : new() => new T(); }
-    public struct Color { public Color(float r,float g,float b) {} }
+    public struct Color { public Color(float r,float g,float b) {} public static Color red => new Color(1,0,0); public static Color green => new Color(0,1,0); }
     public struct Color32 { public static explicit operator Color32(Color c) => default; }
     public struct Rect { public Rect(float x,float y,float w,float h) {} }
     public struct Vector2 { public Vector2(float x,float y) {} }
@@ -44,6 +44,7 @@ namespace UnityEngine.Networking { public static class NetworkServer { public st
 namespace RoR2.ContentManagement { public class Collection<T> { public void Add(T[] a) {} } public class ContentPack { public Collection<RoR2.UnlockableDef> unlockableDefs = new Collection<RoR2.UnlockableDef>(); } }
 namespace Ror2Common
 {
+    public static class AssetOverview { public static string Missing(params string[] games) => string.Join(" and ",games); }
     // MarioSkin.Selected() reads the lobby pad's player through this; here, the first local user's loadout.
     public static class DisplayModel
     {
@@ -70,7 +71,7 @@ namespace MarioTest
     public static class MarioNet { public static int MithrixMessages; public static void SendMithrixDefeated(string runId) => MithrixMessages++; }
     public class ConfigValue<T> { public T Value; }
     public class Logger { public void LogInfo(string s) {} public void LogWarning(string s) {} }
-    public static class Plugin { public static string AssetsDir = ""; public static ConfigValue<float> LuigiJumpHeight = new ConfigValue<float>(); public static ConfigValue<bool> PiantissimoGameVoice = new ConfigValue<bool>(); public static Logger Log = new Logger(); }
+    public static class Plugin { public static bool AssetsReady; public static string AssetsDir = ""; public static ConfigValue<float> LuigiJumpHeight = new ConfigValue<float>(); public static ConfigValue<bool> PiantissimoGameVoice = new ConfigValue<bool>(); public static Logger Log = new Logger(); }
     public static class MarioDisplay { public static object Get(uint id) => null; }
     public static class KoopaJrBody { public static bool Is(RoR2.CharacterBody b) => false; }
     public static class Native { public static uint sms_view_load_skin(IntPtr v,uint s,byte[] d) => 1; public static void sms_view_skin(IntPtr v,uint s) {} public static void sms_view_set_voice_pitch(IntPtr v,float p) {} public static void sms_view_voice_set(IntPtr v,uint s) {} public static void sms_sim_set_yoshi_skin(IntPtr s,byte on) {} public static byte sms_luigi_melee_complete(byte[] d) => 0; public static byte sms_luigi_melee_extract(byte[] a,byte[] b,byte[] m,uint n) => 0; }

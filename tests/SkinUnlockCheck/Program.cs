@@ -11,7 +11,9 @@ static class Program
         var piantissimo = MarioSkin.Spec(MarioSkin.Piantissimo);
         var yoshi = MarioSkin.Spec(MarioSkin.Yoshi);
         MarioSkin.Register(new UnityEngine.GameObject(), new RoR2.ContentManagement.ContentPack());
-        luigi.Unlock = new UnlockableDef(); // Optional Melee cache is absent in this headless test.
+        Check(luigi.Registered && luigi.Def && luigi.Unlock && luigi.Def.unlockableDef == luigi.Unlock,
+            "missing Melee files hid Luigi or removed his persistent unlock");
+        Check(MarioSkin.UsesStandIn(MarioSkin.Luigi), "missing Melee files did not select Luigi's stand-in");
         Check(yoshi.Unlock && yoshi.Def.unlockableDef == yoshi.Unlock && yoshi.Unlock.cachedName == "Skins.Mario.Yoshi", "Register Yoshi's persistent Mithrix key on his skin");
         Check(luigi.UnlockCoins == 2401 && luigi.UnlockStage == 0 && luigi.UnlockHint == "L is real 2401", "Luigi's released criterion changed");
         Check(piantissimo.UnlockStage == 4 && piantissimo.UnlockCoins == 0, "Il Piantissimo needs the stage-four key");

@@ -44,14 +44,13 @@ namespace MarioTest
         public UnlockableDef Unlock;
         /// The rendered portrait, for the skin's icon and the pause sheet's face.
         public Texture2D Portrait;
-        /// In the loadout: its files were there when the body was registered.
+        /// Offered in the loadout, with optional original artwork or a stand-in.
         public bool Registered;
     }
 
     // Alt-skins keep every one of Mario's moves and his FLUDD but draw another body (the native
     // view swaps it; the SkinDef only names it, gives it an icon and lets the loadout select
-    // it). Luigi's mesh comes from the Melee cache and is registered only when that cache is
-    // complete; Piantissimo's from the Sunshine disc the plugin already extracts.
+    // it). Luigi remains selectable without his optional Melee mesh.
     internal static class MarioSkin
     {
         /// Shadow is Bowser Jr.'s survivor (KoopaJrBody), never in Mario's loadout.
@@ -153,7 +152,7 @@ namespace MarioTest
                     {
                         // Files from an older extractor are still used as they are.
                         if (!ready)
-                            Plugin.Log.LogInfo("Luigi skin: no Melee disc found, so he is not offered. " +
+                            Plugin.Log.LogInfo("Luigi skin: no Melee disc found; using a green stand-in. " +
                                                SharedFiles.MissingDisc("Super Smash Bros. Melee (USA, revision 1.02)"));
                         return;
                     }
@@ -170,8 +169,17 @@ namespace MarioTest
         }
 
         /// Whether this skin can be offered right now.
-        static bool Offered(SkinSpec spec) => spec.Id != Mario && !spec.OwnSurvivor && Experimental.Allows(spec.Experimental)
-            && (!spec.NeedsMelee || ready);
+        static bool Offered(SkinSpec spec) => spec.Id != Mario && !spec.OwnSurvivor && Experimental.Allows(spec.Experimental);
+
+        public static bool UsesStandIn(uint skin) => !Plugin.AssetsReady || skin == Luigi && !ready;
+        public static Color StandInColor(uint skin) => skin == Luigi ? Color.green : Color.red;
+        public static string OverviewNote()
+        {
+            var games = new List<string>();
+            if (!Plugin.AssetsReady) games.Add("Super Mario Sunshine");
+            if (Selected() == Luigi && !ready) games.Add("Super Smash Bros. Melee");
+            return AssetOverview.Missing(games.ToArray());
+        }
 
         /// The native skin id for a loadout skin index (Mario for anything unregistered).
         static uint FromIndex(uint index) => index < loadout.Count ? loadout[(int)index].Id : Mario;
@@ -258,7 +266,7 @@ namespace MarioTest
                 if (spec.Id == Mario || spec.OwnSurvivor) continue;
                 spec.Registered = Offered(spec);
                 if (!spec.Registered) continue;
-                spec.Def = Def(spec.Name, spec.Token, model, character, null);
+                spec.Def = Def(spec.Name, spec.Token, model, character, Icon(StandInColor(spec.Id)));
                 if (spec.UnlockCoins > 0 || spec.UnlockStage > 0 || spec.UnlockMithrix)
                 {
                     // The loadout shows the lock and the hint until this skin's key is met.

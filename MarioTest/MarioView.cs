@@ -141,6 +141,7 @@ namespace MarioTest
 
         static IntPtr Open(bool sound, byte look, uint skin)
         {
+            if (MarioSkin.UsesStandIn(skin)) return IntPtr.Zero;
             try
             {
                 var v = Native.sms_view_new_look(NativeLib.CString(Plugin.AssetsDir), (byte)(sound ? 1 : 0), look);
@@ -149,7 +150,7 @@ namespace MarioTest
                 if (v != IntPtr.Zero && skin != MarioSkin.Mario)
                 {
                     if (MarioSkin.Load(v, skin)) MarioSkin.Apply(v, skin);
-                    else Plugin.Log.LogWarning($"{MarioSkin.Spec(skin).Text}'s files didn't load; drawing Mario");
+                    else { Native.sms_view_free(v); return IntPtr.Zero; }
                 }
                 return v;
             }

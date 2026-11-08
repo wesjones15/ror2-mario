@@ -721,7 +721,7 @@ namespace MarioTest
         {
             if (primitive == null) primitive = new MarioShapes();
             var feet = transform.position - feetToOrigin;
-            primitive.Draw(sim, feet, direction ? Quaternion.LookRotation(direction.forward) : transform.rotation);
+            primitive.Draw(sim, feet, direction ? Quaternion.LookRotation(direction.forward) : transform.rotation, MarioSkin.Selected(body));
             GameSettings.HideModel(body, ref bodyHidden, true);
             drawn = true;
         }

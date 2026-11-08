@@ -844,7 +844,7 @@ namespace MarioTest
             var display = Prefabs.Clone(commandoDisplay, "MarioTestDisplay", Guid);
             if (DrawModel.Value)
             {
-                DisplayModel.Attach(display, Guid, MarioDisplay.Get);
+                DisplayModel.Attach(display, Guid, MarioDisplay.Get, () => !MarioSkin.UsesStandIn(MarioSkin.Selected()));
                 Portrait.Request(body, () => MarioDisplay.Get(MarioSkin.Mario), framing: PortraitFraming.ThreeQuarter,
                     assetsDir: () => AssetsDir);
                 // Luigi's alt-skin (gated on the Melee cache): its SkinDef and rendered portrait.
@@ -912,13 +912,13 @@ namespace MarioTest
             if (lang == null) return;
             lang.SetStringByToken("MARIOTEST_BODY_NAME", "Mario");
             lang.SetStringByToken("MARIOTEST_BODY_SUBTITLE", "Hero of Isle Delfino");
-            lang.SetStringByToken("MARIOTEST_BODY_DESCRIPTION",
+            AssetOverview.Set(lang, "MarioTestBody", "MARIOTEST_BODY_DESCRIPTION",
                 "Mario came for a vacation, but trouble follows him everywhere. This time he has FLUDD, a high-pressure " +
                 "water pack that sprays, hovers, rockets and turbo-dashes him out of any jam.\n\n" +
                 "< ! > Blast enemies with FLUDD's four nozzles: Spray, Hover, Rocket and Turbo.\n\n" +
                 "< ! > Stomp, dive and ground pound for heavy hits, and bounce higher with every stomp in a row.\n\n" +
                 "< ! > Belly slide across wet ground to dodge danger or ram straight through it.\n\n" +
-                "< ! > Collect the coins enemies drop to heal.");
+                "< ! > Collect the coins enemies drop to heal.", MarioSkin.OverviewNote);
             MarioSkills.Tokens(lang);
             MarioSkin.Tokens(lang);
             if (KoopaJrEnabled) KoopaJrBody.Tokens(lang);

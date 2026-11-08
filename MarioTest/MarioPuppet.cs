@@ -211,7 +211,7 @@ namespace MarioTest
             if (sim == IntPtr.Zero) return;
             if (view == null) {
                 if (primitive == null) primitive = new MarioShapes();
-                primitive.Draw(sim, anchor.transform.position, Quaternion.Euler(0, state.face_yaw * (180f / 32768f), 0));
+                primitive.Draw(sim, anchor.transform.position, Quaternion.Euler(0, state.face_yaw * (180f / 32768f), 0), MarioSkin.Selected(body));
                 GameSettings.HideModel(body, ref hidden, true); drawn = true; return;
             }
             MarioMelee.ApplyPose(view, meleeMove, meleeFrame);

@@ -20,6 +20,9 @@ namespace MarioTest
         const float PickupDelay = 0.3f, BlinkSeconds = 3f;
         // The pop: up, and a little to the side. Where a coin rests: its centre this far over the ground.
         internal const float PopUp = 7f, PopSide = 1.5f, RestHeight = 0.11f;
+        // The stand-in coin matches `scene/mapobj/coin.bmd`: 98 x 98 x 20 sim units, its origin
+        // 22 units above the bottom. Metres at UnityHost.Scale.
+        const float CoinDiameter = 0.98f, CoinThickness = 0.20f, CoinLift = 0.71f;
         sealed class Coin
         {
             public Vector3 pos, velocity;
@@ -376,7 +379,8 @@ namespace MarioTest
                     if (coin == null) continue;
                     float left = Lifetime - coin.age;
                     if (left < BlinkSeconds && (int)(left * 10f) % 2 == 1) continue;
-                    shapes.Show(PrimitiveType.Cylinder, coin.pos, new Vector3(0.3f, 0.045f, 0.3f),
+                    shapes.Show(PrimitiveType.Cylinder, coin.pos + Vector3.up * CoinLift,
+                        new Vector3(CoinDiameter, CoinThickness * 0.5f, CoinDiameter),
                         Quaternion.Euler(90f, Time.time * 240f, 0f), Color.yellow);
                 }
                 shapes.End(); return;

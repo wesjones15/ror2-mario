@@ -85,6 +85,8 @@ namespace MarioTest
         Native.Vec3[] feet = new Native.Vec3[16];
         Native.FlowerClips clips;
         bool clipsRead, placed, failed;
+        PrimitiveShapes standIns;
+        readonly bool[] missingArt = new bool[4];
         float arrived, snapAt, sentAt;
         // The disc's particle effects (an effects view, look 8) and the mesh that draws them.
         IntPtr fxView;
@@ -96,6 +98,7 @@ namespace MarioTest
 
         void Awake()
         {
+            standIns = new PrimitiveShapes("Sunshine flower stand-ins");
             Instance = this;
             SceneManager.activeSceneChanged += SceneChanged;
             Run.onRunDestroyGlobal += RunEnded;
@@ -103,6 +106,7 @@ namespace MarioTest
 
         void OnDestroy()
         {
+            standIns?.Dispose();
             if (Instance == this) Instance = null;
             SceneManager.activeSceneChanged -= SceneChanged;
             Run.onRunDestroyGlobal -= RunEnded;
@@ -119,6 +123,7 @@ namespace MarioTest
 
         void Reset()
         {
+            standIns?.Hide();
             foreach (var p in props.Values) Free(p);
             props.Clear();
             placements.Clear();
@@ -143,7 +148,7 @@ namespace MarioTest
 
         bool EnsureWorld()
         {
-            if (failed || !Plugin.AssetsReady) return false;
+            if (failed || Plugin.AssetsBusy) return false;
             if (world == IntPtr.Zero)
             {
                 world = Native.sms_fw_new();
@@ -160,6 +165,7 @@ namespace MarioTest
         void ReadClips()
         {
             clipsRead = true;
+            if(!Plugin.AssetsReady){Native.sms_fw_setup(world,null,ref clips);return;}
             uint Ticks(byte look, string clip)
             {
                 var v = Native.sms_view_new_look(NativeLib.CString(Plugin.AssetsDir), 0, look);
@@ -205,7 +211,7 @@ namespace MarioTest
 
         void FixedUpdate()
         {
-            if (failed || PauseManager.isPaused || !Plugin.AssetsReady || !EnsureWorld()) return;
+            if (failed || PauseManager.isPaused || !EnsureWorld()) return;
             // Each Mario this machine plays hits the world's things with his water and his feet.
             var own = MarioDriver.Player;
             if (own != null && own.SimHandle != IntPtr.Zero) Native.sms_sim_set_flowers(own.SimHandle, world);
@@ -558,11 +564,13 @@ namespace MarioTest
 
         void LateUpdate()
         {
-            if (world == IntPtr.Zero || failed) return;
+            standIns.Begin();
+            foreach(var p in props.Values)p.models?.HideAll();
+            if (world == IntPtr.Zero || failed) {standIns.End();return;}
             StepFx();
             uint total = Native.sms_fw_items(world, items, (uint)items.Length);
             int n = (int)Math.Min(total, (uint)items.Length);
-            if (n == 0 && props.Count == 0) return;
+            if (n == 0 && props.Count == 0) {standIns.End();return;}
             var cam = GameSettings.PlayerCamera();
             var eye = cam ? cam.position : Vector3.zero;
             float now = Time.time;
@@ -581,7 +589,7 @@ namespace MarioTest
                 item.age += (uint)(since * 120f);
                 if (!props.TryGetValue(key, out var prop))
                 {
-                    if (props.Count >= MaxViews || (prop = Make(item.kind)) == null) continue;
+                    if (props.Count >= MaxViews || (prop = Make(item.kind)) == null) {DrawStandIn(item);continue;}
                     props[key] = prop;
                 }
                 prop.seen = now;
@@ -591,6 +599,7 @@ namespace MarioTest
             foreach (var kv in props)
                 if (now - kv.Value.seen > LingerSeconds) stale.Add(kv.Key);
             foreach (var key in stale) { Free(props[key]); props.Remove(key); }
+            standIns.End();
         }
 
         /// Hidden towers and sleeping heads are not drawn (under the ground / not there yet);
@@ -601,13 +610,14 @@ namespace MarioTest
 
         Prop Make(byte kind)
         {
+            if(!Plugin.AssetsReady || missingArt[kind])return null;
             var view = Native.sms_view_new_look(NativeLib.CString(Plugin.AssetsDir), 0, Looks[kind]);
             if (view == IntPtr.Zero)
             {
-                failed = true;
+                missingArt[kind] = true;
                 Plugin.Log.LogInfo("The Sunshine flower models aren't in the assets folder (they are fetched from the " +
                     "stage archives on the first run after an update: put your Sunshine disc in wesleyasaurus-SharedFiles/put_games_here " +
-                    "and restart); no flowers this run.");
+                    "and restart); using orange stand-ins.");
                 return null;
             }
             var names = ClipNames[kind];
@@ -618,6 +628,13 @@ namespace MarioTest
             prop.models = ModelView.Create(prop.source, "Sunshine flowers");
             if (prop.models == null) { Free(prop); return null; }
             return prop;
+        }
+        void DrawStandIn(Native.FlowerItem item)
+        {
+            var at=UnityHost.ToUnity(item.pos);
+            int stack=item.kind==Tower?3:1;
+            for(int level=0;level<stack;level++)standIns.Show(PrimitiveType.Cylinder,
+                at+Vector3.up*(.18f+level*.38f),new Vector3(.55f,.16f,.55f),Quaternion.Euler(0,item.yaw,0),Color.Lerp(new Color(1f,.4f,0),Color.yellow,level*.12f));
         }
 
         /// The clip (index into ClipNames[kind]) and its frame for a state and the ticks spent in it.

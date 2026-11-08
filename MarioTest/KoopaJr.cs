@@ -239,11 +239,16 @@ namespace MarioTest
         {
             var from = sim != IntPtr.Zero ? sim : puppetSim;
             bool fresh = sim != IntPtr.Zero || Time.time - stateAt < StateStale;
-            if (!JrForm || Hidden || !fresh || from == IntPtr.Zero || !EnsureJr())
+            if (!JrForm || Hidden || !fresh || from == IntPtr.Zero)
             {
+                jrStandIn?.Hide();
                 jrModels?.HideAll();
                 return;
             }
+            if(!EnsureJr()){
+                if(jrStandIn==null)jrStandIn=new PrimitiveShapes("Bowser Jr. stand-in");jrStandIn.Begin();
+                jrStandIn.Body(feet,transform.rotation,Color.yellow,1.35f,.4f);jrStandIn.End();return;}
+            jrStandIn?.Hide();
             Native.sms_sim_state(from, out var st);
             int clip = Mathf.Clamp(state.jr_clip, 0, ClipNames.Length - 1);
             if (clip != lastClip)
@@ -274,7 +279,7 @@ namespace MarioTest
             jrView = Native.sms_view_new_look(NativeLib.CString(Plugin.AssetsDir), 0, Native.LookKoopaJr);
             if (jrView == IntPtr.Zero)
             {
-                Plugin.Log.LogWarning("Bowser Jr.'s model isn't in the assets folder (enemy/koopajr); his form draws nothing");
+                Plugin.Log.LogInfo("Bowser Jr.'s model isn't in the assets folder (enemy/koopajr); using a cylinder");
                 return false;
             }
             clips = new int[ClipNames.Length];
@@ -287,8 +292,10 @@ namespace MarioTest
             return jrModels != null;
         }
 
+        PrimitiveShapes jrStandIn;
         void FreeJr()
         {
+            jrStandIn?.Dispose();jrStandIn=null;
             jrModels?.Dispose();
             jrModels = null;
             if (jrView != IntPtr.Zero) Native.sms_view_free(jrView);

@@ -137,6 +137,8 @@ namespace MarioTest
         bool fxTried;
         float fxUntil;
         GameObject root;
+        PrimitiveShapes standInCritters;
+        readonly bool[] missingPropArt=new bool[5];
 
         void Awake()
         {
@@ -149,6 +151,7 @@ namespace MarioTest
             if (instance == this) instance = null;
             SceneManager.activeSceneChanged -= SceneChanged;
             ClearDrawn();
+            standInCritters?.Dispose();
             fx?.Dispose();
             fx = null;
             if (fxView != IntPtr.Zero) Native.sms_view_free(fxView);
@@ -165,6 +168,7 @@ namespace MarioTest
 
         void ClearDrawn()
         {
+            standInCritters?.Hide();
             foreach (var p in props.Values) Free(p);
             props.Clear();
             foreach (var c in chunks.Values) Free(c);
@@ -227,7 +231,7 @@ namespace MarioTest
 
         void FixedUpdate()
         {
-            if (failed || !Plugin.AssetsReady || PauseManager.isPaused) return;
+            if (failed || Plugin.AssetsBusy || PauseManager.isPaused) return;
             if (GatherJrs() == 0) return;
             if (!started) Begin(Plugin.AssetsDir);
             if (!ready) return;
@@ -611,9 +615,10 @@ namespace MarioTest
 
         void DrawCritters(Vector3 eye)
         {
+            if(standInCritters==null)standInCritters=new PrimitiveShapes("Goop creature stand-ins");standInCritters.Begin();
             uint total = Native.sms_goop_critters(world, critters, MaxCritters);
             int n = (int)Math.Min(total, (uint)MaxCritters);
-            if (n == 0 && props.Count == 0) return;
+            if (n == 0 && props.Count == 0) {standInCritters.End();return;}
             float now = Time.time;
             if (shown.Count > 4 * MaxCritters) shown.Clear();
             for (int i = 0; i < n; i++)
@@ -623,7 +628,11 @@ namespace MarioTest
                 if ((UnityHost.ToUnity(c.pos) - eye).sqrMagnitude > DrawRange * DrawRange) continue;
                 if (!props.TryGetValue(c.id, out var prop))
                 {
-                    if (props.Count >= MaxViews || (prop = Make(c.kind)) == null) continue;
+                    if (props.Count >= MaxViews || (prop = Make(c.kind)) == null) {
+                        if(c.scale>0){var at=UnityHost.ToUnity(c.pos);float size=Mathf.Clamp(c.scale,.2f,5f);
+                            standInCritters.Show(c.kind==2||c.kind==3?PrimitiveType.Sphere:PrimitiveType.Cylinder,
+                                at+Vector3.up*size*.3f,new Vector3(size*.6f,size*.3f,size*.6f),Quaternion.Euler(0,c.yaw,0),new Color(.6f,.25f,.1f));}
+                        continue;}
                     props[c.id] = prop;
                 }
                 prop.seen = now;
@@ -639,15 +648,17 @@ namespace MarioTest
                 if (now - kv.Value.seen > LingerSeconds) stale.Add(kv.Key);
             }
             foreach (var key in stale) { Free(props[key]); props.Remove(key); }
+            standInCritters.End();
         }
 
         Prop Make(byte kind)
         {
+            if(kind>=missingPropArt.Length || !Plugin.AssetsReady || missingPropArt[kind])return null;
             // A goop ball (2) is a TPakkunSeed shot straight: the seed's model (pakkun.cpp loads
             // seed.bmd for both), as are Shadow Mario's brush blobs.
             byte look = kind == 0 ? Native.LookStu : kind == 1 ? Native.LookPiranha : kind == 4 ? Native.LookGateKeeper : Native.LookSeed;
             var view = Native.sms_view_new_look(NativeLib.CString(Plugin.AssetsDir), 0, look);
-            if (view == IntPtr.Zero) return null;
+            if (view == IntPtr.Zero) {missingPropArt[kind]=true;return null;}
             var names = kind == 0 ? StuClips : kind == 1 ? PiranhaClips : kind == 4 ? KeeperClips : Array.Empty<string>();
             var prop = new Prop { view = view, clip = new int[names.Length], frames = new float[names.Length] };
             for (int i = 0; i < names.Length; i++)

@@ -75,14 +75,22 @@ For detailed item behavior, see [ITEMS.md](ITEMS.md) and the [item ruleset](docs
 
 ## Skins and optional content
 
+Skin entries follow the installed mod set, while each player renders the best local
+art available. Missing game art is named in the character overview. Without
+Sunshine art, flowers and flower creatures use orange cylinders, the charged
+teleporter's Shine is a yellow sphere with a simple pickup transition, and FLUDD
+has a yellow backpack with its nozzle at the simulation's emitter. Generated dark
+ground patches show actual water wetness. Missing sound and decorative effects
+are omitted. Bowser Jr. retains the existing unfinished-content gate.
+
 | Character | Unlock and requirements |
 | --- | --- |
 | Mario | Default. Uses Sunshine assets. |
-| Luigi | Hold **2,401 coins at once** as Mario. Also needs a Melee USA 1.02 disc for his model; the Mario plugin extracts it without requiring the Melee plugin. Higher jumps and a pitched voice distinguish him. |
+| Luigi | Hold **2,401 coins at once** as Mario. Offered with the Melee mod installed. An optional Melee USA 1.02 disc supplies his model; missing art uses a green stand-in. Higher jumps distinguish him. |
 | Il Piantissimo | Complete the **stage 4 teleporter event as Mario**, while alive. Uses the Sunshine disc. |
 | Yoshi | Defeat **Mithrix's final form** while playing Mario; no final hit or escape completion is required. Uses the Sunshine disc, with flutter and juice-colored spray. |
 
-Unlocks persist in the player's profile. A skin requiring additional assets must have those assets available before it can be offered.
+Unlocks persist in the player's profile. Missing local assets use fallback presentation and do not hide skins offered by the installed mod set.
 
 Optional integrations include contextual Melee Mario attacks, carrying teammates and Pikmin pellets, and participation in Olimar's Ship Repair mode when the relevant companion content is installed. Bowser Jr./Shadow Mario is a separate **unfinished survivor**, hidden by default behind the shared `ShowUnfinished` setting in `BepInEx/config/Ror2Common.Experimental.cfg`.
 

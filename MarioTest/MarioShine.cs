@@ -48,7 +48,9 @@ namespace MarioTest
         ModelView models;
         MarioFx fx;
         Native.ShineInfo info;
-        bool tried, failed;
+        bool tried;
+        bool builtin;
+        PrimitiveShapes standIn;
 
         Phase phase;
         TeleporterInteraction tele;
@@ -70,6 +72,7 @@ namespace MarioTest
 
         void Awake()
         {
+            standIn = new PrimitiveShapes("Shine stand-in");
             Instance = this;
             SceneManager.activeSceneChanged += SceneChanged;
             Run.onRunDestroyGlobal += RunEnded;
@@ -81,6 +84,7 @@ namespace MarioTest
             SceneManager.activeSceneChanged -= SceneChanged;
             Run.onRunDestroyGlobal -= RunEnded;
             Reset(false);
+            standIn?.Dispose();
             models?.Dispose();
             fx?.Dispose();
             if (view != IntPtr.Zero) Native.sms_view_free(view);
@@ -94,6 +98,7 @@ namespace MarioTest
         /// ends without the stage: a refused request).
         void Reset(bool endPose)
         {
+            standIn?.Hide();
             if (phase == Phase.Demo || phase == Phase.Touched)
             {
                 ReleaseCamera();
@@ -110,7 +115,8 @@ namespace MarioTest
 
         bool EnsureView()
         {
-            if (failed || !Plugin.AssetsReady) return false;
+            if(Plugin.AssetsBusy)return false;
+            if(builtin || !Plugin.AssetsReady){builtin=true;return true;}
             if (view == IntPtr.Zero && !tried)
             {
                 tried = true;
@@ -119,10 +125,10 @@ namespace MarioTest
                 {
                     if (view != IntPtr.Zero) Native.sms_view_free(view);
                     view = IntPtr.Zero;
-                    failed = true;
+                    builtin = true;
                     Plugin.Log.LogInfo("The Shine Sprite isn't in the assets folder (put your Sunshine disc in wesleyasaurus-SharedFiles/put_games_here " +
                         "image and restart: its files are fetched with the wipe pictures); a charged teleporter works as usual.");
-                    return false;
+                    return true;
                 }
                 source = new ShineSource(view);
                 Plugin.Log.LogInfo($"The Shine Sprite: float {info.float_frames} frames, demo {info.demo_frames}, " +
@@ -131,7 +137,8 @@ namespace MarioTest
             if (view == IntPtr.Zero) return false;
             if (models == null) models = ModelView.Create(source, "Sunshine Shine Sprite");
             if (fx == null && Shaders.CloudRemap()) fx = MarioFx.Create(view);
-            return models != null;
+            if(models==null)builtin=true;
+            return true;
         }
 
         static bool Charged(TeleporterInteraction t) => t && (int)t.activationState == 3;
@@ -193,7 +200,7 @@ namespace MarioTest
             if (!Charged(t) || !MarioPresentation.Active || !EnsureView()) return;
             tele = t;
             rest = t.transform.position + Vector3.up * Mathf.Max(0.2f, Plugin.ShineHeight.Value);
-            phase = Phase.Appearing;
+            phase = builtin ? Phase.Waiting : Phase.Appearing;
             age = 0f;
             spin = 0f;
             // `TShine::appearWithTime`: MSD_SE_SHINE_APPEAR where it shows up.
@@ -236,6 +243,10 @@ namespace MarioTest
             var toCamera = cam ? cam.position - feet : -driver.transform.forward;
             toCamera.y = 0f;
             if (toCamera.sqrMagnitude < 0.01f) toCamera = -driver.transform.forward;
+            if(builtin){
+                demoDriver=driver;demoOrigin=feet;demoAge=0f;requestAt=.35f;requested=false;phase=Phase.Demo;
+                GuardShine(driver.Body);return;
+            }
             if (!driver.TouchShine(rest, UnityHost.Yaw(toCamera))) return;
             GuardShine(driver.Body);
             toucher = driver;
@@ -424,6 +435,7 @@ namespace MarioTest
 
         void LateUpdate()
         {
+            if(builtin){standIn.Begin();if(phase!=Phase.None)standIn.Show(PrimitiveType.Sphere,rest,Vector3.one*.7f,Quaternion.identity,Color.yellow);standIn.End();return;}
             if (phase == Phase.None || view == IntPtr.Zero || models == null || PauseManager.isPaused) return;
             float dt = Time.deltaTime;
             Vector3 pos = rest;

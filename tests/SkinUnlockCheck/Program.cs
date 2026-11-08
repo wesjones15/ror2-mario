@@ -10,6 +10,10 @@ static class Program
         var luigi = MarioSkin.Spec(MarioSkin.Luigi);
         var piantissimo = MarioSkin.Spec(MarioSkin.Piantissimo);
         var yoshi = MarioSkin.Spec(MarioSkin.Yoshi);
+        Ror2Common.ModPresence.Melee=false;
+        MarioSkin.Register(new UnityEngine.GameObject(),new RoR2.ContentManagement.ContentPack());
+        Check(!luigi.Registered,"Luigi appeared without the Melee mod");
+        Ror2Common.ModPresence.Melee=true;
         MarioSkin.Register(new UnityEngine.GameObject(), new RoR2.ContentManagement.ContentPack());
         Check(luigi.Registered && luigi.Def && luigi.Unlock && luigi.Def.unlockableDef == luigi.Unlock,
             "missing Melee files hid Luigi or removed his persistent unlock");

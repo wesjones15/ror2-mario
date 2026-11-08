@@ -44,6 +44,7 @@ namespace UnityEngine.Networking { public static class NetworkServer { public st
 namespace RoR2.ContentManagement { public class Collection<T> { public void Add(T[] a) {} } public class ContentPack { public Collection<RoR2.UnlockableDef> unlockableDefs = new Collection<RoR2.UnlockableDef>(); } }
 namespace Ror2Common
 {
+    public static class ModPresence { public static bool Melee=true; }
     public static class AssetOverview { public static string Missing(params string[] games) => string.Join(" and ",games); }
     // MarioSkin.Selected() reads the lobby pad's player through this; here, the first local user's loadout.
     public static class DisplayModel

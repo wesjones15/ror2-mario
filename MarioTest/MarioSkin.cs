@@ -169,7 +169,8 @@ namespace MarioTest
         }
 
         /// Whether this skin can be offered right now.
-        static bool Offered(SkinSpec spec) => spec.Id != Mario && !spec.OwnSurvivor && Experimental.Allows(spec.Experimental);
+        static bool Offered(SkinSpec spec) => spec.Id != Mario && !spec.OwnSurvivor && Experimental.Allows(spec.Experimental)
+            && (!spec.NeedsMelee || ModPresence.Melee);
 
         public static bool UsesStandIn(uint skin) => !Plugin.AssetsReady || skin == Luigi && !ready;
         public static Color StandInColor(uint skin) => skin == Luigi ? Color.green : Color.red;

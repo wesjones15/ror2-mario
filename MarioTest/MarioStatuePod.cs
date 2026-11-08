@@ -78,7 +78,10 @@ namespace MarioTest
 
         public static void Register(CharacterBody body, RoR2.ContentManagement.ContentPack pack)
         {
-            if (!Plugin.AssetsReady) return; // Retain RoR2's ordinary drop pod and exit flow.
+            if (!Plugin.AssetsReady) {
+                if (!body.preferredPodPrefab) body.preferredPodPrefab = LegacyResourcesAPI.Load<GameObject>("Prefabs/NetworkedObjects/SurvivorPod");
+                return;
+            }
             var original = body.preferredPodPrefab;
             if (!original) original = LegacyResourcesAPI.Load<GameObject>("Prefabs/NetworkedObjects/SurvivorPod");
             if (!original) { Plugin.Log.LogWarning("Mario statue: no vanilla pod prefab"); return; }

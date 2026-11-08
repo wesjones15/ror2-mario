@@ -12,7 +12,7 @@ namespace MarioTest
     internal static class Native
     {
         public const string Dll = "sms";
-        public const uint AbiVersion = 51;
+        public const uint AbiVersion = 52;
         [StructLayout(LayoutKind.Sequential)]
         public struct WaterParticle { public Vec3 pos, velocity; public float radius; }
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)]
@@ -166,6 +166,9 @@ namespace MarioTest
             public byte win_demo;
             /// The fitted nozzle: 0 without FLUDD, else 1 Spray, 2 Rocket, 5 Hover, 6 Turbo.
             public byte nozzle;
+            /// Stand-in pose cues: 1 dive, 2 belly slide, 4 ground pound (or its get-up), 8 spin
+            /// (a spin jump or a spinning pound).
+            public byte pose;
         }
 
         [StructLayout(LayoutKind.Sequential)]

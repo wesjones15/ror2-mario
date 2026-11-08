@@ -4,7 +4,7 @@ using Ror2Common;
 
 namespace MarioTest
 {
-    // The libsms C ABI (libsms/crates/libsms-ffi, SMS_ABI_VERSION 46). Layouts mirror the
+    // The libsms C ABI (libsms/crates/libsms-ffi, SMS_ABI_VERSION 51). Layouts mirror the
     // #[repr(C)] structs there field for field; Load checks them with sms_struct_sizes. Sim
     // units: about 1 cm, Y up, a facing angle a (i16, 0x10000 per turn) points along
     // (sin a, 0, cos a). The view's structs are ror2-common's (ViewModelInfo...), which
@@ -12,7 +12,12 @@ namespace MarioTest
     internal static class Native
     {
         public const string Dll = "sms";
-        public const uint AbiVersion = 50;
+        public const uint AbiVersion = 51;
+        [StructLayout(LayoutKind.Sequential)]
+        public struct WaterParticle { public Vec3 pos, velocity; public float radius; }
+        [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)]
+        public static extern uint sms_sim_water_particles(IntPtr sim, [Out] WaterParticle[] output, uint capacity);
+        [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] static extern uint sms_water_particle_size();
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern IntPtr sms_heat_new(byte[] dir);
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern void sms_heat_free(IntPtr heat);
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern byte sms_heat_texture(IntPtr heat, out ViewTexture texture, [Out] byte[] rgba, uint capacity);
@@ -686,6 +691,7 @@ namespace MarioTest
             if (!NativeLib.Load(path, out error)) return false;
             try
             {
+                sms_water_particle_size();
                 var zero = new Vec3();
                 sms_sim_water_touches_segment(IntPtr.Zero, ref zero, ref zero, 0f);
                 sms_sim_wet(IntPtr.Zero);
@@ -705,6 +711,9 @@ namespace MarioTest
             {
                 error = $"{path} speaks ABI {v}, this plugin wants {AbiVersion}; rebuild both";
                 return false;
+            }
+            if (sms_water_particle_size() != NativeLib.Size<WaterParticle>()) {
+                error = "The native water-particle layout differs; rebuild sms.dll and MarioTest.dll together"; return false;
             }
             var native = new uint[32];
             uint n = sms_struct_sizes(native, (uint)native.Length);

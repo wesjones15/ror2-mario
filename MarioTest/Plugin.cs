@@ -18,7 +18,7 @@ namespace MarioTest
     // the body moved by the sim instead of RoR2's character controller, and drawn and heard
     // as the disc's Mario. No R2API: content goes in through RoR2's own content-pack hook
     // (ror2-common's ContentProvider).
-    [BepInPlugin(Guid, "Mario", "0.6.0")]
+    [BepInPlugin(Guid, "Mario", "0.6.2")]
     // Use the pack's fixes first when installed; no pack APIs are required by this plugin.
     [BepInDependency("___riskofthunder.RoR2BepInExPack", BepInDependency.DependencyFlags.SoftDependency)]
     [BepInDependency("com.libpikmin.olimartest", BepInDependency.DependencyFlags.SoftDependency)]
@@ -38,7 +38,8 @@ namespace MarioTest
         [DllImport(Native.Dll, CallingConvention = CallingConvention.Cdecl)]
         static extern uint sms_take_panic([Out] byte[] out_, uint len);
         internal static bool AssetsSettled => !assetsBusy;
-        internal static bool AssetsReady => !assetsBusy && assetsReady;
+        internal static bool AssetsReady => !OptionalAssets.BuiltinOnly && !assetsBusy && assetsReady;
+        internal static bool AssetsBusy => assetsBusy;
         internal static ConfigEntry<bool> LogStatus;
         internal static ConfigEntry<bool> TraceJumps;
         internal static ConfigEntry<bool> PerformanceLog;
@@ -589,7 +590,7 @@ namespace MarioTest
                 "The Piantissimo alt-skin swaps Mario's five jump voices for Piantissimo's own. " +
                 "The game gives him no other voice at all, so by default every other line stays Mario's; " +
                 "turn this on for the game's exact behaviour (his jump voice and silence otherwise).");
-            AssetsDir = SharedFiles.Assets(SharedFiles.Sunshine);
+            AssetsDir = OptionalAssets.BuiltinOnly ? "" : SharedFiles.Assets(SharedFiles.Sunshine);
 
             if (!Native.Load(Path.Combine(here, "sms.dll"), out string error))
             {
@@ -599,8 +600,7 @@ namespace MarioTest
             nativeLoaded = true;
             Log.LogInfo($"libsms ABI {Native.sms_abi_version()}, assets {AssetsDir}");
             // Luigi's Melee files, from a Melee disc, before the skins are registered (so he is offered this launch).
-            MarioSkin.Discover();
-            MarioMelee.Probe();
+            if (!OptionalAssets.BuiltinOnly) { MarioSkin.Discover(); MarioMelee.Probe(); }
             PrepareAssets();
             gameObject.AddComponent<MarioPresentation>();
             MarioHeatHaze.Initialize();
@@ -651,6 +651,7 @@ namespace MarioTest
 
         static void PrepareAssets()
         {
+            if (OptionalAssets.BuiltinOnly) return;
             assetsReady = Native.sms_assets_complete(NativeLib.CString(AssetsDir)) != 0;
             // Complete but written by an older extractor: extract again when the disc is there; without it, keep
             // using the files that are there.
@@ -709,8 +710,8 @@ namespace MarioTest
             }
             if (!assetsReady && (string.IsNullOrEmpty(disc) || !File.Exists(disc)))
             {
-                Log.LogError($"No complete Sunshine assets at '{AssetsDir}' and no disc image to build them from. " +
-                             SharedFiles.MissingDisc("Super Mario Sunshine") + " Mario uses Commando until his disc assets are ready.");
+                Log.LogInfo($"Using built-in Mario gameplay and shapes; no complete optional Sunshine assets at '{AssetsDir}'. " +
+                             "A Sunshine disc is optional for the original presentation.");
                 return;
             }
             assetsBusy = true;

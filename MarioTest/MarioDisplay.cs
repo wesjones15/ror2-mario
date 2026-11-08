@@ -54,7 +54,7 @@ namespace MarioTest
 
         /// A display Mario starting his intro, or null (the prefab keeps Commando) if the
         /// disc's files won't load. Follows the loadout's skin: an alt-skin appears when selected.
-        public static IDisplayActor Get() => Create(MarioSkin.Selected(), true);
+        public static IDisplayActor Get() => Plugin.AssetsReady ? Create(MarioSkin.Selected(), true) : new PrimitiveDisplay(Color.red);
 
         /// A display of one alt-skin (Mario's sim and FLUDD, that skin's body), for the skin's
         /// portrait. Null when its files are missing.

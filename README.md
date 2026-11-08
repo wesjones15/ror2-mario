@@ -4,7 +4,7 @@ Play **Super Mario Sunshine's Mario, with FLUDD**, as a Risk of Rain 2 survivor.
 
 This repository is the **C# RoR2 plugin**. Mario's movement and FLUDD run in [libsms](https://github.com/wesjones15/libsms), a game-independent Rust reimplementation using [doldecomp/sms](https://github.com/doldecomp/sms) as a behavioral reference. RoR2 supplies the stages, enemies, health, inventory and progression. The plugin connects the two and adapts Mario's moves for RoR2 combat and items.
 
-Models, animations, textures, effects and sounds are extracted locally from **your own Sunshine disc image**. Game assets are not included in the repository or release packages.
+GameCube assets are optional. Without them Mario is a red procedural shape, FLUDD water is blue shapes, coins are yellow shapes and arrival uses RoR2's drop pod. Gameplay uses authored fallback tuning and timing; missing game audio/effects are omitted. Original models, animation, tuning, textures and sounds can be extracted locally from **your own Sunshine disc image**. Game assets are never included in releases.
 
 The `modern/1.5.0` branch targets the project's **RoR2 DLC4 build, Unity 2021.3 and BepInEx 5**. For packaged downloads and installation instructions, start with [ror2-characters](https://github.com/wesjones15/ror2-characters). The `legacy/1.2.4.4` branch is frozen.
 
@@ -90,7 +90,7 @@ Optional integrations include contextual Melee Mario attacks, carrying teammates
 
 ## First run and configuration
 
-Install the precompiled character package and **wesleyasaurus-SharedFiles** with the release's required BepInEx dependencies. Then:
+Install the character package with the release's required BepInEx dependencies and play. No disc or asset setup is required. To add the optional original presentation, use **wesleyasaurus-SharedFiles** and:
 
 1. Put your Sunshine **ISO, GCM or CISO** in `BepInEx/plugins/wesleyasaurus-SharedFiles/put_games_here/`. Any filename works; one level of subfolders is supported. Convert RVZ/WIA/WBFS to a supported image first.
 2. Launch RoR2. The plugin extracts models, tuning, animation, audio, effects and HUD data on a background worker into `wesleyasaurus-SharedFiles/assets/sunshine/`.

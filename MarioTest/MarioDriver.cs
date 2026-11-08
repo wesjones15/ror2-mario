@@ -225,7 +225,7 @@ namespace MarioTest
         readonly ClientSpawn spawn = new ClientSpawn();
 
         bool CanDrive =>
-            Plugin.AssetsReady && !RunAudio.Ended && !failed && body && motor && input
+            !Plugin.AssetsBusy && !RunAudio.Ended && !failed && body && motor && input
             && body.hasEffectiveAuthority
             && !body.currentVehicle
             && (!health || health.alive);
@@ -716,6 +716,17 @@ namespace MarioTest
 
         static bool HideEverything(ViewDraw _) => true;
 
+        MarioShapes primitive;
+        void DrawPrimitive()
+        {
+            if (primitive == null) primitive = new MarioShapes();
+            var feet = transform.position - feetToOrigin;
+            primitive.Draw(sim, feet, direction ? Quaternion.LookRotation(direction.forward) : transform.rotation);
+            GameSettings.HideModel(body, ref bodyHidden, true);
+            drawn = true;
+        }
+        void OnGUI() { if (primitive != null && driving && Local && View == null && !RunAudio.Ended) primitive.Hud(); }
+
         // Mario's models at the body's (smoothed) feet, facing as the sim says.
         void LateUpdate()
         {
@@ -734,8 +745,7 @@ namespace MarioTest
             var view = View;
             if (view == null)
             {
-                drawn = false;
-                ShowMario(false);
+                DrawPrimitive();
                 return;
             }
             if (Local) MarioMelee.Draw(view);
@@ -990,6 +1000,7 @@ namespace MarioTest
 
         void StopDriving()
         {
+            primitive?.Hide();
             drawn = false;
             if (Local) MarioRadial.Cancel();
             unstuck.Reset();
@@ -1151,7 +1162,7 @@ namespace MarioTest
             feetToOrigin = transform.position - body.footPosition;
             var feet = UnityHost.ToSim(body.footPosition);
             short yaw = UnityHost.Yaw(direction ? direction.forward : transform.forward);
-            sim = Native.sms_sim_new(NativeLib.CString(Plugin.AssetsDir), ref feet, yaw);
+            sim = Native.sms_sim_new(NativeLib.CString(OptionalAssets.SimulationPath(Plugin.AssetsDir, Plugin.AssetsReady)), ref feet, yaw);
             MarioSims.Add(sim, body);
             if (sim == IntPtr.Zero)
             {
@@ -1265,6 +1276,7 @@ namespace MarioTest
 
         void OnDestroy()
         {
+            primitive?.Dispose();
             if (traced == this) traced = null;
             all.Remove(this);
             itemDisplays?.Dispose(); itemDisplays = null;

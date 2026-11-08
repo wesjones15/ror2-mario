@@ -43,6 +43,7 @@ namespace MarioTest
         readonly System.Collections.Generic.HashSet<int> rewarded = new System.Collections.Generic.HashSet<int>();
         CoinSource source;
         ModelView models;
+        PrimitiveShapes shapes;
         IntPtr view;
         int next;
         bool tried;
@@ -60,6 +61,7 @@ namespace MarioTest
 
         void OnDestroy()
         {
+            shapes?.Dispose();
             if (Instance == this) Instance = null;
             GlobalEventManager.onDeathProcServer -= Killed;
             SceneManager.activeSceneChanged -= SceneChanged;
@@ -74,6 +76,7 @@ namespace MarioTest
 
         void Clear()
         {
+            shapes?.Hide();
             Array.Clear(coins, 0, coins.Length);
             rewarded.Clear();
             next = 0;
@@ -85,17 +88,17 @@ namespace MarioTest
 
         bool EnsureModel()
         {
-            if (!Plugin.AssetsReady) return false;
+            if (!Plugin.AssetsReady) return true; // Gameplay drops do not depend on coin artwork.
             if (view == IntPtr.Zero && !tried)
             {
                 tried = true;
                 view = Native.sms_view_new_look(NativeLib.CString(Plugin.AssetsDir), 0, 2);
                 if (view == IntPtr.Zero)
-                    Plugin.Log.LogError("Yellow coin model did not load: need scene/mapobj/coin.bmd extracted from your Sunshine ISO.");
+                    Plugin.Log.LogInfo("Using generic yellow coins; optional coin artwork did not load.");
                 else
                     source = new CoinSource(view);
             }
-            if (view == IntPtr.Zero) return false;
+            if (view == IntPtr.Zero) return true;
             if (models == null) models = ModelView.Create(source, "Sunshine yellow coins");
             return models != null;
         }
@@ -366,7 +369,19 @@ namespace MarioTest
 
         void LateUpdate()
         {
-            if (models == null || source == null) return;
+            if (models == null || source == null) {
+                if (shapes == null) shapes = new PrimitiveShapes("Mario generic coins");
+                shapes.Begin();
+                foreach (var coin in coins) {
+                    if (coin == null) continue;
+                    float left = Lifetime - coin.age;
+                    if (left < BlinkSeconds && (int)(left * 10f) % 2 == 1) continue;
+                    shapes.Show(PrimitiveType.Cylinder, coin.pos, new Vector3(0.3f, 0.045f, 0.3f),
+                        Quaternion.Euler(90f, Time.time * 240f, 0f), Color.yellow);
+                }
+                shapes.End(); return;
+            }
+            shapes?.Hide();
             source.count = 0;
             // TItemManager::perform rotates coins two degrees per 120 Hz tick.
             var turn = Quaternion.Euler(0f, Time.time * 240f, 0f);

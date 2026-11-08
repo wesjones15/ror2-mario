@@ -33,6 +33,9 @@ Write-Host "== MarioTest.dll"
 dotnet build (Join-Path $PSScriptRoot "MarioTest\MarioTest.csproj") -c Release "-p:RoR2Dir=$RoR2Dir"
 if ($LASTEXITCODE) { throw "dotnet build failed" }
 
+dotnet run --project (Join-Path $PSScriptRoot '../ror2-common/tests/NoAssetsCheck') -c Release -- sms (Join-Path $LibSms 'target/release/sms.dll')
+if ($LASTEXITCODE) { throw "Mario no-assets boundary check failed; nothing staged" }
+
 $dist = Join-Path $PSScriptRoot "dist\MarioTest"
 New-Item -ItemType Directory -Force $dist | Out-Null
 # Do not carry stale files (old stings, an old bundled ssbm.dll) into the plugin folder.

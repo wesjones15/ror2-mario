@@ -76,7 +76,7 @@ namespace MarioTest
 
         /// This body is another player's Mario that this machine should show.
         bool Wanted =>
-            body && !body.hasEffectiveAuthority && Plugin.AssetsReady && !RunAudio.Ended && !failed
+            body && !body.hasEffectiveAuthority && !Plugin.AssetsBusy && !RunAudio.Ended && !failed
             && (!health || health.alive) && Mp.Networked;
 
         // His body died: he falls down for good, as the player's own Mario does (MarioCorpse), after
@@ -92,17 +92,8 @@ namespace MarioTest
             Teardown();
         }
 
-        static bool warnedAssets;
-
         void FixedUpdate()
         {
-            if (!warnedAssets && body && !body.hasEffectiveAuthority && !Plugin.AssetsReady
-                && MarioNet.QueueFor(body.netId.Value) != null)
-            {
-                warnedAssets = true;
-                Plugin.Log.LogWarning("Another player is Mario, but this machine has no Sunshine assets yet " +
-                    "(put your own Sunshine disc in wesleyasaurus-SharedFiles/put_games_here): they will look like Commando.");
-            }
             if (!Wanted)
             {
                 if (health && !health.alive && body && !body.hasEffectiveAuthority) Fall();
@@ -154,7 +145,7 @@ namespace MarioTest
         {
             uint skin = MarioSkin.Selected(body);
             view = MarioView.Remote(queue.Clone, skin);
-            if (view == null || view.Models == null)
+            if (view != null && view.Models == null)
             {
                 view?.Dispose();
                 view = null;
@@ -162,14 +153,14 @@ namespace MarioTest
                 return false;
             }
             var feet = UnityHost.ToSim(body.footPosition);
-            sim = Native.sms_sim_new(NativeLib.CString(Plugin.AssetsDir), ref feet,
+            sim = Native.sms_sim_new(NativeLib.CString(OptionalAssets.SimulationPath(Plugin.AssetsDir, Plugin.AssetsReady)), ref feet,
                 UnityHost.Yaw(body.transform.forward));
             MarioSims.Add(sim, body);
             if (!queue.Clone) MarioSkin.ApplySim(sim, skin);
             if (sim == IntPtr.Zero)
             {
                 failed = true;
-                view.Dispose();
+                view?.Dispose();
                 view = null;
                 return false;
             }
@@ -219,7 +210,12 @@ namespace MarioTest
         void LateUpdate()
         {
             drawn = false;
-            if (sim == IntPtr.Zero || view == null) return;
+            if (sim == IntPtr.Zero) return;
+            if (view == null) {
+                if (primitive == null) primitive = new MarioShapes();
+                primitive.Draw(sim, anchor.transform.position, Quaternion.Euler(0, state.face_yaw * (180f / 32768f), 0));
+                GameSettings.HideModel(body, ref hidden, true); drawn = true; return;
+            }
             MarioMelee.ApplyPose(view, meleeMove, meleeFrame);
             view.Spectated = LocalUsers.IsSpectated(body);
             if (!jrLooked)
@@ -245,9 +241,11 @@ namespace MarioTest
         KoopaJrBody jr;
         bool jrLooked;
         static bool HideEverything(ViewDraw _) => true;
+        MarioShapes primitive;
 
         void Teardown()
         {
+            primitive?.Hide();
             drawn = false;
             if (jr) jr.Draw(Vector3.zero, IntPtr.Zero);
             if (view != null)
@@ -271,6 +269,7 @@ namespace MarioTest
 
         void OnDestroy()
         {
+            primitive?.Dispose();
             live.Remove(this);
             Teardown();
             if (body) MarioNet.Drop(body.netId.Value);

@@ -28,6 +28,9 @@ static class Program {
   Check(MarioLife.health==watchedMario.healthComponent && MarioCoinHud.master==watchedMario.master
    && MarioCoinHud.view==new IntPtr(77) && MarioHudLayout.on && Native.created==0,
    "spectating another player's Mario shows his life and coins through his own view");
+  var watchedPuppet=watchedMario.GetComponent<MarioPuppet>();watchedPuppet.HudHandle=IntPtr.Zero;watchedPuppet.HudSim=new IntPtr(88);
+  MarioPresentation.Refresh();
+  Check(MarioHud.builtin==new IntPtr(88)&&MarioHudLayout.on,"spectating missing-art Mario lost the live primitive tank");
   user.cameraRigController.targetBody=teammate; MarioPresentation.Refresh();
   Check(MarioLife.health==null && !MarioHudLayout.on && Native.created==0,"watching a non-Mario after a Mario takes the HUD down again");
   user.cameraRigController.targetBody=null; MarioPresentation.Refresh();

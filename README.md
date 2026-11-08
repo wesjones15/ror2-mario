@@ -83,6 +83,14 @@ has a yellow backpack with its nozzle at the simulation's emitter. Generated dar
 ground patches show actual water wetness. Missing sound and decorative effects
 are omitted. Bowser Jr. retains the existing unfinished-content gate.
 
+The missing-art lock-on marker is a yellow circle with the same target placement,
+facing and size setting. Primitive FLUDD cylinders share the textured stream's
+length/clipping calculation and retain the short Spray burst's actual drops.
+The fallback tank uses a circle containing a rectangular blue water meter, the
+nozzle's S/H/R/T/N letter, and an orange fill rising through the circle as Rocket
+charges. It uses the normal tank HUD position/scale settings and also works while
+spectating a Mario without art.
+
 | Character | Unlock and requirements |
 | --- | --- |
 | Mario | Default. Uses Sunshine assets. |

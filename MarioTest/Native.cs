@@ -4,7 +4,7 @@ using Ror2Common;
 
 namespace MarioTest
 {
-    // The libsms C ABI (libsms/crates/libsms-ffi, SMS_ABI_VERSION 53). Layouts mirror the
+    // The libsms C ABI (libsms/crates/libsms-ffi, SMS_ABI_VERSION 54). Layouts mirror the
     // #[repr(C)] structs there field for field; Load checks them with sms_struct_sizes. Sim
     // units: about 1 cm, Y up, a facing angle a (i16, 0x10000 per turn) points along
     // (sin a, 0, cos a). The view's structs are ror2-common's (ViewModelInfo...), which
@@ -12,7 +12,12 @@ namespace MarioTest
     internal static class Native
     {
         public const string Dll = "sms";
-        public const uint AbiVersion = 53;
+        public const uint AbiVersion = 54;
+        [StructLayout(LayoutKind.Sequential)]
+        public struct WaterSegment { public Vec3 head, tail; public float radius; public uint flags; }
+        [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern uint sms_sim_water_segments(IntPtr sim,float lag,[Out] WaterSegment[] output,uint capacity);
+        [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] static extern uint sms_water_segment_size();
+        [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern float sms_sim_nozzle_charge(IntPtr sim);
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern byte sms_sim_emitter(IntPtr sim,uint index,out Vec3 pos,out Vec3 dir);
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern uint sms_sim_wet_vertices(IntPtr sim,[Out] WaterVertex[] output,uint max);
         [StructLayout(LayoutKind.Sequential)]
@@ -719,6 +724,9 @@ namespace MarioTest
             }
             if (sms_water_particle_size() != NativeLib.Size<WaterParticle>()) {
                 error = "The native water-particle layout differs; rebuild sms.dll and MarioTest.dll together"; return false;
+            }
+            if (sms_water_segment_size() != NativeLib.Size<WaterSegment>()) {
+                error = "The native water-segment layout differs; rebuild sms.dll and MarioTest.dll together"; return false;
             }
             var native = new uint[32];
             uint n = sms_struct_sizes(native, (uint)native.Length);

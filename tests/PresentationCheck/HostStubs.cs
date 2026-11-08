@@ -40,14 +40,14 @@ namespace MarioTest {
  static class Plugin { public static bool AssetsReady = true; public static string AssetsDir = "assets"; }
  class MarioDriver { public static MarioDriver Player; }
  // A watched Mario's body carries a puppet whose HudHandle is the native view the HUD reads.
- class MarioPuppet : UnityEngine.MonoBehaviour { public IntPtr HudHandle; }
+ class MarioPuppet : UnityEngine.MonoBehaviour { public IntPtr HudHandle, HudSim; }
  static class MarioVr { public static class Character { public static bool WristHud = false; public static void ShowWrist() { } public static void OnWrist(Action draw) { draw(); } } }
  static class Native {
   public static int created, freed;
   public static IntPtr sms_view_new(byte[] _, uint sound) { if(sound != 0) throw new Exception("fallback must be silent"); return new IntPtr(++created); }
   public static void sms_view_free(IntPtr v) { freed++; }
  }
- static class MarioHud { public static int resets, hides; public static void Reset() { resets++; } public static void Hide() { hides++; } public static void Draw() { } }
+ static class MarioHud { public static int resets, hides; public static IntPtr builtin; public static void UpdateBuiltin(IntPtr sim) { builtin=sim; } public static void Reset() { resets++;builtin=IntPtr.Zero; } public static void Hide() { hides++;builtin=IntPtr.Zero; } public static void Draw() { } }
  static class MarioLife { public static RoR2.HealthComponent health; public static bool retainEmpty; public static void Reset() { health = null; } public static void Update(IntPtr v, RoR2.HealthComponent h, bool keepEmpty = false) { health = h; retainEmpty=keepEmpty; } public static void Draw() { } }
  static class MarioCoinHud { public static RoR2.CharacterMaster master; public static RoR2.LocalUser user; public static IntPtr view; public static void Reset() { master = null; user = null; } public static void UpdateOwned(IntPtr v, RoR2.CharacterMaster m, RoR2.LocalUser u, RoR2.NetworkUser lunarOwner = null) { master=m; user=u; view=v; } public static void Draw() { } }
  static class MarioHudLayout { public static bool on; public static void Restore() { on=false; } public static void Update(bool active, RoR2.LocalUser u) { on=active; } }

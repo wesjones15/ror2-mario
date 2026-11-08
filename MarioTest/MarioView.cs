@@ -201,7 +201,7 @@ namespace MarioTest
             Native.sms_view_update(view, sim, ref frame);
             water?.Update(view, UnityHost.Scale);
             swirl?.Update(view);
-            if (hud || Spectated) MarioHud.Update(view);
+            if (hud || Spectated) MarioHud.Update(view, sim);
         }
 
         /// Draws this frame's particle effects (after Update) with Mario drawn at `feet`: they

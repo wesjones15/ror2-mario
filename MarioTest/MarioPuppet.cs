@@ -37,6 +37,7 @@ namespace MarioTest
         internal bool Drawing => playing && drawn;
         /// His view's native handle (the life meter, coin counters and water gauge are read from it), or zero.
         internal IntPtr HudHandle => view != null ? view.Handle : IntPtr.Zero;
+        internal IntPtr HudSim => sim;
         float lagTicks;
         Native.State state;
         // The owner's Melee A pose, replayed from the frame stream.
@@ -213,7 +214,7 @@ namespace MarioTest
                 if (primitive == null) primitive = new MarioShapes();
                 if(!jrLooked){jrLooked=true;jr=GetComponent<KoopaJrBody>();}
                 if(jr && jr.HidesMario){primitive.Hide();jr.Draw(anchor.transform.position,sim);}
-                else primitive.Draw(sim, anchor.transform.position, Quaternion.Euler(0, state.face_yaw * (180f / 32768f), 0), MarioSkin.Selected(body));
+                else primitive.Draw(sim, anchor.transform.position, Quaternion.Euler(0, state.face_yaw * (180f / 32768f), 0), MarioSkin.Selected(body), lagTicks);
                 GameSettings.HideModel(body, ref hidden, true); drawn = true; return;
             }
             MarioMelee.ApplyPose(view, meleeMove, meleeFrame);

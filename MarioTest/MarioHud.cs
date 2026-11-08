@@ -17,12 +17,17 @@ namespace MarioTest
         static Native.HudInfo info;
         static Native.HudInfo nozzleInfo;
         static bool shown, warned;
+        static bool builtin;
+        static byte fitted;
+        static int builtinKey = -1;
+        static GUIStyle letterStyle;
 
         public static void Reset()
         {
             if (tex) UnityEngine.Object.Destroy(tex);
             tex = null;
             shown = warned = false;
+            builtin = false; builtinKey = -1; letterStyle = null;
             version = 0;
             pixels = flipped = new byte[0];
             info = default;
@@ -33,18 +38,21 @@ namespace MarioTest
         public static void Hide() => shown = false;
 
         /// After sms_view_update: takes this frame's gauge.
-        public static void Update(IntPtr view)
+        public static void Update(IntPtr view, IntPtr sim = default)
         {
             shown = false;
-            if (view == IntPtr.Zero || !Plugin.ShowTank.Value) return;
+            if (!Plugin.ShowTank.Value) return;
+            if (view == IntPtr.Zero) { UpdateBuiltin(sim); return; }
             if (Native.sms_view_hud_info(view, out info) == 0)
             {
                 if (!warned) Plugin.Log.LogWarning("FLUDD's water gauge isn't in the assets folder (re-extract them)");
                 warned = true;
+                UpdateBuiltin(sim);
                 return;
             }
             if (info.shown == 0 || info.width == 0 || info.height == 0) return;
             Native.sms_view_hud_nozzle_info(view, out nozzleInfo);
+            if (builtin) { if (tex) UnityEngine.Object.Destroy(tex); tex = null; builtin = false; builtinKey = -1; }
             if (!tex || tex.width != info.width || tex.height != info.height)
             {
                 if (tex) UnityEngine.Object.Destroy(tex);
@@ -76,12 +84,41 @@ namespace MarioTest
             shown = true;
         }
 
+        public static void UpdateBuiltin(IntPtr sim)
+        {
+            shown = false;
+            if (!Plugin.ShowTank.Value || sim == IntPtr.Zero || Native.sms_sim_state(sim, out var state) == 0) return;
+            if (!builtin) { if (tex) UnityEngine.Object.Destroy(tex); tex = null; builtinKey = -1; }
+            builtin = true; fitted = state.nozzle;
+            info = new Native.HudInfo { width = 96, height = 96, screen_w = 640, screen_h = 480, shown = 1 };
+            nozzleInfo = new Native.HudInfo { x = 24, y = 24, width = 48, height = 48 };
+            float charge = fitted == 2 ? Native.sms_sim_nozzle_charge(sim) : 0f;
+            int water = Mathf.RoundToInt(Mathf.Clamp01(state.water) * 100f), pressure = Mathf.RoundToInt(charge * 100f);
+            int key = water * 101 + pressure;
+            if (!tex) tex = new Texture2D(96, 96, TextureFormat.RGBA32, false) {
+                name = "Generated FLUDD tank", filterMode = FilterMode.Bilinear, wrapMode = TextureWrapMode.Clamp };
+            if (key != builtinKey) {
+                tex.SetPixelData(BuiltinTankImage.Render(water * .01f, pressure * .01f), 0);
+                tex.Apply(false, false); builtinKey = key;
+            }
+            shown = true;
+        }
+
         /// From OnGUI: draws the gauge unless the game is paused or its HUD is off.
         public static void Draw()
         {
             if (!shown || !tex || Event.current.type != EventType.Repaint) return;
             if (PauseManager.isPaused || !RoR2.UI.HUD.cvHudEnable.value) return;
-            if (TryTankRect(out var rect)) GUI.DrawTexture(rect, tex, ScaleMode.StretchToFill, true);
+            if (TryTankRect(out var rect)) {
+                GUI.DrawTexture(rect, tex, ScaleMode.StretchToFill, true);
+                if (builtin) {
+                    if (letterStyle == null) letterStyle = new GUIStyle(GUI.skin.label) { alignment = TextAnchor.MiddleCenter, fontStyle = FontStyle.Bold };
+                    letterStyle.fontSize = Mathf.Max(12, Mathf.RoundToInt(rect.height * .23f));
+                    var old = GUI.color; GUI.color = Color.black;
+                    GUI.Label(new Rect(rect.x+1, rect.y+1, rect.width, rect.height), BuiltinTankImage.Letter(fitted), letterStyle);
+                    GUI.color = Color.white; GUI.Label(rect, BuiltinTankImage.Letter(fitted), letterStyle); GUI.color = old;
+                }
+            }
         }
 
         static bool TryTankRect(out Rect rect)

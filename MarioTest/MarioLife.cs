@@ -243,7 +243,7 @@ namespace MarioTest
         /// For this frame: the marker on `target` seen from `eye`, or hidden when none.
         public void Update(IntPtr view, CharacterBody target, Vector3 eye)
         {
-            if (!Plugin.LockMarker.Value || view == IntPtr.Zero || !target)
+            if (!Plugin.LockMarker.Value || !target)
             {
                 Hide();
                 return;
@@ -251,16 +251,14 @@ namespace MarioTest
             float life = 1f, shield = 0f;
             if (Plugin.LockMarkerHealth.Value && target.healthComponent)
                 MarioLife.Shares(target.healthComponent, out life, out shield);
-            if (!image.Update(view, life, shield) || !image.Texture)
-            {
-                Hide();
-                return;
-            }
             if (quad == null) quad = new MarkerQuad("Mario lock-on marker");
             // Where Olimar's would hang, in metres (Mario's 160 units are 1.6 m).
             var at = LockMarker.Place(eye, target, 0.25f, 0.6f);
             turn = (turn + Time.deltaTime * Plugin.LockMarkerSpin.Value) % 360f;
-            quad.Show(image.Texture, image.Aspect, at, eye, Mathf.Max(0.05f, Plugin.LockMarkerSize.Value), turn);
+            float size = Mathf.Max(0.05f, Plugin.LockMarkerSize.Value);
+            if (view != IntPtr.Zero && image.Update(view, life, shield) && image.Texture)
+                quad.Show(image.Texture, image.Aspect, at, eye, size, turn);
+            else quad.ShowCircle(at, eye, size, turn, Color.yellow, life, shield);
         }
 
         public void Hide()

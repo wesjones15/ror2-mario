@@ -722,11 +722,14 @@ namespace MarioTest
             if (primitive == null) primitive = new MarioShapes();
             var feet = transform.position - feetToOrigin;
             if(jr && jr.HidesMario){primitive.Hide();jr.Draw(feet,sim);}
-            else primitive.Draw(sim, feet, direction ? Quaternion.LookRotation(direction.forward) : transform.rotation, MarioSkin.Selected(body));
+            else primitive.Draw(sim, feet, direction ? Quaternion.LookRotation(direction.forward) : transform.rotation, MarioSkin.Selected(body), lagTicks);
+            if (Local) {
+                MarioHud.UpdateBuiltin(sim);
+                MarioHudLayout.Update(true, localUser);
+            }
             GameSettings.HideModel(body, ref bodyHidden, true);
             drawn = true;
         }
-        void OnGUI() { if (primitive != null && driving && Local && View == null && !RunAudio.Ended) primitive.Hud(); }
 
         // Mario's models at the body's (smoothed) feet, facing as the sim says.
         void LateUpdate()
@@ -744,6 +747,13 @@ namespace MarioTest
                 cloneView = MarioView.Clone();
             }
             var view = View;
+            if (Local) {
+                var markerFeet = transform.position - feetToOrigin;
+                var head = MarioVr.Character.InHeadset(body) ? Vr.Head() : null;
+                lockMarker.Update(view != null ? view.Handle : IntPtr.Zero, lockShown,
+                    head ? head.position : markerFeet + Vector3.up * (UnityHost.MarioHeight * UnityHost.Scale * .55f));
+                if (MarioVr.Controls(body)) MarioVr.Character.Crosshair(body, lockShown);
+            }
             if (view == null || view.Models == null)
             {
                 DrawPrimitive();
@@ -792,10 +802,6 @@ namespace MarioTest
                 MarioLife.Update(view.Handle, health);
                 MarioCoinHud.Update(view.Handle, body, localUser);
                 MarioHudLayout.Update(true, localUser);
-                var head = MarioVr.Character.InHeadset(body) ? Vr.Head() : null;
-                lockMarker.Update(view.Handle, lockShown,
-                    head ? head.position : feet + Vector3.up * (height * 0.55f));
-                if (MarioVr.Controls(body)) MarioVr.Character.Crosshair(body, lockShown);
             }
         }
 

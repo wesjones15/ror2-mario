@@ -49,7 +49,7 @@ namespace MarioTest
             // Spectating: the HUD is the watched player's character's, whoever this player plays.
             var spectated = LocalUsers.Spectated();
             var puppet = spectated ? spectated.GetComponent<MarioPuppet>() : null;
-            if (puppet && puppet.HudHandle != IntPtr.Zero && Run.instance && !RunAudio.Ended)
+            if (puppet && (puppet.HudHandle != IntPtr.Zero || puppet.HudSim != IntPtr.Zero) && Run.instance && !RunAudio.Ended)
             {
                 var player = LocalUserManager.GetFirstLocalUser();
                 if (watched != spectated) { watched = spectated; MarioCoinHud.Reset(); }
@@ -58,6 +58,7 @@ namespace MarioTest
                     ? watchedMaster.playerCharacterMasterController.networkUser : null;
                 MarioCoinHud.UpdateOwned(puppet.HudHandle, watchedMaster, player, network);
                 MarioLife.Update(puppet.HudHandle, spectated.healthComponent, true);
+                if (puppet.HudHandle == IntPtr.Zero) MarioHud.UpdateBuiltin(puppet.HudSim);
                 MarioHudLayout.Update(true, player);
                 watching = true;
                 cleared = false;

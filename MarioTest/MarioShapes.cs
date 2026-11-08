@@ -10,11 +10,11 @@ namespace MarioTest
         const byte PoseDive = 1, PoseSlide = 2, PosePound = 4, PoseSpin = 8;
         const float Radius = 0.35f;
         readonly PrimitiveShapes shapes = new PrimitiveShapes("Mario built-in shapes");
-        readonly Native.WaterParticle[] water = new Native.WaterParticle[512];
+        readonly Native.WaterSegment[] water = new Native.WaterSegment[512];
         readonly Native.WaterVertex[] wet = new Native.WaterVertex[16384];
         SurfaceQuads ground;
         Native.State state;
-        public void Draw(IntPtr sim, Vector3 feet, Quaternion facing, uint skin)
+        public void Draw(IntPtr sim, Vector3 feet, Quaternion facing, uint skin, float lag = 0f)
         {
             Native.sms_sim_state(sim, out state);
             shapes.Begin();
@@ -27,13 +27,15 @@ namespace MarioTest
                     var at=UnityHost.ToUnity(origin);var dir=new Vector3(aim.x,aim.y,aim.z);
                     shapes.Segment(at,at-dir*.18f,.07f,Color.blue);}
             }
-            int count = (int)Math.Min((uint)water.Length, Native.sms_sim_water_particles(sim, water, (uint)water.Length));
+            int count = (int)Math.Min((uint)water.Length, Native.sms_sim_water_segments(sim, lag, water, (uint)water.Length));
             for (int i = 0; i < count; i++)
             {
                 var p = water[i];
-                var at = UnityHost.ToUnity(p.pos);
-                var velocity = new Vector3(p.velocity.x, p.velocity.y, p.velocity.z) * UnityHost.Scale;
-                shapes.Segment(at, at - velocity * 0.3f, Mathf.Clamp(p.radius * UnityHost.Scale, 0.025f, 0.15f), Color.cyan);
+                // Keep the thin stream's existing silhouette; allow a light burst's
+                // own simulated size instead of flattening every drop to the same cap.
+                float radius = p.radius * UnityHost.Scale;
+                if ((p.flags & 1) == 0) radius = Mathf.Clamp(radius / .707f, .025f, .15f);
+                shapes.Segment(UnityHost.ToUnity(p.head), UnityHost.ToUnity(p.tail), Mathf.Max(.025f, radius), Color.cyan);
             }
             shapes.End();
             if(ground==null)ground=new SurfaceQuads("Mario fallback wet ground",new Color(0,0,0,Mathf.Clamp01(Plugin.GroundWetness.Value)));
@@ -70,12 +72,6 @@ namespace MarioTest
             }
         }
 
-        public void Hud()
-        {
-            string nozzle = state.nozzle == 0 ? "Off" : state.nozzle == 1 ? "Spray" : state.nozzle == 2 ? "Rocket"
-                : state.nozzle == 5 ? "Hover" : state.nozzle == 6 ? "Turbo" : "FLUDD";
-            GUI.Label(new Rect(24, Screen.height - 110, 300, 30), $"FLUDD: {nozzle}   Water: {state.water:P0}");
-        }
         public void Hide() {shapes.Hide();ground?.Hide();}
         public void Dispose() {shapes.Dispose();ground?.Dispose();}
     }

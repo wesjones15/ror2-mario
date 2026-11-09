@@ -46,7 +46,9 @@ namespace MarioTest
         int replayRenderFrame = -1, replayedThisFrame;
         double replayMsThisFrame;
 
-        static readonly Native.EventFn noEvent = (IntPtr user, ref Native.Event e) => { };
+        Native.EventFn onEvent;
+        bool normalPoundLanded;
+        readonly MarioFallbackEffects fallbackEffects = new MarioFallbackEffects();
         static readonly unsafe Native.EnemiesFn noEnemies = (IntPtr user, ref Native.Vec3 pos, float radius, Native.Enemy* output, uint max) => 0u;
 
         static readonly System.Collections.Generic.List<MarioPuppet> live = new System.Collections.Generic.List<MarioPuppet>();
@@ -70,9 +72,16 @@ namespace MarioTest
             body = GetComponent<CharacterBody>();
             health = GetComponent<HealthComponent>();
             host = UnityHost.Table();
-            // A shadow sim hears no enemies and raises no hits: the player's own machine deals them.
-            host.evt = System.Runtime.InteropServices.Marshal.GetFunctionPointerForDelegate(noEvent);
+            // The shadow sim uses its landing cue for presentation. Its owner deals the hits.
+            onEvent = OnEvent;
+            host.evt = System.Runtime.InteropServices.Marshal.GetFunctionPointerForDelegate(onEvent);
             host.enemies = System.Runtime.InteropServices.Marshal.GetFunctionPointerForDelegate(noEnemies);
+        }
+
+        void OnEvent(IntPtr user, ref Native.Event e)
+        {
+            if (e.kind == (uint)Native.EventKind.GroundPound && (e.arg & 1) == 0)
+                normalPoundLanded = true;
         }
 
         /// This body is another player's Mario that this machine should show.
@@ -172,6 +181,7 @@ namespace MarioTest
 
         void Play(Frame frame)
         {
+            normalPoundLanded = false;
             if (!FrameCodec.Replay(frame, this)) return;
             Native.sms_sim_state(sim, out state);
             // Put the shadow back where the player's sim had him if the two have drifted apart.
@@ -189,6 +199,7 @@ namespace MarioTest
                 smoother.Reset();
             }
             smoother.Stepped(UnityHost.ToUnity(state.pos));
+            if (normalPoundLanded) MarioFallbackEffects.Land(view, UnityHost.ToUnity(state.pos));
         }
 
         /// This Mario picked up a coin: Sunshine's pickup sound and sparks.
@@ -338,6 +349,7 @@ namespace MarioTest
         public void WaterImpact(Native.Vec3 pos)
         {
             if (view != null) Native.sms_view_water_hit(view.Handle, ref pos);
+            fallbackEffects.WaterImpact(view, UnityHost.ToUnity(pos));
         }
         public void SetAim(bool on, short yaw, float pitch) => Native.sms_sim_set_aim(sim, (byte)(on ? 1 : 0), yaw, pitch);
         public void FlightCamera(bool on, short yaw, float pitch) => Native.sms_sim_set_flight_camera(sim, (byte)(on ? 1 : 0), yaw, pitch);

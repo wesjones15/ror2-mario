@@ -18,7 +18,7 @@ namespace MarioTest
     // the body moved by the sim instead of RoR2's character controller, and drawn and heard
     // as the disc's Mario. No R2API: content goes in through RoR2's own content-pack hook
     // (ror2-common's ContentProvider).
-    [BepInPlugin(Guid, "Mario", "0.6.7")]
+    [BepInPlugin(Guid, "Mario", "0.6.8")]
     // Use the pack's fixes first when installed; no pack APIs are required by this plugin.
     [BepInDependency("___riskofthunder.RoR2BepInExPack", BepInDependency.DependencyFlags.SoftDependency)]
     [BepInDependency("com.libpikmin.olimartest", BepInDependency.DependencyFlags.SoftDependency)]
@@ -574,7 +574,8 @@ namespace MarioTest
                 "Sunshine's own flames (from the disc), and lands with a fiery blast.");
             Effects = Config.Bind("Look", "Effects", true,
                 "Draw Sunshine's movement dust, bump stars, ground-pound smear, spin-jump swirl, " +
-                "belly-slide smoke/spray and stomp bursts from the disc. PoundFlames controls fire separately.");
+                "belly-slide smoke/spray and stomp bursts from the disc. Use RoR2 landing dust and water hit splashes " +
+                "when Sunshine effects are unavailable. PoundFlames controls fire separately.");
             SmokeSpeed = Config.Bind("Look", "SmokeSpeed", 2f,
                 "Smoke/dust playback speed (0.25-4, 1: Sunshine's original timing). " +
                 "2 makes puffs move and clear twice as fast. Other effects keep their original timing.");

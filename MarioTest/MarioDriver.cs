@@ -61,6 +61,7 @@ namespace MarioTest
         CameraPivot pivot;
         readonly MarioPad pad = new MarioPad();
         readonly MarioFlames flames = new MarioFlames();
+        readonly MarioFallbackEffects fallbackEffects = new MarioFallbackEffects();
         readonly Unstuck unstuck = new Unstuck();
         IntPtr gravitySim;
         float lastStageGravity = 1f;
@@ -414,8 +415,10 @@ namespace MarioTest
             SimOps.Step(sim, ref host, ref step, cameraYaw, Time.fixedDeltaTime,
                 view != null ? view.Handle : IntPtr.Zero);
             if (Local) MarioMelee.Step(body, AimDirection, grounded);
-            MarioCombat.End();
+            var (normalPoundLanded, waterImpact) = MarioCombat.End();
             Native.sms_sim_state(sim, out var st);
+            if (normalPoundLanded) MarioFallbackEffects.Land(view, UnityHost.ToUnity(st.pos));
+            if (waterImpact.HasValue) fallbackEffects.WaterImpact(view, waterImpact.Value);
             if (jr) jr.AfterStep();
             winDemo = st.win_demo;
             Items.End(sim, st);

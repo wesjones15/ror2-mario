@@ -48,6 +48,7 @@ namespace MarioTest
         static bool pounded, superPound, spinPound;
         static float fallFraction;
         static Vector3 poundAt;
+        static Vector3? waterImpact;
         // The landing's drop (metres); where the pound's fall began (world Y), and whether it
         // has turned super.
         static float poundDrop, poundTop;
@@ -83,6 +84,7 @@ namespace MarioTest
             cylinders.Clear();
             blows.Clear();
             water.Clear();
+            waterImpact = null;
             pounded = false;
             spinPound = false;
             fallFraction = 0f;
@@ -118,14 +120,14 @@ namespace MarioTest
         static float PoundScale(float drop) =>
             1f + Mathf.Clamp(drop, 0f, 500f) * Mathf.Max(0f, Plugin.PoundPerMetre.Value);
 
-        /// Lands the step's hits.
-        public static void End()
+        /// Lands the step's hits and reports its fallback visual cues.
+        public static (bool normalPoundLanded, Vector3? waterImpact) End()
         {
             var body = attacker;
             var it = items;
             attacker = null;
             items = null;
-            if (!body) return;
+            if (!body) return default;
             Vector3 mario = body.footPosition;
             bool ignite = Plugin.SuperPoundIgnites.Value;
             // A pound without a charge (the utility skill's) does Items.WeakPound of it.
@@ -211,6 +213,7 @@ namespace MarioTest
                 MarioNet.SendCombat(body, outHits, outBlasts, outPulse, outFall);
             outHits.Clear();
             outBlasts.Clear();
+            return (pounded && !superPound, waterImpact);
         }
 
         /// What the server does with a client Mario's hit: the same as his own would be.
@@ -304,6 +307,7 @@ namespace MarioTest
                     break;
                 case Native.EventKind.WaterImpact:
                     SimOps.Rec?.WaterImpact(e.pos);
+                    waterImpact ??= UnityHost.ToUnity(e.pos);
                     break;
                 case Native.EventKind.WaterHit:
                 case Native.EventKind.BurstHit:

@@ -122,6 +122,7 @@ namespace MarioTest
         internal static ConfigEntry<int> CarryTeammates;
         internal static ConfigEntry<int> FlowerChance, FlowerRolls, FlowerBiteMax;
         internal static ConfigEntry<float> LockRange;
+        internal static ConfigEntry<float> LockLead, LockLeadMax;
         internal static ConfigEntry<float> LifeX, LifeY, LifeScale, LockMarkerSize, LockMarkerSpin;
         internal static ConfigEntry<bool> KnockdownEnabled, KnockdownGetUpEarly, KnockdownInterruptsPound, BurnPanic;
         internal static ConfigEntry<float> BurnPanicCooldown;
@@ -519,6 +520,12 @@ namespace MarioTest
                 "nearest where the camera points (within Controls.LockRange, 60 m, in line of sight) and aim FLUDD " +
                 "at it, so the spray trigger sprays it without Mario crouching. Right bumper " +
                 "then cycles targets. Needs CameraAim.");
+            LockLead = Config.Bind("Controls", "LockLead", 0.6f,
+                "How much of a locked enemy's velocity FLUDD leads, 0 (aim at it) to 1 (aim where it will be). " +
+                "The water still flies straight; this only moves the aim point, so moving targets are easier to hit.");
+            LockLeadMax = Config.Bind("Controls", "LockLeadMax", 4f,
+                "The most a lock-on leads a target, in metres. Keeps a fast strafe from making the spray look like " +
+                "it is aimed at empty air; 0: no cap.");
             // Only read with Blowntobytes' VR mod running in a headset (ror2-common's Vr).
             VrControls = Config.Bind("VR", "Controls", true,
                 "In VR with motion controls, Mario's own layout (right-handed; the VR mod's left-handed " +

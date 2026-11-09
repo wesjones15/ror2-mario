@@ -45,9 +45,13 @@ namespace MarioTest
                 {
                     if (Native.sms_sim_emitter(sim, nozzle, out var origin, out var aim) == 0) continue;
                     var at = UnityHost.ToUnity(origin) + drawOffset;
-                    // Yoshi's outlet is at his mouth. The other outlets attach to the tank.
-                    var start = state.nozzle == 4 ? at - new Vector3(aim.x, aim.y, aim.z) * .18f : neck;
-                    shapes.Segment(start, at, .07f, Color.blue);
+                    // One short blue head: its tip is the outlet and its axis is the shared emitter
+                    // direction (the one the water leaves along), so it floats above the tank when
+                    // the aim says so, in the standing and wet-slide poses alike.
+                    var dir = new Vector3(aim.x, aim.y, aim.z);
+                    float head = state.nozzle == 4 ? .18f : .3f;
+                    if (dir.sqrMagnitude > 1e-6f) shapes.Segment(at - dir.normalized * head, at, .07f, Color.blue);
+                    else shapes.Segment(neck, at, .07f, Color.blue);
                 }
             }
             int count = (int)Math.Min((uint)water.Length, Native.sms_sim_water_segments(sim, lag, water, (uint)water.Length));

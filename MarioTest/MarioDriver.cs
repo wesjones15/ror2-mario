@@ -859,7 +859,11 @@ namespace MarioTest
             var locked = ai ? ai : enemyLock.Update(body, lockHeld && input, cycle, direction);
             lockShown = lockHeld && Local ? locked : null;
             lastLocked = lockHeld ? locked : null;
-            if (!camera && !lockHeld)
+            // The experimental aimed Rocket, Turbo and Hover need a valid LB target, not just the crosshair
+            // (the Spray's lock-on is independent of that). state.nozzle: 2 Rocket, 5 Hover, 6 Turbo.
+            bool alternate = Native.sms_sim_state(sim, out var nozzleState) != 0
+                && (nozzleState.nozzle == 2 || nozzleState.nozzle == 5 || nozzleState.nozzle == 6);
+            if ((!camera && !lockHeld) || (alternate && !locked))
             {
                 SimOps.SetAim(sim, 0, 0, 0f);
                 return;
@@ -1274,6 +1278,13 @@ namespace MarioTest
                 knockdown_cancel = (byte)(Plugin.KnockdownGetUpEarly.Value ? 1 : 0),
                 corkscrew_hold_degrees = Plugin.CorkscrewHold.Value,
                 spin_pound_jump = Mathf.Max(1f, Plugin.SpinPoundJump.Value),
+                turbo_air_thrust = (byte)(Plugin.TurboAirThrust.Value ? 1 : 0),
+                spin_pound_fast = (byte)(Plugin.SpinPoundFast.Value ? 1 : 0),
+                slide_dive_nozzles = (byte)(Plugin.SlideDiveNozzles.Value ? 1 : 0),
+                aim_alt = (byte)(Plugin.AimAlternate.Value ? 1 : 0),
+                aim_rocket = (byte)(Plugin.AimRocket.Value ? 1 : 0),
+                aim_turbo = (byte)(Plugin.AimTurbo.Value ? 1 : 0),
+                aim_hover = (byte)(Plugin.AimHover.Value ? 1 : 0),
             };
             if (t.Equals(tuning)) return;
             tuning = t;

@@ -60,6 +60,9 @@ namespace MarioTest
         internal static ConfigEntry<float> StompBounce;
         internal static ConfigEntry<float> RocketHeight;
         internal static ConfigEntry<float> PoundJump, SpinPoundJump;
+        // Host extensions on top of the game's FLUDD moves (each can be switched back), and the experimental aimed alternate nozzles.
+        internal static ConfigEntry<bool> TurboAirThrust, SpinPoundFast, SlideDiveNozzles;
+        internal static ConfigEntry<bool> AimAlternate, AimRocket, AimTurbo, AimHover;
         internal static ConfigEntry<float> StompJump;
         internal static ConfigEntry<float> ShortHop;
         internal static ConfigEntry<float> CorkscrewHold;
@@ -197,6 +200,20 @@ namespace MarioTest
             SpinPoundJump = Config.Bind("Sim", "SpinPoundJump", 2.5f,
                 "A on the landing of a spinning ground pound (a stick circle during the fall) leaps this " +
                 "many times as high as a plain pound's jump. 1: the same.");
+            TurboAirThrust = Config.Bind("Sim", "TurboAirThrust", true,
+                "A held Turbo pushes Mario forward in the air too (Sunshine's dash needs his feet on the ground). false: the game's.");
+            SpinPoundFast = Config.Bind("Sim", "SpinPoundFast", true,
+                "A spinning ground pound falls faster, flaming or not; the flame still starts at the same height. false: the game's fall.");
+            SlideDiveNozzles = Config.Bind("Sim", "SlideDiveNozzles", true,
+                "The Rocket and the Turbo can charge and fire in a B dive and a belly slide, pushing Mario along level. false: the game's (Spray only).");
+            AimAlternate = Config.Bind("Experimental", "AimAlternateNozzles", false,
+                "Master switch: aim the Rocket, Turbo and Hover at the LB lock-on target. Off keeps their movement behavior; the Spray's lock-on is independent of this.");
+            AimRocket = Config.Bind("Experimental", "AimRocket", true,
+                "With the master switch: a Rocket charge that fires with a target shoots one precision slug (a small kick back, no launch).");
+            AimTurbo = Config.Bind("Experimental", "AimTurbo", true,
+                "With the master switch: a Turbo pressed with a target fires a rapid aimed stream; losing the target ends it until R is pressed again.");
+            AimHover = Config.Bind("Experimental", "AimHover", true,
+                "With the master switch: a Hover pressed with a target steers both jets at it and keeps its lift; losing the target ends it until R is pressed again.");
             CorkscrewHold = Config.Bind("Sim", "CorkscrewHold", 60f,
                 new ConfigDescription(
                     "A Turbo corkscrew, once a stick circle has started it, only asks the stick to keep " +

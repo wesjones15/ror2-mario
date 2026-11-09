@@ -12,7 +12,7 @@ namespace MarioTest
     internal static class Native
     {
         public const string Dll = "sms";
-        public const uint AbiVersion = 56;
+        public const uint AbiVersion = 57;
         [StructLayout(LayoutKind.Sequential)]
         public struct WaterSegment { public Vec3 head, tail; public float radius; public uint flags; }
         [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)] public static extern uint sms_sim_water_segments(IntPtr sim,float lag,[Out] WaterSegment[] output,uint capacity);
@@ -219,6 +219,11 @@ namespace MarioTest
             public float corkscrew_hold_degrees;
             /// A on a spinning ground pound's landing leaps this many times as high as pound_jump.
             public float spin_pound_jump;
+            /// 1: a held Turbo thrusts in the air; 1: a spinning ground pound falls faster; 1: the Rocket and
+            /// Turbo fire in a dive and belly slide (host extensions; 0 is the game's).
+            public byte turbo_air_thrust, spin_pound_fast, slide_dive_nozzles;
+            /// Experimental aimed alternate nozzles: the master switch, then Rocket, Turbo and Hover.
+            public byte aim_alt, aim_rocket, aim_turbo, aim_hover;
         }
 
         /// The host's own limits on FLUDD and the slide (libsms::Limits); zeroes are the game's.

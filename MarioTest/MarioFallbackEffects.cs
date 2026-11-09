@@ -12,12 +12,47 @@ namespace MarioTest
         static GameObject splash;
         static bool triedDust, triedSplash;
         float nextSplash;
+        float landingSize;
+        Native.Vec3? waterAt;
+
+        public void Begin()
+        {
+            landingSize = 0f;
+            waterAt = null;
+        }
+
+        public void Observe(in Native.Event cue)
+        {
+            switch ((Native.EventKind)cue.kind)
+            {
+                case Native.EventKind.GroundPound:
+                    landingSize = 1.9f;
+                    break;
+                case Native.EventKind.Land:
+                    landingSize = Mathf.Max(landingSize, cue.arg != 0 ? 1.4f : 0.85f);
+                    break;
+                case Native.EventKind.WaterImpact:
+                case Native.EventKind.WaterSplash:
+                    waterAt ??= cue.pos;
+                    break;
+            }
+        }
+
+        public void Draw(MarioView view, Native.Vec3 feet)
+        {
+            if (!Plugin.Effects.Value || view?.HasEffects == true) return;
+            if (landingSize > 0f) Land(UnityHost.ToUnity(feet), landingSize);
+            if (waterAt.HasValue) WaterImpact(view, UnityHost.ToUnity(waterAt.Value));
+        }
 
         static GameObject Load(string key)
         {
             try
             {
-                return Addressables.LoadAssetAsync<GameObject>(key).WaitForCompletion();
+                var prefab = Addressables.LoadAssetAsync<GameObject>(key).WaitForCompletion();
+                if (prefab) Plugin.Log.LogDebug($"Loaded RoR2 fallback effect {prefab.name}.");
+                else Plugin.Log.LogWarning($"RoR2 fallback effect {key} was unavailable.");
+                return prefab;
             }
             catch (System.Exception e)
             {
@@ -26,11 +61,10 @@ namespace MarioTest
             }
         }
 
-        // TMario::hipAttacking in MarioJump.cpp emits the normal landing's MS_HIPDROP_A..C.
-        // The stock one-shot supplies the dust cue when the local view has no Sunshine FX.
-        public static void Land(MarioView view, Vector3 feet)
+        // TMario::smallTouchDownEffect and strongTouchDownEffect emit MS_JUMP_ED_A/B.
+        // TMario::hipAttacking emits MS_HIPDROP_A..C on a normal pound.
+        static void Land(Vector3 feet, float size)
         {
-            if (!Plugin.Effects.Value || view?.HasEffects == true) return;
             if (!triedDust)
             {
                 triedDust = true;
@@ -38,13 +72,18 @@ namespace MarioTest
                 if (prefab) dust = prefab.GetComponent<ParticleSystem>();
             }
             if (!dust) return;
-            var puff = Object.Instantiate(dust, feet + Vector3.up * 0.12f, Quaternion.identity);
-            puff.transform.localScale *= 1.25f;
+            var puff = Object.Instantiate(dust, feet + Vector3.up * (0.14f * size), Quaternion.identity);
+            var main = puff.main;
+            main.startSize = size;
+            main.startLifetime = size >= 1.4f ? 0.45f : 0.3f;
+            var emission = puff.emission;
+            emission.enabled = false;
             puff.Play();
+            puff.Emit(1);
             Object.Destroy(puff.gameObject, 1f);
         }
 
-        // TModelWaterManager::move calls TSplashManager::newSplash on enemy hits.
+        // TModelWaterManager::move calls TSplashManager::newSplash on impacts.
         // Limit the stock effect per Mario so a spray can hit many times without flooding the view.
         public void WaterImpact(MarioView view, Vector3 at)
         {
@@ -58,9 +97,9 @@ namespace MarioTest
             nextSplash = Time.time + 0.125f;
             EffectManager.SpawnEffect(splash, new EffectData
             {
-                origin = at,
+                origin = at + Vector3.up * 0.1f,
                 rotation = Quaternion.identity,
-                scale = 0.28f
+                scale = 0.55f
             }, false);
         }
     }

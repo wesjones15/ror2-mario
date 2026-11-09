@@ -132,6 +132,8 @@ namespace MarioTest
             ThrowAim = 25,
             // Presentation only, including native flower targets; never apply damage from it.
             WaterImpact = 26,
+            // The first visual splash in a water step; pos is the splash point.
+            WaterSplash = 27,
         }
 
         /// Jump kinds (Event.arg of Jump).

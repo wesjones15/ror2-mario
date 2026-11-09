@@ -408,17 +408,17 @@ namespace MarioTest
                 lastStageGravity = stageGravity;
                 SimOps.Gravity(sim, stageGravity);
             }
-            MarioCombat.Begin(body, Items);
+            fallbackEffects.Begin();
+            MarioCombat.Begin(body, Items, fallbackEffects);
             Native.sms_sim_state(sim, out var before);
             var stepFrom = UnityHost.ToUnity(before.pos);
             var view = View;
             SimOps.Step(sim, ref host, ref step, cameraYaw, Time.fixedDeltaTime,
                 view != null ? view.Handle : IntPtr.Zero);
             if (Local) MarioMelee.Step(body, AimDirection, grounded);
-            var (normalPoundLanded, waterImpact) = MarioCombat.End();
+            MarioCombat.End();
             Native.sms_sim_state(sim, out var st);
-            if (normalPoundLanded) MarioFallbackEffects.Land(view, UnityHost.ToUnity(st.pos));
-            if (waterImpact.HasValue) fallbackEffects.WaterImpact(view, waterImpact.Value);
+            fallbackEffects.Draw(view, st.pos);
             if (jr) jr.AfterStep();
             winDemo = st.win_demo;
             Items.End(sim, st);

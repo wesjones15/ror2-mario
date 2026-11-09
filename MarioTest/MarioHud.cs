@@ -92,7 +92,7 @@ namespace MarioTest
             builtin = true; fitted = state.nozzle;
             info = new Native.HudInfo { width = 96, height = 96, screen_w = 640, screen_h = 480, shown = 1 };
             nozzleInfo = new Native.HudInfo { x = 24, y = 24, width = 48, height = 48 };
-            float charge = fitted == 2 ? Native.sms_sim_nozzle_charge(sim) : 0f;
+            float charge = fitted == 2 || fitted == 6 ? Native.sms_sim_nozzle_charge(sim) : 0f; // Rocket, Turbo (a full gauge is a ready dash)
             int water = Mathf.RoundToInt(Mathf.Clamp01(state.water) * 100f), pressure = Mathf.RoundToInt(charge * 100f);
             int key = water * 101 + pressure;
             if (!tex) tex = new Texture2D(96, 96, TextureFormat.RGBA32, false) {

@@ -16,6 +16,12 @@ namespace MarioTest
         readonly Native.WaterVertex[] wet = new Native.WaterVertex[16384];
         SurfaceQuads ground;
         Native.State state;
+        // Stand-in Rocket smoke: a short trail of fading white puffs from the resolved outlet along its exhaust
+        // direction, once per launch (the rising edge of a full Rocket charge), upright or level alike.
+        struct Puff { public Vector3 at, dir; public float born; }
+        const float PuffLife = 0.55f;
+        readonly System.Collections.Generic.List<Puff> puffs = new System.Collections.Generic.List<Puff>();
+        float lastCharge;
         public void Draw(IntPtr sim, Vector3 feet, Quaternion facing, uint skin, float lag = 0f)
         {
             Native.sms_sim_state(sim, out state);
@@ -54,6 +60,7 @@ namespace MarioTest
                     else shapes.Segment(neck, at, .07f, Color.blue);
                 }
             }
+            RocketSmoke(sim, feet);
             int count = (int)Math.Min((uint)water.Length, Native.sms_sim_water_segments(sim, lag, water, (uint)water.Length));
             for (int i = 0; i < count; i++)
             {
@@ -70,6 +77,32 @@ namespace MarioTest
             if(ground==null)ground=new SurfaceQuads("Mario fallback wet ground",new Color(0,0,0,Mathf.Clamp01(Plugin.GroundWetness.Value)));
             int vertices=(int)Math.Min((uint)wet.Length,Native.sms_sim_wet_vertices(sim,wet,(uint)wet.Length));
             ground.Begin();for(int i=0;i<vertices;i++)ground.Vertex(UnityHost.ToUnity(wet[i].pos),new Vector2(wet[i].u,wet[i].v),wet[i].alpha);ground.End();
+        }
+        void RocketSmoke(IntPtr sim, Vector3 feet)
+        {
+            float charge = state.nozzle == 2 ? Native.sms_sim_nozzle_charge(sim) : 0f;
+            bool launched = charge >= 0.99f && lastCharge < 0.99f;
+            lastCharge = charge;
+            if (launched && Native.sms_sim_emitter(sim, 0, out var origin, out var aim) != 0)
+            {
+                var at = UnityHost.ToUnity(origin) + (feet - UnityHost.ToUnity(state.pos));
+                var dir = new Vector3(aim.x, aim.y, aim.z);
+                dir = dir.sqrMagnitude > 1e-6f ? dir.normalized : Vector3.down;
+                for (int i = 0; i < 6; i++) puffs.Add(new Puff { at = at, dir = dir, born = Time.time + i * 0.04f });
+            }
+            for (int i = puffs.Count - 1; i >= 0; i--)
+            {
+                var p = puffs[i];
+                float age = Time.time - p.born;
+                if (age > PuffLife) { puffs.RemoveAt(i); continue; }
+                if (age < 0f) continue;
+                float t = age / PuffLife;
+                // Fades by shrinking and greying (the shape material is opaque); five steps keep the materials few.
+                float grey = Mathf.Round(t * 5f) / 5f;
+                var where = p.at + p.dir * (age * 3.5f) + Vector3.up * (0.4f * t);
+                shapes.Show(PrimitiveType.Sphere, where, Vector3.one * (Mathf.Lerp(0.22f, 0.5f, t) * (1f - 0.6f * t)),
+                    Quaternion.identity, Color.Lerp(Color.white, new Color(0.55f, 0.55f, 0.58f), grey));
+            }
         }
         /// Follows the native silhouettes: horizontal along a dive or belly slide, squashed in
         /// a ground pound, and a wider core around a spin jump or spinning pound.

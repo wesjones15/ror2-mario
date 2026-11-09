@@ -873,7 +873,14 @@ namespace MarioTest
                 + Vector3.up * (UnityHost.MarioHeight * UnityHost.Scale * 0.55f);
             Vector3 target;
             string note = locked ? "locked" : "";
-            if (locked) target = locked.corePosition;
+            if (locked)
+            {
+                // The body's current velocity, not its previous frame: lead the aim point so a
+                // strafing or charging enemy walks into the spray. The water itself stays ballistic;
+                // LockLead scales/caps the prediction so a fast strafe cannot look like a miss.
+                target = Ballistics.Intercept(nozzle, locked.corePosition, LockVelocity(locked),
+                    LockWaterSpeed, Plugin.LockLeadMax.Value, Plugin.LockLead.Value);
+            }
             // In VR, the shared pointer aim (VrCharacter.Aim: the same cast, from the hand).
             else if (pointing) { target = pointed.Point; note = pointed.Hit ? "pointer" : "pointer miss"; }
             else target = CrosshairTarget(origin, dir, out note, MinCrosshairHit);
@@ -945,6 +952,31 @@ namespace MarioTest
         // something that close points the water at its own parallax, up or down), and the water never turns
         // further than MaxCrosshairTurn from where the camera looks to reach its target.
         const float MinCrosshairHit = 2f, MaxCrosshairTurn = 35f;
+        // libsms's Spray: 40 units a 30 Hz frame, at 1 cm a unit. Used only to time the lead;
+        // host tuning that changes spray_speed/reach should scale LockLead instead.
+        const float LockWaterSpeed = 12f;
+
+        /// <summary>A body's current velocity, for leading a locked shot.</summary>
+        Vector3 LockVelocity(CharacterBody body)
+        {
+            if (!body) return Vector3.zero;
+            var motor = body.characterMotor;
+            if (motor)
+            {
+                var velocity = motor.velocity;
+                if (velocity.sqrMagnitude > 1e-4f) return velocity;
+            }
+            // Flyers and other motorless bodies: cache the rigidbody for the current lock target
+            // so a per-frame lead does not call GetComponent every frame.
+            if (body != velocitySource)
+            {
+                velocitySource = body;
+                velocityBody = body.GetComponent<Rigidbody>();
+            }
+            return velocityBody ? velocityBody.velocity : Vector3.zero;
+        }
+        CharacterBody velocitySource;
+        Rigidbody velocityBody;
         static readonly RaycastHit[] crosshairHits = new RaycastHit[24];
 
         /// Where the camera's ray (in VR the pointer's) lands, past Mario's own colliders and anything closer

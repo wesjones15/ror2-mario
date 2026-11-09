@@ -871,6 +871,8 @@ namespace MarioTest
             float maxTurn = pointing ? MarioVr.PointerMaxTurn : MaxCrosshairTurn;
             var nozzle = transform.position - feetToOrigin
                 + Vector3.up * (UnityHost.MarioHeight * UnityHost.Scale * 0.55f);
+            if (View?.Models == null && Native.sms_sim_emitter(sim, 0, out var muzzle, out _) != 0)
+                nozzle = UnityHost.ToUnity(muzzle);
             Vector3 target;
             string note = locked ? "locked" : "";
             if (locked) target = locked.corePosition;

@@ -9,6 +9,8 @@ namespace MarioTest
         // libsms's POSE_* bits: the native silhouette for hosts that draw a stand-in.
         const byte PoseDive = 1, PoseSlide = 2, PosePound = 4, PoseSpin = 8;
         const float Radius = 0.35f;
+        const float CylinderHeight = 140f; // libsms::mario::STAND_IN_HEIGHT
+        const float TankHalfLength = 0.4f;
         readonly PrimitiveShapes shapes = new PrimitiveShapes("Mario built-in shapes");
         readonly Native.WaterSegment[] water = new Native.WaterSegment[512];
         readonly Native.WaterVertex[] wet = new Native.WaterVertex[16384];
@@ -18,18 +20,35 @@ namespace MarioTest
         {
             Native.sms_sim_state(sim, out state);
             shapes.Begin();
-            float height = UnityHost.MarioHeight * UnityHost.Scale;
+            float height = CylinderHeight * UnityHost.Scale;
             var bodyRotation = facing * Quaternion.AngleAxis(state.flip_pitch * (180f / 32768f), Vector3.right);
-            Pose(feet, bodyRotation, MarioSkin.StandInColor(skin), height);
-            if(state.has_fludd!=0){
-                bool flat=(state.pose&(PoseDive|PoseSlide))!=0;
-                var pack = flat ? feet + Vector3.up * .65f + facing * Vector3.forward * .4f
-                    : feet + Vector3.up * (height * .5f) + bodyRotation * new Vector3(0f, .85f - height * .5f, -.35f);
-                shapes.Show(PrimitiveType.Cylinder, pack, new Vector3(.35f, .4f, .35f),
-                    flat ? facing * Quaternion.Euler(90f, 0f, 0f) : bodyRotation, Color.yellow);
-                for(uint nozzle=0;nozzle<(state.nozzle==5?2u:1u);nozzle++)if(Native.sms_sim_emitter(sim,nozzle,out var origin,out var aim)!=0){
-                    var at=UnityHost.ToUnity(origin);var dir=new Vector3(aim.x,aim.y,aim.z);
-                    shapes.Segment(at,at-dir*.18f,.07f,Color.blue);}
+            var bodyFeet = feet;
+            ViewDraw root = default;
+            bool corkscrew = (state.pose & PoseDive) != 0 && Native.sms_sim_corkscrew_pose(sim, out root) != 0;
+            if (corkscrew)
+            {
+                bodyRotation = new Quaternion(root.rot_x, root.rot_y, root.rot_z, root.rot_w);
+                // Body() centers the cylinder half its height above its supplied feet.
+                bodyFeet += new Vector3(root.pos.x, root.pos.y, root.pos.z) * UnityHost.Scale
+                    + (bodyRotation * Vector3.up - Vector3.up) * (height * 0.5f);
+            }
+            Pose(bodyFeet, bodyRotation, MarioSkin.StandInColor(skin), height, corkscrew);
+            if (state.has_fludd != 0 && Native.sms_sim_stand_in_tank_pose(sim, out var mount) != 0)
+            {
+                var pack = feet + new Vector3(mount.pos.x, mount.pos.y, mount.pos.z) * UnityHost.Scale;
+                var rotation = new Quaternion(mount.rot_x, mount.rot_y, mount.rot_z, mount.rot_w);
+                shapes.Show(PrimitiveType.Cylinder, pack, new Vector3(.35f, TankHalfLength, .35f), rotation, Color.yellow);
+                var neck = pack + rotation * Vector3.up * TankHalfLength;
+                var drawOffset = feet - UnityHost.ToUnity(state.pos);
+                uint countNozzles = state.nozzle == 3 || state.nozzle == 5 ? 2u : 1u;
+                for (uint nozzle = 0; nozzle < countNozzles; nozzle++)
+                {
+                    if (Native.sms_sim_emitter(sim, nozzle, out var origin, out var aim) == 0) continue;
+                    var at = UnityHost.ToUnity(origin) + drawOffset;
+                    // Yoshi's outlet is at his mouth. The other outlets attach to the tank.
+                    var start = state.nozzle == 4 ? at - new Vector3(aim.x, aim.y, aim.z) * .18f : neck;
+                    shapes.Segment(start, at, .07f, Color.blue);
+                }
             }
             int count = (int)Math.Min((uint)water.Length, Native.sms_sim_water_segments(sim, lag, water, (uint)water.Length));
             for (int i = 0; i < count; i++)
@@ -39,7 +58,9 @@ namespace MarioTest
                 // own simulated size instead of flattening every drop to the same cap.
                 float radius = p.radius * UnityHost.Scale;
                 if ((p.flags & 1) == 0) radius = Mathf.Clamp(radius / .707f, .025f, .15f);
-                shapes.Segment(UnityHost.ToUnity(p.head), UnityHost.ToUnity(p.tail), Mathf.Max(.025f, radius), Color.cyan);
+                var tail = UnityHost.ToUnity(p.tail);
+                var head = Vector3.Lerp(tail, UnityHost.ToUnity(p.head), 0.5f);
+                shapes.Segment(head, tail, Mathf.Max(.025f, radius), Color.cyan);
             }
             shapes.End();
             if(ground==null)ground=new SurfaceQuads("Mario fallback wet ground",new Color(0,0,0,Mathf.Clamp01(Plugin.GroundWetness.Value)));
@@ -48,10 +69,10 @@ namespace MarioTest
         }
         /// Follows the native silhouettes: horizontal along a dive or belly slide, squashed in
         /// a ground pound, and a wider core around a spin jump or spinning pound.
-        void Pose(Vector3 feet, Quaternion facing, Color color, float height)
+        void Pose(Vector3 feet, Quaternion facing, Color color, float height, bool corkscrew)
         {
             if ((state.pose & PosePound) != 0) height *= 0.55f;
-            if ((state.pose & (PoseDive | PoseSlide)) != 0)
+            if (!corkscrew && (state.pose & (PoseDive | PoseSlide)) != 0)
             {
                 bool slide = (state.pose & PoseSlide) != 0;
                 var rotation = facing * Quaternion.Euler(90f, 0f, 0f);
@@ -67,7 +88,7 @@ namespace MarioTest
             {
                 shapes.Body(feet, facing, color, height, Radius);
             }
-            if ((state.pose & PoseSpin) != 0)
+            if (corkscrew || (state.pose & PoseSpin) != 0)
             {
                 // A cylinder body can't show its own rotation; this wide core does.
                 shapes.Show(PrimitiveType.Cylinder, feet + Vector3.up * (height * 0.5f),

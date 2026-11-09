@@ -206,7 +206,7 @@ namespace MarioTest
                 "A spinning ground pound falls faster, flaming or not; the flame still starts at the same height. false: the game's fall.");
             SlideDiveNozzles = Config.Bind("Sim", "SlideDiveNozzles", true,
                 "The Rocket and the Turbo can charge and fire in a B dive and a belly slide, pushing Mario along level. false: the game's (Spray only).");
-            AimAlternate = Config.Bind("Experimental", "AimAlternateNozzles", false,
+            AimAlternate = Config.Bind("Experimental", "AimAlternateNozzles", true,
                 "Master switch: aim the Rocket, Turbo and Hover at the LB lock-on target. Off keeps their movement behavior; the Spray's lock-on is independent of this.");
             AimRocket = Config.Bind("Experimental", "AimRocket", true,
                 "With the master switch: a Rocket charge that fires with a target shoots one precision slug (a small kick back, no launch).");

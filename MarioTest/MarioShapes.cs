@@ -9,7 +9,7 @@ namespace MarioTest
         // libsms's POSE_* bits: the native silhouette for hosts that draw a stand-in.
         const byte PoseDive = 1, PoseSlide = 2, PosePound = 4, PoseSpin = 8;
         const float Radius = 0.35f;
-        const float CylinderHeight = 140f; // libsms::mario::STAND_IN_HEIGHT
+        const float CylinderHeight = 110f; // libsms::mario::STAND_IN_HEIGHT
         const float TankHalfLength = 0.4f;
         readonly PrimitiveShapes shapes = new PrimitiveShapes("Mario built-in shapes");
         readonly Native.WaterSegment[] water = new Native.WaterSegment[512];

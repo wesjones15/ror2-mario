@@ -178,7 +178,8 @@ namespace MarioTest
             /// The fitted nozzle: 0 without FLUDD, else 1 Spray, 2 Rocket, 5 Hover, 6 Turbo.
             public byte nozzle;
             /// Stand-in pose cues: 1 dive, 2 belly slide, 4 ground pound (or its get-up), 8 spin
-            /// (a spin jump or a spinning pound).
+            /// (a spin jump or a spinning pound), 16 lying on his back after a knock-down, 32 lying on his
+            /// front, 64 on fire (a super pound, a burning corkscrew or slide, a flaming Rocket spin).
             public byte pose;
             /// Side/triple jump pitch in signed angle units (65536 per turn).
             public short flip_pitch;

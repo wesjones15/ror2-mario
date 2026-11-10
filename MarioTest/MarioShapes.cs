@@ -7,11 +7,12 @@ namespace MarioTest
     internal sealed class MarioShapes : IDisposable
     {
         // libsms's POSE_* bits: the native silhouette for hosts that draw a stand-in.
-        const byte PoseDive = 1, PoseSlide = 2, PosePound = 4, PoseSpin = 8;
+        const byte PoseDive = 1, PoseSlide = 2, PosePound = 4, PoseSpin = 8, PoseDown = 16, PoseFaceDown = 32, PoseFire = 64;
         const float Radius = 0.35f;
         const float CylinderHeight = 110f; // libsms::mario::STAND_IN_HEIGHT
         const float TankHalfLength = 0.4f;
         readonly PrimitiveShapes shapes = new PrimitiveShapes("Mario built-in shapes");
+        readonly LemurianFlames flames = new LemurianFlames();
         readonly Native.WaterSegment[] water = new Native.WaterSegment[512];
         readonly Native.WaterVertex[] wet = new Native.WaterVertex[16384];
         SurfaceQuads ground;
@@ -38,6 +39,8 @@ namespace MarioTest
                     + (bodyRotation * Vector3.up - Vector3.up) * (height * 0.5f);
             }
             Pose(bodyFeet, bodyRotation, MarioSkin.StandInColor(skin), height, corkscrew);
+            // On fire (a super pound, a burning corkscrew or slide, a flaming Rocket spin): the Lemurian's fireball burns on him.
+            flames.Set((state.pose & PoseFire) != 0, bodyFeet + Vector3.up * (height * 0.5f), height);
             if (state.has_fludd != 0 && Native.sms_sim_stand_in_tank_pose(sim, out var mount) != 0)
             {
                 var pack = feet + new Vector3(mount.pos.x, mount.pos.y, mount.pos.z) * UnityHost.Scale;
@@ -122,7 +125,22 @@ namespace MarioTest
         void Pose(Vector3 feet, Quaternion facing, Color color, float height, bool corkscrew)
         {
             if ((state.pose & PosePound) != 0) height *= 0.55f;
-            if (!corkscrew && (state.pose & (PoseDive | PoseSlide)) != 0)
+            if (!corkscrew && (state.pose & (PoseDown | PoseFaceDown)) != 0)
+            {
+                // Knocked down: flat on the ground, on his back (head behind him, face up) or on his front
+                // (head ahead), his feet where they were.
+                bool onBack = (state.pose & PoseDown) != 0;
+                var toHead = facing * Vector3.forward * (onBack ? -1f : 1f);
+                var rotation = facing * Quaternion.Euler(onBack ? -90f : 90f, 0f, 0f);
+                var center = feet + Vector3.up * (Radius * 0.9f) + toHead * (height * 0.45f);
+                shapes.Show(PrimitiveType.Cylinder, center,
+                    new Vector3(Radius * 2f, height * 0.5f, Radius * 2f), rotation, color);
+                // The face looks up when he is on his back; on his front it is in the ground.
+                if (onBack)
+                    shapes.Show(PrimitiveType.Sphere, center + toHead * (height * 0.38f) + Vector3.up * (Radius * 0.85f),
+                        Vector3.one * (Radius * 0.35f), facing, Color.white);
+            }
+            else if (!corkscrew && (state.pose & (PoseDive | PoseSlide)) != 0)
             {
                 bool slide = (state.pose & PoseSlide) != 0;
                 var rotation = facing * Quaternion.Euler(90f, 0f, 0f);
@@ -147,7 +165,7 @@ namespace MarioTest
             }
         }
 
-        public void Hide() {shapes.Hide();ground?.Hide();}
-        public void Dispose() {shapes.Dispose();ground?.Dispose();}
+        public void Hide() {shapes.Hide();ground?.Hide();flames.Set(false, default, 0f);}
+        public void Dispose() {shapes.Dispose();ground?.Dispose();flames.Set(false, default, 0f);}
     }
 }

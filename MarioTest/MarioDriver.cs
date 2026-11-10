@@ -725,7 +725,7 @@ namespace MarioTest
             if (primitive == null) primitive = new MarioShapes();
             var feet = transform.position - feetToOrigin;
             if(jr && jr.HidesMario){primitive.Hide();jr.Draw(feet,sim);}
-            else primitive.Draw(sim, feet, direction ? Quaternion.LookRotation(direction.forward) : transform.rotation, MarioSkin.Selected(body), lagTicks);
+            else primitive.Draw(sim, feet, direction ? Quaternion.LookRotation(direction.forward) : transform.rotation, MarioSkin.Selected(body), lagTicks, fallbackEffects.TakeRocketLaunch());
             if (Local) {
                 MarioHud.UpdateBuiltin(sim);
                 MarioHudLayout.Update(true, localUser);

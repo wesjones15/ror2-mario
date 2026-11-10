@@ -19,10 +19,9 @@ namespace MarioTest
         // Stand-in Rocket smoke: a short trail of fading white puffs from the resolved outlet along its exhaust
         // direction, once per launch (the rising edge of a full Rocket charge), upright or level alike.
         struct Puff { public Vector3 at, dir; public float born; }
-        const float PuffLife = 0.55f;
+        const float PuffLife = 0.9f;
         readonly System.Collections.Generic.List<Puff> puffs = new System.Collections.Generic.List<Puff>();
-        float lastCharge;
-        public void Draw(IntPtr sim, Vector3 feet, Quaternion facing, uint skin, float lag = 0f)
+        public void Draw(IntPtr sim, Vector3 feet, Quaternion facing, uint skin, float lag = 0f, bool rocketLaunch = false)
         {
             Native.sms_sim_state(sim, out state);
             shapes.Begin();
@@ -60,7 +59,7 @@ namespace MarioTest
                     else shapes.Segment(neck, at, .07f, Color.blue);
                 }
             }
-            RocketSmoke(sim, feet);
+            RocketSmoke(sim, feet, rocketLaunch);
             int count = (int)Math.Min((uint)water.Length, Native.sms_sim_water_segments(sim, lag, water, (uint)water.Length));
             for (int i = 0; i < count; i++)
             {
@@ -84,17 +83,24 @@ namespace MarioTest
             int vertices=(int)Math.Min((uint)wet.Length,Native.sms_sim_wet_vertices(sim,wet,(uint)wet.Length));
             ground.Begin();for(int i=0;i<vertices;i++)ground.Vertex(UnityHost.ToUnity(wet[i].pos),new Vector2(wet[i].u,wet[i].v),wet[i].alpha);ground.End();
         }
-        void RocketSmoke(IntPtr sim, Vector3 feet)
+        void RocketSmoke(IntPtr sim, Vector3 feet, bool launched)
         {
-            float charge = state.nozzle == 2 ? Native.sms_sim_nozzle_charge(sim) : 0f;
-            bool launched = charge >= 0.99f && lastCharge < 0.99f;
-            lastCharge = charge;
+            // The launch comes from the sim's TriggerFired event (a gauge sample can miss its few ticks).
             if (launched && Native.sms_sim_emitter(sim, 0, out var origin, out var aim) != 0)
             {
                 var at = UnityHost.ToUnity(origin) + (feet - UnityHost.ToUnity(state.pos));
                 var dir = new Vector3(aim.x, aim.y, aim.z);
                 dir = dir.sqrMagnitude > 1e-6f ? dir.normalized : Vector3.down;
-                for (int i = 0; i < 6; i++) puffs.Add(new Puff { at = at, dir = dir, born = Time.time + i * 0.04f });
+                var side = Vector3.Cross(dir, Vector3.up);
+                if (side.sqrMagnitude < 1e-4f) side = Vector3.right;
+                side.Normalize();
+                // A fat cloud that stays where the launch was (a rising Mario leaves it behind as a trail).
+                for (int i = 0; i < 14; i++)
+                {
+                    float spread = Mathf.Sin(i * 2.399f) * 0.35f;
+                    puffs.Add(new Puff { at = at + side * spread + Vector3.up * (Mathf.Cos(i * 2.399f) * 0.2f), dir = dir, born = Time.time + i * 0.02f });
+                }
+                Plugin.Log.LogDebug("Stand-in Rocket smoke started.");
             }
             for (int i = puffs.Count - 1; i >= 0; i--)
             {
@@ -103,11 +109,12 @@ namespace MarioTest
                 if (age > PuffLife) { puffs.RemoveAt(i); continue; }
                 if (age < 0f) continue;
                 float t = age / PuffLife;
-                // Fades by shrinking and greying (the shape material is opaque); five steps keep the materials few.
+                // Fades by greying and shrinking at the end (the shape material is opaque); five steps keep the materials few.
                 float grey = Mathf.Round(t * 5f) / 5f;
-                var where = p.at + p.dir * (age * 3.5f) + Vector3.up * (0.4f * t);
-                shapes.Show(PrimitiveType.Sphere, where, Vector3.one * (Mathf.Lerp(0.22f, 0.5f, t) * (1f - 0.6f * t)),
-                    Quaternion.identity, Color.Lerp(Color.white, new Color(0.55f, 0.55f, 0.58f), grey));
+                var where = p.at + p.dir * (age * 1.2f) + Vector3.up * (1.0f * t);
+                float size = Mathf.Lerp(0.55f, 1.3f, Mathf.Min(1f, t * 2f)) * (t > 0.6f ? 1f - (t - 0.6f) * 2f : 1f);
+                shapes.Show(PrimitiveType.Sphere, where, Vector3.one * Mathf.Max(0.05f, size),
+                    Quaternion.identity, Color.Lerp(Color.white, new Color(0.6f, 0.6f, 0.64f), grey));
             }
         }
         /// Follows the native silhouettes: horizontal along a dive or belly slide, squashed in

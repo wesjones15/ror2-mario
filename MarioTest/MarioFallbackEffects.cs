@@ -14,6 +14,10 @@ namespace MarioTest
         float nextSplash;
         float landingSize;
         Native.Vec3? waterAt;
+        bool rocketLaunch;
+
+        /// A Rocket discharged since the last call (the sim's TriggerFired, nozzle 2); for the stand-in smoke.
+        public bool TakeRocketLaunch() { var r = rocketLaunch; rocketLaunch = false; return r; }
 
         public void Begin()
         {
@@ -25,6 +29,9 @@ namespace MarioTest
         {
             switch ((Native.EventKind)cue.kind)
             {
+                case Native.EventKind.TriggerFired:
+                    if (cue.arg == 2) rocketLaunch = true;
+                    break;
                 case Native.EventKind.GroundPound:
                     landingSize = 1.9f;
                     break;

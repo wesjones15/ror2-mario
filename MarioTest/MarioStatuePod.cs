@@ -79,10 +79,12 @@ namespace MarioTest
         public bool Present => custom || standIn;
         /// How long the stand-in statue's exit lasts, in seconds, where the Sunshine statue's exit clip would play.
         public const float StandInExitSeconds = 2f;
-        // The stand-in's size, about the statue and its podium (the asset path's own collider is 9.1 x 5.9 x 9.1 m); its front face sits
-        // half a metre ahead of the gate's origin, so about 3 m behind the point he is let out at.
-        static readonly Vector3 StandInSize = new Vector3(9.1f, 5.9f, 9.1f);
-        static readonly Vector3 StandInCenter = new Vector3(0f, 2.95f, 0.5f - 4.55f);
+        // The stand-in is the asset path's own pedestal box, exactly (libsms-present's `statue_bounds` example prints it): 799 x 517 x 798 sim units,
+        // centred (-0.5, 258.3, -340.4) from the gate's origin, so its front face is 58.5 units ahead of the origin and the exit point is
+        // 250 units further. The same collider on every machine, so nobody stands on a different pedestal.
+        static Vector3 StandInSize => new Vector3(798.9985f, 516.5886f, 797.9507f) * UnityHost.Scale;
+        static Vector3 StandInCenter => new Vector3(-0.50076294f, 258.2943f, -340.44556f) * UnityHost.Scale;
+        const float StandInFront = 58.529785f;
         PrimitiveShapes standInShapes;
         bool standIn;
         /// The exit clip was ended early because the next pose would draw the rider into the hill.
@@ -284,7 +286,7 @@ namespace MarioTest
             var origin = Origin; var rotation = Rotation;
             standInShapes.Begin();
             standInShapes.Show(PrimitiveType.Cube, origin + rotation * StandInCenter, StandInSize, rotation, new Color(.55f, .55f, .58f));
-            standInShapes.Show(PrimitiveType.Cylinder, origin + rotation * new Vector3(0f, 3.4f, 0.53f), new Vector3(2.8f, .02f, 2.8f),
+            standInShapes.Show(PrimitiveType.Cylinder, origin + rotation * new Vector3(0f, 3.4f, StandInFront * UnityHost.Scale + .03f), new Vector3(2.8f, .02f, 2.8f),
                 rotation * Quaternion.Euler(90f, 0f, 0f), new Color(.1f, .3f, .95f));
             standInShapes.End();
         }

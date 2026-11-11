@@ -20,13 +20,14 @@ namespace UnityEngine
         public static Vector3 up => new Vector3(0, 1, 0);
         public static Vector3 down => new Vector3(0, -1, 0);
         public float magnitude => (float)Math.Sqrt(x * x + y * y + z * z);
+        public float sqrMagnitude => x * x + y * y + z * z;
         public static Vector3 operator +(Vector3 a, Vector3 b) => new Vector3(a.x + b.x, a.y + b.y, a.z + b.z);
         public static Vector3 operator -(Vector3 a, Vector3 b) => new Vector3(a.x - b.x, a.y - b.y, a.z - b.z);
         public static Vector3 operator *(Vector3 a, float b) => new Vector3(a.x * b, a.y * b, a.z * b);
         public static Vector3 operator /(Vector3 a, float b) => a * (1f / b);
         public static Vector3 ProjectOnPlane(Vector3 a, Vector3 b) => a;
     }
-    public class Transform : Object { }
+    public class Transform : Object { public Vector3 position; }
     public enum PrimitiveType { Cylinder }
     public struct Color { public static Color yellow => default; }
     public struct Quaternion { public float x, y, z, w; public static Quaternion Euler(float x, float y, float z) => default; }
@@ -123,6 +124,7 @@ namespace Ror2Common
     public struct ViewBatch { }
     public struct ViewTexture { }
     public static class NativeLib { public static byte[] CString(string s) => Array.Empty<byte>(); }
+    public static class GameSettings { public static UnityEngine.Transform PlayerCamera() => null; }
     // MarioCoins draws generic coins through the shared PrimitiveShapes when no native model is available; the check
     // runs the coin logic only, so the drawing API is a no-op here (the real class needs Unity's renderer).
     public sealed class PrimitiveShapes : IDisposable

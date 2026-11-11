@@ -7,7 +7,7 @@ namespace MarioTest
     internal sealed class MarioShapes : IDisposable
     {
         // libsms's POSE_* bits: the native silhouette for hosts that draw a stand-in.
-        const byte PoseDive = 1, PoseSlide = 2, PosePound = 4, PoseSpin = 8, PoseDown = 16, PoseFaceDown = 32, PoseFire = 64, PoseDash = 128;
+        const byte PoseDive = 1, PoseSlide = 2, PosePound = 4, PoseSpin = 8, PoseDown = 16, PoseFaceDown = 32, PoseFire = 64;
         const float Radius = 0.35f;
         const float CylinderHeight = 110f; // libsms::mario::STAND_IN_HEIGHT
         const float TankHalfLength = 0.4f;
@@ -58,10 +58,6 @@ namespace MarioTest
                     // the aim says so, in the standing and wet-slide poses alike.
                     var dir = new Vector3(aim.x, aim.y, aim.z);
                     float head = state.nozzle == 4 ? .18f : .3f;
-                    // The Turbo's dash (the run's, or its thrust through a jump, dive, slide or corkscrew): the disc's water-boost cone
-                    // is a pale cone out of the exhaust; the stand-in's is a fat pale streak along it.
-                    if ((state.pose & PoseDash) != 0 && state.nozzle == 6 && dir.sqrMagnitude > 1e-6f)
-                        shapes.Segment(at, at + dir.normalized * .9f, .17f, new Color(.75f, .9f, 1f));
                     if (dir.sqrMagnitude > 1e-6f) shapes.Segment(at - dir.normalized * head, at, .07f, Color.blue);
                     else shapes.Segment(neck, at, .07f, Color.blue);
                 }

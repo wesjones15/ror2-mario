@@ -78,10 +78,10 @@ namespace MarioTest
 
         public static void Register(CharacterBody body, RoR2.ContentManagement.ContentPack pack)
         {
-            if (!Plugin.AssetsReady) {
-                if (!body.preferredPodPrefab) body.preferredPodPrefab = LegacyResourcesAPI.Load<GameObject>("Prefabs/NetworkedObjects/SurvivorPod");
-                return;
-            }
+            // Registered on every machine whether or not its Sunshine files are ready: the host picks the pod
+            // each player gets, so every client must have the same networked prefab (a client without it logs
+            // "Failed to spawn server object" and its body is never put on the stage). Whether the statue
+            // is *drawn* is decided later, per machine, by Prepare(); without assets the pod plays as stock.
             var original = body.preferredPodPrefab;
             if (!original) original = LegacyResourcesAPI.Load<GameObject>("Prefabs/NetworkedObjects/SurvivorPod");
             if (!original) { Plugin.Log.LogWarning("Mario statue: no vanilla pod prefab"); return; }
@@ -119,6 +119,7 @@ namespace MarioTest
             prefab.GetComponent<EntityStateMachine>().initialStateType = new SerializableEntityStateType(typeof(MarioPodDescent));
             body.preferredPodPrefab = prefab;
             pack.networkedObjectPrefabs.Add(new[] { prefab });
+            Plugin.Log.LogInfo($"Mario statue pod registered for every machine (statue drawn here: {(Plugin.AssetsReady ? "if the files are ready at run start" : "no, files not ready yet")})");
             pack.entityStateTypes.Add(new[] { typeof(MarioPodDescent), typeof(MarioPodLanded), typeof(MarioPodExit), typeof(MarioPodSpent) });
         }
 

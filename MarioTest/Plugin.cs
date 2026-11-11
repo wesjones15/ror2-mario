@@ -911,6 +911,9 @@ namespace MarioTest
             pack.entityStateTypes.Add(new[] { typeof(MarioMain) });
             Log.LogInfo("Mario registered");
             if (KoopaJrEnabled) KoopaJrBody.Register(pack, commando, commandoDisplay);
+            // Every machine in a session must register the same networked prefabs (a missing one breaks the spawn of
+            // whatever the host creates from it): say what this one has so a mismatch shows in both logs.
+            Log.LogInfo($"Networked prefabs: MarioTestBody, MarioSunshineStatuePod, Koopa Jr. body {(KoopaJrEnabled ? "on" : "off (the Experimental setting must match the host's)")}");
         }
 
         /// Bowser Jr. (Shadow Mario) is unfinished: in the game only with Experimental.Enabled.

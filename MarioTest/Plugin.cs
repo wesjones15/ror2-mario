@@ -639,6 +639,7 @@ namespace MarioTest
             gameObject.AddComponent<MarioDeflect>();
             gameObject.AddComponent<MarioScreenFx>();
             gameObject.AddComponent<MarioShine>();
+            gameObject.AddComponent<MarioPreparingNotice>();
             gameObject.AddComponent<MarioFlowers>();
             gameObject.AddComponent<KoopaJrGoop>();
             gameObject.AddComponent<MarioCarry>();

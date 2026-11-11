@@ -72,6 +72,19 @@ namespace MarioTest
         Func<ViewDraw, (Vector3, Quaternion)?> placement;
         Func<ViewDraw, bool> hideDraw;
         public bool Ready => custom;
+        /// This machine draws the stand-in statue (a gray block with a blue disc) instead of the Sunshine statue.
+        public bool StandIn => standIn;
+        /// Either statue is drawn here, so the pod runs the statue's exit rather than the stock one (every machine runs the
+        /// same sequence of states: only what is drawn on it differs).
+        public bool Present => custom || standIn;
+        /// How long the stand-in statue's exit lasts, in seconds, where the Sunshine statue's exit clip would play.
+        public const float StandInExitSeconds = 2f;
+        // The stand-in's size, about the statue and its podium (the asset path's own collider is 9.1 x 5.9 x 9.1 m); its front face sits
+        // half a metre ahead of the gate's origin, so about 3 m behind the point he is let out at.
+        static readonly Vector3 StandInSize = new Vector3(9.1f, 5.9f, 9.1f);
+        static readonly Vector3 StandInCenter = new Vector3(0f, 2.95f, 0.5f - 4.55f);
+        PrimitiveShapes standInShapes;
+        bool standIn;
         /// The exit clip was ended early because the next pose would draw the rider into the hill.
         public bool Cut => exitCut;
         public bool Finished { get; private set; }
@@ -189,9 +202,16 @@ namespace MarioTest
 
         void Prepare()
         {
-            if (tried || !Plugin.AssetsSettled) return;
+            if (tried) return;
             tried = true;
-            if (!Plugin.AssetsReady || !Plugin.DrawModel.Value || !Run.instance || Run.instance.stageClearCount != 0) return;
+            bool firstStage = Run.instance && Run.instance.stageClearCount == 0;
+            // Decided once, when the pod appears: a machine whose Sunshine files are not ready (a first launch still preparing them) draws
+            // the stand-in statue for this whole entrance, and never changes mid-sequence.
+            if (!Plugin.AssetsSettled || !Plugin.AssetsReady) {
+                if (firstStage && Plugin.DrawModel.Value) BuildStandIn(!Plugin.AssetsSettled ? "the Sunshine files are still being prepared" : "no Sunshine files here");
+                return;
+            }
+            if (!Plugin.DrawModel.Value || !firstStage) return;
             try {
                 view = Native.sms_view_entrance_fast_new(NativeLib.CString(Plugin.AssetsDir), (byte)(Plugin.Sound.Value ? 1 : 0));
                 if (view == IntPtr.Zero) throw new InvalidOperationException("statue/portal assets unavailable");
@@ -233,15 +253,47 @@ namespace MarioTest
                 }
                 Plugin.Log.LogInfo("Mario stage-one statue entrance ready (05_gate01 / particle 0x40)");
             } catch (Exception e) {
-                Plugin.Log.LogWarning("Mario statue: " + e.Message + "; using vanilla pod");
+                Plugin.Log.LogWarning("Mario statue: " + e.Message + "; using the stand-in statue");
                 Cleanup();
+                BuildStandIn("the statue could not be built");
             }
+        }
+
+        /// The stand-in statue: a block of about the statue's size behind where he is let out, a blue disc on its front, and the
+        /// same solid pedestal. The stock pod's seat, descent, flames and sounds stay; its shell is hidden.
+        void BuildStandIn(string why)
+        {
+            standIn = true;
+            standInShapes = new PrimitiveShapes("Mario stand-in statue");
+            collision = new GameObject("Mario stand-in statue collision");
+            collision.layer = LayerIndex.world.intVal;
+            collision.transform.SetParent(anchored ? transform : travel, false);
+            collision.transform.SetPositionAndRotation(Origin, Rotation);
+            var box = collision.AddComponent<BoxCollider>();
+            box.center = StandInCenter; box.size = StandInSize;
+            HideStockVisuals();
+            Plugin.Log.LogInfo($"Mario statue: drawing the stand-in statue ({why}); the entrance runs the same way.");
+        }
+
+        void StandInFrame()
+        {
+            if (RunAudio.Ended || !travel) return;
+            if (anchored && !exitAligned && seat.currentPassengerBody && !activated) AlignExit();
+            if (collision && !anchored) collision.transform.SetPositionAndRotation(Origin, Rotation);
+            HideStockVisuals();
+            var origin = Origin; var rotation = Rotation;
+            standInShapes.Begin();
+            standInShapes.Show(PrimitiveType.Cube, origin + rotation * StandInCenter, StandInSize, rotation, new Color(.55f, .55f, .58f));
+            standInShapes.Show(PrimitiveType.Cylinder, origin + rotation * new Vector3(0f, 3.4f, 0.53f), new Vector3(2.8f, .02f, 2.8f),
+                rotation * Quaternion.Euler(90f, 0f, 0f), new Color(.1f, .3f, .95f));
+            standInShapes.End();
         }
 
         void LateUpdate()
         {
             using var timing = MarioPerformance.Measure(MarioPerformance.Part.Portal);
             Prepare();
+            if (standIn) { StandInFrame(); return; }
             if (!custom || !travel || RunAudio.Ended) return;
             if (anchored && !exitAligned && seat.currentPassengerBody && !activated) AlignExit();
             if (collision && !anchored) collision.transform.SetPositionAndRotation(Origin, Rotation);
@@ -569,6 +621,12 @@ namespace MarioTest
         {
             if (released) return;
             released = true;
+            if (standIn) {
+                releasedAt = Time.time;
+                // Let out at the stock exit marker, as the Sunshine statue's exit is aligned to it.
+                if (NetworkServer.active && seat.currentPassengerBody) seat.EjectPassenger();
+                return;
+            }
             releasedAt = Time.time;
             cameraHandoff = CameraHandoff.Hold(passenger, pod);
             // Bridge the physics tick until MarioDriver/MarioPuppet draws the playable
@@ -587,6 +645,8 @@ namespace MarioTest
         void Cleanup()
         {
             custom = false;
+            if (standInShapes != null) { standInShapes.Dispose(); standInShapes = null; }
+            standIn = false;
             if (cameraHandoff) { cameraHandoff.Release(); cameraHandoff = null; }
             GameSettings.HideModel(passenger, ref hideFallback, false);
             if (pod && originalCamera) pod.cameraBone = originalCamera;
@@ -633,7 +693,7 @@ namespace MarioTest
         public override void FixedUpdate() { base.FixedUpdate(); survivorPodController.exitAllowed = true; }
         void ExitRequest(GameObject passenger, ref bool? result) {
             var statue = GetComponent<MarioStatuePod>();
-            outer.SetNextState(statue && statue.Ready ? (EntityState)new MarioPodExit() : new PreRelease());
+            outer.SetNextState(statue && statue.Present ? (EntityState)new MarioPodExit() : new PreRelease());
             result = true;
         }
         public override void OnExit() {
@@ -650,7 +710,10 @@ namespace MarioTest
         public override void OnEnter() { base.OnEnter(); statue = GetComponent<MarioStatuePod>(); if (statue) statue.Activate(); }
         public override void FixedUpdate() {
             base.FixedUpdate();
-            if (isAuthority && ((!statue || !statue.Ready || statue.Finished || statue.Cut) || fixedAge > 4f)) {
+            bool done = !statue
+                || (statue.StandIn ? fixedAge > MarioStatuePod.StandInExitSeconds
+                    : (!statue.Ready || statue.Finished || statue.Cut || fixedAge > 4f));
+            if (isAuthority && done) {
                 if (statue) statue.Release();
                 else if (NetworkServer.active) vehicleSeat.EjectPassenger();
                 outer.SetNextState(new MarioPodSpent());

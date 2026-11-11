@@ -212,6 +212,16 @@ namespace MarioTest
             coin.planned = true;
         }
 
+        /// How far (m) from the player's camera a pickup's sound and sparks are still played.
+        const float AudibleRange = 60f;
+
+        /// The pickup at `at` is near enough to the player's camera to hear or see (no camera: yes).
+        internal static bool Near(Vector3 at)
+        {
+            var cam = GameSettings.PlayerCamera();
+            return !cam || (cam.position - at).sqrMagnitude <= AudibleRange * AudibleRange;
+        }
+
         internal static bool Ground(Vector3 from, out float y)
         {
             y = 0f;

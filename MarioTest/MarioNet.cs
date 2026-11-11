@@ -321,6 +321,17 @@ namespace MarioTest
         public static void CoinCollected(CharacterBody body, Vector3 pos)
         {
             if (!body) return;
+            // A pickup far from this player's camera is neither heard nor seen. Within earshot it plays through the view of the player's
+            // own Mario when there is one: its listener is set from the camera every frame (a far puppet's view is not drawn, so its
+            // listener is stale and the sound came out at full volume, as if beside the player's ear).
+            if (!MarioCoins.Near(pos)) return;
+            var heard = MarioView.Player;
+            if (heard != null && heard.Handle != System.IntPtr.Zero)
+            {
+                var at = UnityHost.ToSim(pos);
+                Native.sms_view_coin_get(heard.Handle, ref at);
+                return;
+            }
             var driver = body.GetComponent<MarioDriver>();
             var puppet = body.GetComponent<MarioPuppet>();
             driver?.CoinCollected(pos);

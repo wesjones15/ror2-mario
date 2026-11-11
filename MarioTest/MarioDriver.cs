@@ -1238,8 +1238,17 @@ namespace MarioTest
             if (Local) MarioSkin.CheckUnlocks(body);
         }
 
-        void Resync(bool keepRecovery = false)
+        void Resync(bool keepRecovery = false, [System.Runtime.CompilerServices.CallerLineNumber] int line = 0)
         {
+            // A body put somewhere far from where its sim was: say where from, to and which call (MarioDriver.cs line), so an
+            // unexplained jump in play can be traced in the log.
+            if (Native.sms_sim_state(sim, out var before) != 0)
+            {
+                var from = UnityHost.ToUnity(before.pos);
+                var to = transform.position - feetToOrigin;
+                if ((from - to).sqrMagnitude > 9f)
+                    Plugin.Log.LogInfo($"Mario placed {(to - from).magnitude:0.0} m away: {from} -> {to} (status {NativeLib.Utf8(Native.sms_sim_status_name(sim))}, MarioDriver.cs:{line})");
+            }
             if (!keepRecovery) unstuck.Reset();
             guard.Placed(transform.position - feetToOrigin);
             var feet = UnityHost.ToSim(transform.position - feetToOrigin);

@@ -95,10 +95,12 @@ namespace MarioTest
         public static void Reset()
         {
             image.Reset();
+            lastLife = 1f; lastShield = 0f;
             shown = false;
             ShowRor2Bars();
         }
 
+        /// A body's health and shield as shares of its full total.
         /// A body's health and shield as shares of its full total.
         public static void Shares(HealthComponent health, out float life, out float shield)
         {
@@ -108,6 +110,19 @@ namespace MarioTest
             if (full <= 0f) return;
             life = Mathf.Clamp01(health.health / full);
             shield = Mathf.Clamp01((health.shield + health.barrier) / full);
+        }
+
+        // The last shares read from the player's living body: a body that is momentarily missing (a respawn, a camera target not found
+        // yet) or whose maximum reads 0 holds the meter where it was instead of drawing it empty. Only the player's own meter uses this
+        // (the lock marker's enemies go through `Shares`).
+        static float lastLife = 1f, lastShield;
+
+        static void OwnShares(HealthComponent health, out float life, out float shield)
+        {
+            life = lastLife; shield = lastShield;
+            if (!health || health.fullCombinedHealth <= 0f) return;
+            Shares(health, out life, out shield);
+            lastLife = life; lastShield = shield;
         }
 
         /// After the view's update (render rate): the meter for the player's `health`.
@@ -120,7 +135,7 @@ namespace MarioTest
                 return;
             }
             shownHealth = health;
-            Shares(health, out var life, out var shield);
+            OwnShares(health, out var life, out var shield);
             shown = image.Update(view, life, shield);
             if (shown && Plugin.HideHealthBar.Value) HideRor2Bars();
             else ShowRor2Bars();

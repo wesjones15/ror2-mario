@@ -465,7 +465,8 @@ namespace MarioTest
                 bool wentHigh = UnityHost.ToUnity(st.pos).y > fellFrom.y;
                 if (Local)
                 {
-                    if (!lostShown && !wentHigh) TooBad();
+                    // A body that was never put on the stage (its no-footing rescue) did not miss: no TOO BAD!.
+                    if (!lostShown && !wentHigh && !unstuck.NoFootingReset) TooBad();
                     lostShown = false;
                     if (NetworkServer.active && body)
                         body.AddTimedBuff(RoR2Content.Buffs.HiddenInvincibility, 1.5f);

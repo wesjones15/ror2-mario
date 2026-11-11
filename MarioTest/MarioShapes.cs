@@ -72,12 +72,6 @@ namespace MarioTest
                 float radius = p.radius * UnityHost.Scale;
                 if ((p.flags & 1) == 0) radius = Mathf.Clamp(radius / .707f, .025f, .15f);
                 var tail = UnityHost.ToUnity(p.tail);
-                // The Rocket's precision slug (flag 4) is a bright tracer: its whole streak, thick enough to see at its speed.
-                if ((p.flags & 4) != 0)
-                {
-                    shapes.Segment(UnityHost.ToUnity(p.head), tail, Mathf.Max(.09f, radius), Color.white);
-                    continue;
-                }
                 var head = Vector3.Lerp(tail, UnityHost.ToUnity(p.head), 0.5f);
                 shapes.Segment(head, tail, Mathf.Max(.025f, radius), Color.cyan);
             }

@@ -639,7 +639,8 @@ namespace MarioTest
             gameObject.AddComponent<MarioDeflect>();
             gameObject.AddComponent<MarioScreenFx>();
             gameObject.AddComponent<MarioShine>();
-            gameObject.AddComponent<MarioPreparingNotice>();
+            PreparingNotice.Attach(gameObject, "Mario", "Sunshine",
+                "until they finish you will see stand-ins (the first stage's statue too) and hear no Sunshine sounds.", () => AssetsBusy);
             gameObject.AddComponent<MarioFlowers>();
             gameObject.AddComponent<KoopaJrGoop>();
             gameObject.AddComponent<MarioCarry>();

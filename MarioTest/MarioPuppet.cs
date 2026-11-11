@@ -74,7 +74,9 @@ namespace MarioTest
             // The shadow sim uses its landing cue for presentation. Its owner deals the hits.
             onEvent = OnEvent;
             host.evt = System.Runtime.InteropServices.Marshal.GetFunctionPointerForDelegate(onEvent);
-            host.enemies = System.Runtime.InteropServices.Marshal.GetFunctionPointerForDelegate(noEnemies);
+            // The real enemies, not none: the aimed Rocket's and Turbo's drops lock on one (the same as on the owner's machine) and are spent
+            // on it. Damage is the owner's alone (OnEvent ignores the hit events).
+            host.enemies = System.Runtime.InteropServices.Marshal.GetFunctionPointerForDelegate(MarioCombat.EnemiesCallback);
         }
 
         void OnEvent(IntPtr user, ref Native.Event e) => fallbackEffects.Observe(e);

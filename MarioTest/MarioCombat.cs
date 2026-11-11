@@ -60,6 +60,9 @@ namespace MarioTest
 
         static readonly Native.EventFn eventFn = OnEvent;
         static readonly unsafe Native.EnemiesFn enemiesFn = Enemies;
+        /// The enemy query the sims use, for another player's shadow sim too: its aimed Rocket and Turbo drops find the same lock and are spent
+        /// on the same enemies as the owner's (the owner alone deals the damage).
+        internal static Native.EnemiesFn EnemiesCallback => enemiesFn;
         public static IntPtr EventPtr => System.Runtime.InteropServices.Marshal.GetFunctionPointerForDelegate(eventFn);
         public static IntPtr EnemiesPtr => System.Runtime.InteropServices.Marshal.GetFunctionPointerForDelegate(enemiesFn);
 

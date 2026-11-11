@@ -117,7 +117,8 @@ namespace MarioTest
                     };
                 }
                 n = Math.Max(0, n);
-                return (uint)n + MarioCarry.Append(output + n, max - (uint)n, pos, radius);
+                uint total = (uint)n + MarioCarry.Append(output + n, max - (uint)n, pos, radius);
+                return total + MarioEnemyCarry.Append(output + total, max - total, pos, radius);
             }
             catch (Exception e)
             {
@@ -128,6 +129,7 @@ namespace MarioTest
 
         static byte Take(IntPtr user, uint id)
         {
+            if ((id & MarioEnemyCarry.Mask) == MarioEnemyCarry.Bit) return MarioEnemyCarry.Take(id);
             if ((id & MarioCarry.Bit) != 0) return MarioCarry.Take(id);
             try
             {
@@ -151,6 +153,7 @@ namespace MarioTest
         public static void Step(CharacterBody body, in Native.State st, bool local)
         {
             MarioCarry.Step(body, st, local);
+            MarioEnemyCarry.Step(body, st, local);
             if (!local || !holding) return;
             try
             {
@@ -164,6 +167,7 @@ namespace MarioTest
         public static void Lost()
         {
             MarioCarry.Lost();
+            MarioEnemyCarry.Lost();
             if (!holding) return;
             holding = false;
             throwing = false;
@@ -174,6 +178,7 @@ namespace MarioTest
         public static void OnEvent(ref Native.Event e)
         {
             if (MarioCarry.OnEvent(ref e)) return;
+            if (MarioEnemyCarry.OnEvent(ref e)) return;
             if (!holding && !throwing) return;
             try
             {

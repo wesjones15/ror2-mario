@@ -100,7 +100,7 @@ spectating a Mario without art.
 
 Unlocks persist in the player's profile. Missing local assets use fallback presentation and do not hide skins offered by the installed mod set.
 
-Optional integrations include contextual Melee Mario attacks, carrying teammates and Pikmin pellets, and participation in Olimar's Ship Repair mode when the relevant companion content is installed. Bowser Jr./Shadow Mario is a separate **unfinished survivor**, hidden by default behind the shared `ShowUnfinished` setting in `BepInEx/config/Ror2Common.Experimental.cfg`.
+Mario also picks up small enemies with B (standing or walking slowly, as in Sunshine) and throws them with B while standing, walking, running or jumping; a thrown enemy hurts what it hits and what is around where it lands (`Carry/EnemyCarry`, `EnemyMaxHealth`, `EnemyThrowDamage`). Optional integrations include contextual Melee Mario attacks, carrying teammates and Pikmin pellets, and participation in Olimar's Ship Repair mode when the relevant companion content is installed. Bowser Jr./Shadow Mario is a separate **unfinished survivor**, hidden by default behind the shared `ShowUnfinished` setting in `BepInEx/config/Ror2Common.Experimental.cfg`.
 
 **VR integration** provides a first-person head view, pointer-aimed FLUDD, controller arms, a nozzle wheel selected by pointing and a wrist HUD when a compatible VR mod is active. Its controls mirror the flat layout: right trigger sprays, left trigger is L, left grip locks and right grip swaps/opens the wheel; A jumps and B dives. Left-handed mode mirrors the layout. This integration still needs headset playtesting; Luigi/Yoshi use fallback hands, and full-screen effects remain desktop-only.
 

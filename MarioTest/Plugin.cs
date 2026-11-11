@@ -123,6 +123,8 @@ namespace MarioTest
         internal static ConfigEntry<float> CoinSeconds;
         internal static ConfigEntry<bool> CoinTeammates;
         internal static ConfigEntry<int> CarryTeammates;
+        internal static ConfigEntry<bool> EnemyCarry;
+        internal static ConfigEntry<float> EnemyCarryMaxHealth, EnemyThrowDamage;
         internal static ConfigEntry<int> FlowerChance, FlowerRolls, FlowerBiteMax;
         internal static ConfigEntry<float> LockRange;
         internal static ConfigEntry<float> LockLead, LockLeadMax;
@@ -340,6 +342,14 @@ namespace MarioTest
                 new ConfigDescription("Which teammates Mario can pick up with B and set down or throw: 0 nobody, " +
                     "1 Olimar, the Melee fighters and other Marios, 2 any player. A held player breaks free by " +
                     "pressing his own A (a Mario's jump, otherwise his primary).", new AcceptableValueRange<int>(0, 2)));
+            EnemyCarry = Config.Bind("Carry", "EnemyCarry", true,
+                "Mario picks up small enemies with B (the game's grab, standing or walking slowly) and throws them with B, standing, walking, running or in the air.");
+            EnemyCarryMaxHealth = Config.Bind("Carry", "EnemyMaxHealth", 400f,
+                new ConfigDescription("The most base health an enemy can have and still be small enough to pick up (bosses and champions never are).",
+                    new AcceptableValueRange<float>(1f, 5000f)));
+            EnemyThrowDamage = Config.Bind("Carry", "EnemyThrowDamage", 8f,
+                new ConfigDescription("What a thrown enemy does, as a multiple of Mario's damage: to each enemy it hits on the way, and to itself and the enemies around it where it lands. 0: nothing.",
+                    new AcceptableValueRange<float>(0f, 100f)));
             LockRange = Config.Bind("Controls", "LockRange", 60f,
                 new ConfigDescription("How far away, in metres, the lock-on can pick an enemy (with a clear line): " +
                     "far enough for flying ones. FLUDD's water still falls short of the far ones.",
@@ -645,6 +655,8 @@ namespace MarioTest
             gameObject.AddComponent<KoopaJrGoop>();
             gameObject.AddComponent<MarioCarry>();
             MarioCarry.Register();
+            gameObject.AddComponent<MarioEnemyCarry>();
+            MarioEnemyCarry.Register();
             gameObject.AddComponent<MarioLunarCoin>();
             MarioNet.Register();
             // The HUD's skill icons name the buttons Mario's sim reads (MarioPad), not RoR2's binds.

@@ -74,6 +74,10 @@ namespace MarioTest
             // The shadow sim uses its landing cue for presentation. Its owner deals the hits.
             onEvent = OnEvent;
             host.evt = System.Runtime.InteropServices.Marshal.GetFunctionPointerForDelegate(onEvent);
+            // Another player's Mario never grabs anything here: the pick-up callbacks speak for the local player (his hands, his held state),
+            // and a replayed B would otherwise start a grab on his behalf near this shadow.
+            host.takeables = IntPtr.Zero;
+            host.take = IntPtr.Zero;
             // The real enemies, not none: the aimed Rocket's and Turbo's drops lock on one (the same as on the owner's machine) and are spent
             // on it. Damage is the owner's alone (OnEvent ignores the hit events).
             host.enemies = System.Runtime.InteropServices.Marshal.GetFunctionPointerForDelegate(MarioCombat.EnemiesCallback);
